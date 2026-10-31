@@ -37,8 +37,10 @@
 </head>
 <body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden">
     <aside class="w-full md:w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-[4px_0_24px_rgba(249,115,22,0.05)] z-10 order-2 md:order-1 h-2/5 md:h-full transition-all">
-        <div class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between">
+        <!-- 連續點擊 3 下「我們這一家」標題可開啟後台管理 -->
+        <div id="admin-trigger" class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between cursor-pointer select-none" title="連續點擊3下開啟後台">
             <h1 class="text-2xl font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
+            <i class="fas fa-cog text-warm-300 text-sm opacity-50"></i>
         </div>
         
         <!-- 搜尋框區塊 -->
@@ -59,14 +61,6 @@
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2">
-            <label class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
-                <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
-                <input type="file" id="ics-file-input" accept=".ics" class="hidden">
-            </label>
-            <!-- 一鍵清空政府行事曆按鈕 -->
-            <button id="btn-clear-gov" class="w-full py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2">
-                <i class="fas fa-trash-alt"></i> 一鍵清空政府行事曆
-            </button>
             <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> 新增活動
             </button>
@@ -95,6 +89,26 @@
             <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(60px,1fr)] md:auto-rows-[minmax(100px,1fr)]"></div>
         </div>
     </main>
+
+    <!-- 隱藏後台管理 Modal -->
+    <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-tools text-warm-500"></i> 行事曆後台管理</h3>
+                <button id="btn-close-admin" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-gray-500">這裡是用於管理政府行事曆資料的後台工具，平常不會顯示在畫面上。</p>
+                <label class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
+                    <input type="file" id="ics-file-input" accept=".ics" class="hidden">
+                </label>
+                <button id="btn-clear-gov" class="w-full py-3 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> 一鍵清空政府行事曆
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 點擊日期彈出的「當日行程列表」Modal -->
     <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -245,6 +259,24 @@
         let currentViewingId = null;
         let selectedDateForModal = null;
         let searchQuery = '';
+        let clickCount = 0;
+        let clickTimer = null;
+
+        // 隱藏後台觸發機制：連續點擊「我們這一家」標題 3 下
+        document.getElementById('admin-trigger').addEventListener('click', () => {
+            clickCount++;
+            if (clickTimer) clearTimeout(clickTimer);
+            if (clickCount >= 3) {
+                clickCount = 0;
+                document.getElementById('admin-modal').classList.remove('hidden');
+            } else {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 500);
+            }
+        });
+
+        document.getElementById('btn-close-admin').addEventListener('click', () => {
+            document.getElementById('admin-modal').classList.add('hidden');
+        });
 
         onSnapshot(eventsRef, (snapshot) => {
             events = [];
@@ -300,6 +332,7 @@
                             await addDoc(eventsRef, evt);
                         }
                         alert('政府行事曆批次匯入成功！');
+                        document.getElementById('admin-modal').classList.add('hidden');
                     } catch (err) {
                         console.error("ICS Import Error:", err);
                         alert('匯入失敗，請稍後再試。');
@@ -323,6 +356,7 @@
                         await deleteDoc(doc(eventsRef, evt.id));
                     }
                     alert('已成功清空所有政府行事曆！');
+                    document.getElementById('admin-modal').classList.add('hidden');
                 } catch (err) {
                     console.error("Clear Gov Events Error:", err);
                     alert('清除失敗，請稍後再試。');
@@ -425,11 +459,12 @@
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
             
-            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && e.author !== '政府行事曆').sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             
-            const isMakeUpWorkDay = dayEvents.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
+            const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+            const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-            const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
+            const isGovHoliday = allEventsForCheck.some(e => e.author === '政府行事曆');
             
             const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
 
@@ -467,7 +502,6 @@
                 const evtEl = document.createElement('div');
                 const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
                 
-                // 移除 truncate 改用 whitespace-normal break-words 讓文字完整換行呈現
                 evtEl.className = `${evt.color} text-white text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-1 rounded md:rounded-md shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
                 evtEl.innerHTML = `<span class="whitespace-normal break-words leading-tight">${evt.time ? `<span class="opacity-75 font-normal text-[9px] mr-1">${evt.time}</span>` : ''}${evt.title}</span>${evt.author ? `<span class="text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : ''}`;
                 
@@ -488,7 +522,7 @@
             const dParts = dateStr.split('-');
             document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
             
-            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && e.author !== '政府行事曆').sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             const listContainer = document.getElementById('day-modal-list');
             listContainer.innerHTML = '';
             
@@ -540,11 +574,12 @@
             const todayStr = formatDateStr(new Date());
             const upcoming = events.filter(e => {
                 const matchDate = e.endDate >= todayStr;
+                const matchAuthor = e.author !== '政府行事曆';
                 const matchSearch = !searchQuery || 
                     e.title.toLowerCase().includes(searchQuery) || 
                     e.author.toLowerCase().includes(searchQuery) || 
                     e.description.toLowerCase().includes(searchQuery);
-                return matchDate && matchSearch;
+                return matchDate && matchAuthor && matchSearch;
             }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
             
             if (upcoming.length === 0) {
@@ -690,6 +725,7 @@
                 mapBtnContainer.classList.add('hidden');
             }
             
+            document.getElementById('view-modal').classList.add('hidden'); // Fix view modal state handling if needed, keeping as original logic
             document.getElementById('view-modal').classList.remove('hidden');
         }
         
