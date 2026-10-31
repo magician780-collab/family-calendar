@@ -15,6 +15,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- 引入農曆計算專用套件 (Lunar Calendar Library) -->
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -86,7 +90,7 @@
                 <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">五</div>
                 <div class="text-center font-bold text-blue-500 text-xs md:text-sm py-2">六</div>
             </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(60px,1fr)] md:auto-rows-[minmax(100px,1fr)]"></div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(80px,1fr)] md:auto-rows-[minmax(110px,1fr)]"></div>
         </div>
     </main>
 
@@ -474,6 +478,19 @@
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
             
+            // 顯示農曆日期小字
+            let lunarStr = '';
+            try {
+                const solar = Solar.fromDate(dateObj);
+                const lunar = solar.getLunar();
+                lunarStr = lunar.getFestivals()[0] || lunar.getDayInChinese();
+                if (lunar.getDay() === 1) {
+                    lunarStr = lunar.getMonthInChinese() + '月';
+                }
+            } catch (err) {
+                lunarStr = '';
+            }
+
             const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
             const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
@@ -494,14 +511,17 @@
             }
 
             const cell = document.createElement('div');
-            cell.className = `min-h-[80px] md:min-h-[100px] border border-warm-100 rounded-xl md:rounded-2xl p-1 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
+            cell.className = `min-h-[80px] md:min-h-[110px] border border-warm-100 rounded-xl md:rounded-2xl p-1 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
             cell.addEventListener('click', () => openDayModal(dateStr));
             
             let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
 
             const header = document.createElement('div');
             header.className = 'flex justify-between items-center px-1';
-            header.innerHTML = `<span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>`;
+            header.innerHTML = `
+                <span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
+                <span class="text-[10px] text-gray-400 font-medium">${lunarStr}</span>
+            `;
             cell.appendChild(header);
 
             const eventsContainer = document.createElement('div');
@@ -536,7 +556,15 @@
         function openDayModal(dateStr, setGlobal = true) {
             if (setGlobal) selectedDateForModal = dateStr;
             const dParts = dateStr.split('-');
-            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
+            
+            let lunarSubtitle = '';
+            try {
+                const solar = Solar.fromYmd(parseInt(dParts[0]), parseInt(dParts[1]), parseInt(dParts[2]));
+                const lunar = solar.getLunar();
+                lunarSubtitle = `（農曆 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}）`;
+            } catch(e) {}
+
+            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 ${lunarSubtitle}`;
             
             const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             const listContainer = document.getElementById('day-modal-list');
