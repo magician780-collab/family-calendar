@@ -341,7 +341,6 @@
             reader.readAsText(file);
         });
 
-        // 修改後：一鍵清空政府重複行事曆（相同標題與日期的只留一個，其餘刪除）
         document.getElementById('btn-clear-gov').addEventListener('click', async () => {
             const govEvents = events.filter(e => e.author === '政府行事曆');
             if (govEvents.length === 0) {
@@ -349,17 +348,14 @@
                 return;
             }
 
-            // 檢查重複邏輯：用「標題 + 開始日期」作為唯一識別
             const seen = new Set();
             const duplicatesToDelete = [];
 
             govEvents.forEach(evt => {
                 const key = `${evt.title}_${evt.startDate}`;
                 if (seen.has(key)) {
-                    // 如果已經看過相同的，代表這是重複的，加入刪除清單
                     duplicatesToDelete.push(evt);
                 } else {
-                    // 第一次看到就保留
                     seen.add(key);
                 }
             });
