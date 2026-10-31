@@ -81,7 +81,7 @@
             <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
         </header>
         
-        <!-- 單月滿版顯示區域：固定 7 列網格，完美容納整個月不捲動 -->
+        <!-- 單月滿版顯示區域：純當月天數格子 -->
         <div id="calendar-swipe-container" class="flex-1 flex flex-col p-2 md:p-4 select-none overflow-hidden">
             <div class="grid grid-cols-7 gap-1 mb-1 shrink-0">
                 <div class="text-center font-bold text-rose-500 text-xs md:text-sm py-1">日</div>
@@ -92,7 +92,7 @@
                 <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-1">五</div>
                 <div class="text-center font-bold text-blue-500 text-xs md:text-sm py-1">六</div>
             </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 flex-1 grid-rows-6"></div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 flex-1"></div>
         </div>
     </main>
 
@@ -508,26 +508,22 @@
             grid.innerHTML = '';
             
             const todayStr = formatDateStr(new Date());
-            const prevMonthLastDay = new Date(year, month, 0).getDate();
             
+            // 1. 補齊當月 1 號之前的空白格子（不顯示其他月份日期）
             for (let i = 0; i < firstDay; i++) {
-                const dayNum = prevMonthLastDay - firstDay + i + 1;
-                const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
-                grid.appendChild(createDayCell(dayNum, true, dateStr));
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'border border-warm-100 rounded-xl bg-[#fdfbf9]/50 opacity-30';
+                grid.appendChild(emptyCell);
             }
+
+            // 2. 渲染當月的每一天
             for (let i = 1; i <= totalDays; i++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                grid.appendChild(createDayCell(i, false, dateStr, dateStr === todayStr));
-            }
-            
-            const remainingCells = 42 - (firstDay + totalDays);
-            for (let i = 1; i <= remainingCells; i++) {
-                const dateStr = `${year}-${String(month + 2).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                grid.appendChild(createDayCell(i, true, dateStr));
+                grid.appendChild(createDayCell(i, dateStr, dateStr === todayStr));
             }
         }
 
-        function createDayCell(dayNum, isMuted, dateStr, isToday = false) {
+        function createDayCell(dayNum, dateStr, isToday = false) {
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
             
@@ -552,9 +548,7 @@
             const dayEvents = allEventsForCheck.sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
 
             let cellBgClass = 'bg-white';
-            if (isMuted) {
-                cellBgClass = 'opacity-40 bg-gray-50';
-            } else if (isToday) {
+            if (isToday) {
                 cellBgClass = 'bg-warm-50 border-warm-300 ring-2 ring-warm-400';
             } else if (isRedDay) {
                 cellBgClass = 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80';
