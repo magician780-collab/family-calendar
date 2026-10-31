@@ -13,6 +13,8 @@
     <link rel="apple-touch-icon" href="./family-icon.jpg">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入農曆計算工具庫 (lunar-javascript) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.7.7/lunar.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script>
@@ -71,7 +73,7 @@
         <header class="px-4 py-4 md:px-8 md:py-6 flex items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100">
             <div class="flex items-center gap-2 md:gap-4">
                 <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-left"></i></button>
-                <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-32 md:w-48 text-center"></h2>
+                <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-36 md:w-56 text-center"></h2>
                 <button id="btn-next-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-right"></i></button>
             </div>
             <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
@@ -86,7 +88,7 @@
                 <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">五</div>
                 <div class="text-center font-bold text-blue-500 text-xs md:text-sm py-2">六</div>
             </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(60px,1fr)] md:auto-rows-[minmax(100px,1fr)]"></div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(75px,1fr)] md:auto-rows-[minmax(110px,1fr)]"></div>
         </div>
     </main>
 
@@ -305,6 +307,22 @@
             return `${y}-${m}-${d}`;
         }
 
+        // 取得農曆顯示字串與農曆年份干支
+        function getLunarInfo(dateObj) {
+            try {
+                const solar = Solar.fromDate(dateObj);
+                const lunar = solar.getLunar();
+                // 優先顯示節氣或重要節日，若無則顯示農曆日（如 初一、十五）
+                let lunarStr = lunar.getFestivals()[0] || lunar.getJieQi() || lunar.getDayInChinese();
+                return {
+                    text: lunarStr,
+                    yearStr: `${lunar.getYearInGanZhi()}年 [${lunar.getYearShengXiao()}]`
+                };
+            } catch (e) {
+                return { text: '', yearStr: '' };
+            }
+        }
+
         document.getElementById('search-input').addEventListener('input', (e) => {
             searchQuery = e.target.value.trim().toLowerCase();
             renderApp();
@@ -341,7 +359,6 @@
             reader.readAsText(file);
         });
 
-        // 修改後：一鍵清空政府重複行事曆（相同標題與日期的只留一個，其餘刪除）
         document.getElementById('btn-clear-gov').addEventListener('click', async () => {
             const govEvents = events.filter(e => e.author === '政府行事曆');
             if (govEvents.length === 0) {
@@ -349,17 +366,14 @@
                 return;
             }
 
-            // 檢查重複邏輯：用「標題 + 開始日期」作為唯一識別
             const seen = new Set();
             const duplicatesToDelete = [];
 
             govEvents.forEach(evt => {
                 const key = `${evt.title}_${evt.startDate}`;
                 if (seen.has(key)) {
-                    // 如果已經看過相同的，代表這是重複的，加入刪除清單
                     duplicatesToDelete.push(evt);
                 } else {
-                    // 第一次看到就保留
                     seen.add(key);
                 }
             });
@@ -445,9 +459,12 @@
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月`;
+            const firstDateObj = new Date(year, month, 1);
+            const lunarInfoMonth = getLunarInfo(firstDateObj);
+
+            document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月 (${lunarInfoMonth.yearStr})`;
             
-            const firstDay = new Date(year, month, 1).getDay();
+            const firstDay = firstDateObj.getDay();
             const totalDays = new Date(year, month + 1, 0).getDate();
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
@@ -477,6 +494,7 @@
         function createDayCell(dayNum, isMuted, dateStr, isToday = false) {
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
+            const lunarData = getLunarInfo(dateObj);
             
             const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
             const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
@@ -498,14 +516,18 @@
             }
 
             const cell = document.createElement('div');
-            cell.className = `min-h-[80px] md:min-h-[100px] border border-warm-100 rounded-xl md:rounded-2xl p-1 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
+            cell.className = `min-h-[85px] md:min-h-[110px] border border-warm-100 rounded-xl md:rounded-2xl p-1.5 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
             cell.addEventListener('click', () => openDayModal(dateStr));
             
-            let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
+            let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-700');
+            let lunarTextColor = (lunarData.text.length > 3 || lunarData.text.includes('節') || lunarData.text.includes('初一')) ? 'text-warm-600 font-bold' : 'text-gray-400';
 
             const header = document.createElement('div');
-            header.className = 'flex justify-between items-center px-1';
-            header.innerHTML = `<span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>`;
+            header.className = 'flex justify-between items-center px-0.5';
+            header.innerHTML = `
+                <span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
+                <span class="text-[10px] md:text-xs ${lunarTextColor} truncate max-w-[55px] md:max-w-[80px] text-right" title="${lunarData.text}">${lunarData.text}</span>
+            `;
             cell.appendChild(header);
 
             const eventsContainer = document.createElement('div');
@@ -540,7 +562,10 @@
         function openDayModal(dateStr, setGlobal = true) {
             if (setGlobal) selectedDateForModal = dateStr;
             const dParts = dateStr.split('-');
-            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
+            const dateObj = new Date(dateStr);
+            const lunarData = getLunarInfo(dateObj);
+
+            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 (${lunarData.text})`;
             
             const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             const listContainer = document.getElementById('day-modal-list');
@@ -695,7 +720,7 @@
             const evt = events.find(e => e.id === eventId);
             if (evt) {
                 document.getElementById('event-title').value = evt.title;
-                document.getElementById('event-start-date').value = evt.startDate;
+                    document.getElementById('event-start-date').value = evt.startDate;
                 document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
                 document.getElementById('event-time').value = evt.time || '';
                 document.getElementById('event-author').value = evt.author === '政府行事曆' ? '爸爸' : (evt.author || '爸爸');
@@ -767,7 +792,7 @@
                 time: document.getElementById('event-time').value,
                 author: document.getElementById('event-author').value,
                 description: document.getElementById('event-desc').value.trim(),
-                isNav: document.getElementById('event-is-nav').checked,
+                isNav: document.getElementById('event-is-nav'].checked,
                 color: document.querySelector('input[name="event-color"]:checked').value
             };
             
