@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>溫馨家族行事曆</title>
+    
+    <!-- PWA 全螢幕與手機端設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="家族行事曆">
+    <link rel="apple-touch-icon" href="./family-icon.jpg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] },
+                    colors: {
+                        warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #fff7ed; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden">
+    <aside class="w-full md:w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-[4px_0_24px_rgba(249,115,22,0.05)] z-10 order-2 md:order-1 h-2/5 md:h-full transition-all">
+        <div class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
+        </div>
+        
+        <!-- 搜尋框區塊 -->
+        <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3.5 top-3 text-gray-400 text-sm"></i>
+                <input type="text" id="search-input" placeholder="搜尋行程、地點或成員..." class="w-full pl-10 pr-4 py-2 bg-white border border-warm-200 rounded-xl text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all shadow-sm">
+            </div>
+        </div>
+
+        <div class="p-4 flex-1 overflow-y-auto hide-scrollbar">
+            <h2 class="text-sm font-bold text-warm-600 uppercase tracking-wider mb-4 px-2">即將到來</h2>
+            <div id="upcoming-events" class="space-y-3"></div>
+            <div id="no-upcoming" class="hidden text-center py-8 text-gray-400">
+                <i class="far fa-calendar-check text-4xl mb-2 opacity-50"></i>
+                <p class="text-sm">沒有找到符合的行程喔！</p>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-warm-100 bg-white space-y-2">
+            <label class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+                <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
+                <input type="file" id="ics-file-input" accept=".ics" class="hidden">
+            </label>
+            <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
+                <i class="fas fa-plus"></i> 新增活動
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-3/5 md:h-full order-1 md:order-2 bg-[#fdfbf9]">
+        <header class="px-4 py-4 md:px-8 md:py-6 flex items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100">
+            <div class="flex items-center gap-2 md:gap-4">
+                <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-left"></i></button>
+                <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-32 md:w-48 text-center"></h2>
+                <button id="btn-next-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
+        </header>
+        <div class="flex-1 overflow-y-auto p-2 md:p-6 hide-scrollbar relative">
+            <div class="grid grid-cols-7 gap-1 md:gap-2 mb-2">
+                <div class="text-center font-bold text-rose-500 text-xs md:text-sm py-2">日</div>
+                <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">一</div>
+                <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">二</div>
+                <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">三</div>
+                <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">四</div>
+                <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">五</div>
+                <div class="text-center font-bold text-blue-500 text-xs md:text-sm py-2">六</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(60px,1fr)] md:auto-rows-[minmax(100px,1fr)]"></div>
+        </div>
+    </main>
+
+    <!-- 點擊日期彈出的「當日行程列表」Modal -->
+    <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[80vh]">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 id="day-modal-title" class="text-lg font-bold text-warm-800">當日行程</h3>
+                <button id="btn-close-day-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="day-modal-list" class="p-4 space-y-3 overflow-y-auto flex-1"></div>
+            <div class="p-4 border-t border-warm-100 bg-gray-50 shrink-0">
+                <button id="btn-add-from-day" class="w-full py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> 新增當日活動
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/編輯活動 Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 id="modal-title" class="text-lg font-bold text-warm-800">新增活動</h3>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="event-form" class="p-6 space-y-4 overflow-y-auto">
+                <input type="hidden" id="event-id">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">活動名稱 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="event-title" required placeholder="例如：三天兩夜家族露營" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">開始日期 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="event-start-date" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">結束日期</label>
+                        <input type="date" id="event-end-date" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">時間</label>
+                        <input type="time" id="event-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">建立者</label>
+                        <select id="event-author" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                            <option value="爸爸">爸爸</option>
+                            <option value="媽媽">媽媽</option>
+                            <option value="大妹">大妹</option>
+                            <option value="小女兒">小女兒</option>
+                            <option value="政府行事曆">政府行事曆</option>
+                            <option value="家族成員">其他成員</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">詳細備註</label>
+                    <textarea id="event-desc" rows="2" placeholder="例如：裝備清單、注意事項..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
+                </div>
+                <div class="flex items-center gap-2 bg-warm-50/50 p-3 rounded-xl border border-warm-100">
+                    <input type="checkbox" id="event-is-nav" class="w-4 h-4 text-warm-500 rounded focus:ring-warm-400">
+                    <label for="event-is-nav" class="text-sm font-bold text-gray-700 cursor-pointer">
+                        <i class="fas fa-map-marker-alt text-rose-500 mr-1"></i> 這是一個需要導航的地點/地址
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">標籤顏色</label>
+                    <div class="flex gap-3">
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-rose-400" class="peer sr-only" checked><div class="w-8 h-8 rounded-full bg-rose-400 ring-2 ring-transparent peer-checked:ring-rose-600 peer-checked:ring-offset-2 transition-all"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-blue-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-blue-400 ring-2 ring-transparent peer-checked:ring-blue-600 peer-checked:ring-offset-2 transition-all"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-emerald-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-emerald-400 ring-2 ring-transparent peer-checked:ring-emerald-600 peer-checked:ring-offset-2 transition-all"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-amber-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-amber-400 ring-2 ring-transparent peer-checked:ring-amber-600 peer-checked:ring-offset-2 transition-all"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-purple-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-purple-400 ring-2 ring-transparent peer-checked:ring-purple-600 peer-checked:ring-offset-2 transition-all"></div></label>
+                    </div>
+                </div>
+                <div class="pt-2 flex gap-3 shrink-0">
+                    <button type="button" id="btn-delete" class="hidden px-4 py-2 bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 rounded-xl font-bold transition-colors">刪除</button>
+                    <div class="flex-1"></div>
+                    <button type="button" id="btn-cancel-modal" class="px-5 py-2 text-gray-500 hover:bg-gray-100 rounded-xl font-bold transition-colors">取消</button>
+                    <button type="submit" class="px-6 py-2 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold shadow-md transition-all active:scale-95">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 單一活動詳細檢視 Modal -->
+    <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in relative">
+            <div id="view-modal-header" class="h-16 w-full"></div>
+            <button id="btn-close-view" class="absolute top-4 right-4 w-8 h-8 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors"><i class="fas fa-times"></i></button>
+            <div class="p-6">
+                <h3 id="view-title" class="text-2xl font-extrabold text-gray-800 mb-4">活動名稱</h3>
+                <div class="space-y-3 text-gray-600 font-medium text-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-calendar"></i></div>
+                        <span id="view-date"></span>
+                    </div>
+                    <div id="view-time-container" class="flex items-center gap-3 hidden">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-clock"></i></div>
+                        <span id="view-time"></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-user"></i></div>
+                        <span id="view-author"></span>
+                    </div>
+                    <div id="view-desc-container" class="flex items-start gap-3 hidden">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0 mt-0.5"><i class="far fa-file-alt"></i></div>
+                        <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
+                    </div>
+                </div>
+
+                <div id="map-btn-container" class="mt-4 hidden">
+                    <a id="map-nav-link" href="#" target="_blank" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-map-marked-alt"></i> 開啟 Google 地圖導航
+                    </a>
+                </div>
+
+                <div class="mt-6 flex gap-3">
+                    <button id="btn-copy-from-view" class="py-2.5 px-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-1.5" title="複製行程"><i class="fas fa-copy"></i> 複製</button>
+                    <button id="btn-edit-from-view" class="flex-1 py-2.5 bg-warm-100 hover:bg-warm-200 text-warm-700 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"><i class="fas fa-pen text-sm"></i> 編輯</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
+            authDomain: "all-family-calendar.firebaseapp.com",
+            projectId: "all-family-calendar",
+            storageBucket: "all-family-calendar.firebasestorage.app",
+            messagingSenderId: "790336816938",
+            appId: "1:790336816938:web:b3b06b1c9877e5ba46c053"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const eventsRef = collection(db, 'familyEvents');
+
+        let currentDate = new Date();
+        let events = [];
+        let currentEditingId = null;
+        let currentViewingId = null;
+        let selectedDateForModal = null;
+        let searchQuery = '';
+
+        onSnapshot(eventsRef, (snapshot) => {
+            events = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                events.push({ 
+                    id: doc.id, 
+                    title: data.title,
+                    startDate: data.startDate || data.date,
+                    endDate: data.endDate || data.date,
+                    time: data.time || '',
+                    author: data.author || '家族成員',
+                    description: data.description || '',
+                    isNav: data.isNav || false,
+                    color: data.color || 'bg-rose-400'
+                });
+            });
+            renderApp();
+            if (selectedDateForModal) {
+                openDayModal(selectedDateForModal, false);
+            }
+        });
+
+        function formatDateStr(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim().toLowerCase();
+            renderApp();
+        });
+
+        document.getElementById('ics-file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const text = event.target.result;
+                const eventsToImport = parseICS(text);
+
+                if (eventsToImport.length === 0) {
+                    alert('無法解析該 ICS 檔案，請確認格式是否正確！');
+                    return;
+                }
+
+                if (confirm(`成功解析出 ${eventsToImport.length} 筆政府行事曆資料，是否確認批次匯入？`)) {
+                    try {
+                        for (let evt of eventsToImport) {
+                            await addDoc(eventsRef, evt);
+                        }
+                        alert('政府行事曆批次匯入成功！');
+                    } catch (err) {
+                        console.error("ICS Import Error:", err);
+                        alert('匯入失敗，請稍後再試。');
+                    }
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        function parseICS(icsText) {
+            const parsedEvents = [];
+            const lines = icsText.split(/\r\n|\n|\r/);
+            let currentEvent = null;
+
+            for (let line of lines) {
+                line = line.trim();
+                if (line === 'BEGIN:VEVENT') {
+                    currentEvent = { title: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400' };
+                } else if (line === 'END:VEVENT' && currentEvent) {
+                    if (currentEvent.title && currentEvent.startDate) {
+                        if (!currentEvent.endDate) currentEvent.endDate = currentEvent.startDate;
+                        parsedEvents.push(currentEvent);
+                    }
+                    currentEvent = null;
+                } else if (currentEvent) {
+                    if (line.startsWith('SUMMARY:')) {
+                        currentEvent.title = line.substring(8).trim();
+                    } else if (line.startsWith('DTSTART')) {
+                        const dateVal = line.split(':').pop().trim();
+                        currentEvent.startDate = formatICSDate(dateVal);
+                    } else if (line.startsWith('DTEND')) {
+                        const dateVal = line.split(':').pop().trim();
+                        let d = parseICSDateObj(dateVal);
+                        if (d) {
+                            d.setDate(d.getDate() - 1);
+                            currentEvent.endDate = formatDateStr(d);
+                        }
+                    } else if (line.startsWith('DESCRIPTION:')) {
+                        currentEvent.description = line.substring(12).trim();
+                    }
+                }
+            }
+            parsedEvents.forEach(e => { if (!e.endDate) e.endDate = e.startDate; });
+            return parsedEvents;
+        }
+
+        function formatICSDate(str) {
+            if (str.length >= 8) {
+                const y = str.substring(0, 4);
+                const m = str.substring(4, 6);
+                const d = str.substring(6, 8);
+                return `${y}-${m}-${d}`;
+            }
+            return str;
+        }
+
+        function parseICSDateObj(str) {
+            if (str.length >= 8) {
+                const y = parseInt(str.substring(0, 4));
+                const m = parseInt(str.substring(4, 6)) - 1;
+                const d = parseInt(str.substring(6, 8));
+                return new Date(y, m, d);
+            }
+            return null;
+        }
+
+        function renderApp() { renderCalendar(); renderUpcoming(); }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            
+            const todayStr = formatDateStr(new Date());
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            
+            for (let i = 0; i < firstDay; i++) {
+                const dayNum = prevMonthLastDay - firstDay + i + 1;
+                const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+                grid.appendChild(createDayCell(dayNum, true, dateStr));
+            }
+            for (let i = 1; i <= totalDays; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                grid.appendChild(createDayCell(i, false, dateStr, dateStr === todayStr));
+            }
+            
+            const remainingCells = 42 - (firstDay + totalDays);
+            if (remainingCells < 14) {
+                for (let i = 1; i <= remainingCells; i++) {
+                    const dateStr = `${year}-${String(month + 2).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    grid.appendChild(createDayCell(i, true, dateStr));
+                }
+            }
+        }
+
+        function createDayCell(dayNum, isMuted, dateStr, isToday = false) {
+            const dateObj = new Date(dateStr);
+            const dayOfWeek = dateObj.getDay(); // 0 是週日，6 是週六
+            
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            
+            // 檢查當天是否有政府行事曆標記「補行上班」或「補班」
+            const isMakeUpWorkDay = dayEvents.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
+            
+            // 週末預設為放假（週日、週六），除非遇到補行上班日取消紅底
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
+            
+            // 紅字放假條件：是週末且沒有被補班取消，或者有政府行事曆的國定假日放假
+            const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
+
+            let cellBgClass = 'bg-white';
+            if (isMuted) {
+                cellBgClass = 'opacity-40 bg-gray-50';
+            } else if (isToday) {
+                cellBgClass = 'bg-warm-50 border-warm-300 ring-2 ring-warm-400';
+            } else if (isRedDay) {
+                cellBgClass = 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80'; // 週末與放假日紅底
+            } else {
+                cellBgClass = 'bg-white hover:border-warm-300 hover:shadow-sm';
+            }
+
+            const cell = document.createElement('div');
+            cell.className = `min-h-[80px] md:min-h-[100px] border border-warm-100 rounded-xl md:rounded-2xl p-1 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
+            cell.addEventListener('click', () => openDayModal(dateStr));
+            
+            let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
+
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center px-1';
+            header.innerHTML = `<span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>`;
+            cell.appendChild(header);
+
+            const eventsContainer = document.createElement('div');
+            eventsContainer.className = 'flex flex-col gap-1 overflow-y-auto hide-scrollbar flex-1';
+            
+            dayEvents.forEach(evt => {
+                const matchSearch = !searchQuery || 
+                    evt.title.toLowerCase().includes(searchQuery) || 
+                    evt.author.toLowerCase().includes(searchQuery) || 
+                    evt.description.toLowerCase().includes(searchQuery);
+
+                const evtEl = document.createElement('div');
+                const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
+                
+                evtEl.className = `${evt.color} text-white text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-md truncate shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex items-center justify-between gap-1 ${opacityClass}`;
+                evtEl.innerHTML = `<span class="truncate">${evt.time ? `<span class="opacity-75 font-normal text-[9px] hidden md:inline">${evt.time}</span> ` : ''}${evt.title}</span>${evt.author ? `<span class="text-[8px] bg-black/20 px-1 rounded shrink-0">${evt.author}</span>` : ''}`;
+                
+                evtEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openViewModal(evt.id);
+                });
+
+                eventsContainer.appendChild(evtEl);
+            });
+            
+            cell.appendChild(eventsContainer);
+            return cell;
+        }
+
+        function openDayModal(dateStr, setGlobal = true) {
+            if (setGlobal) selectedDateForModal = dateStr;
+            const dParts = dateStr.split('-');
+            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
+            
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            const listContainer = document.getElementById('day-modal-list');
+            listContainer.innerHTML = '';
+            
+            if (dayEvents.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-6 text-gray-400">
+                        <i class="far fa-calendar-times text-3xl mb-2 opacity-50"></i>
+                        <p class="text-sm">這一天沒有安排行程喔！</p>
+                    </div>
+                `;
+            } else {
+                dayEvents.forEach(evt => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 hover:bg-warm-50 transition-all cursor-pointer flex items-center justify-between gap-3';
+                    item.addEventListener('click', () => {
+                        closeDayModal();
+                        openViewModal(evt.id);
+                    });
+                    
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-gray-800 text-sm truncate">${evt.title}</h4>
+                                <p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
+                                    <span><i class="far fa-clock"></i> ${evt.time || '全天'}</span>
+                                    <span><i class="far fa-user"></i> ${evt.author}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            }
+            document.getElementById('day-modal').classList.remove('hidden');
+        }
+
+        function closeDayModal() {
+            document.getElementById('day-modal').classList.add('hidden');
+            selectedDateForModal = null;
+        }
+
+        function renderUpcoming() {
+            const container = document.getElementById('upcoming-events');
+            const emptyState = document.getElementById('no-upcoming');
+            container.innerHTML = '';
+            
+            const todayStr = formatDateStr(new Date());
+            const upcoming = events.filter(e => {
+                const matchDate = e.endDate >= todayStr;
+                const matchSearch = !searchQuery || 
+                    e.title.toLowerCase().includes(searchQuery) || 
+                    e.author.toLowerCase().includes(searchQuery) || 
+                    e.description.toLowerCase().includes(searchQuery);
+                return matchDate && matchSearch;
+            }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
+            
+            if (upcoming.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                upcoming.forEach(evt => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 group';
+                    el.addEventListener('click', () => openViewModal(evt.id));
+                    
+                    const d = new Date(evt.startDate);
+                    el.innerHTML = `
+                        <div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                            <span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span>
+                            <span class="text-lg font-bold leading-none">${d.getDate()}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-gray-800 truncate">${evt.title}</h4>
+                            <div class="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                                <span><i class="far fa-calendar-alt"></i> ${evt.startDate === evt.endDate ? evt.startDate : evt.startDate + ' ~ ' + evt.endDate}</span>
+                                ${evt.author ? `<span><i class="far fa-user"></i> ${evt.author}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-gray-300 group-hover:text-warm-400 transition-colors pr-2"><i class="fas fa-chevron-right text-sm"></i></div>
+                    `;
+                    container.appendChild(el);
+                });
+            }
+        }
+
+        document.getElementById('btn-prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('btn-next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('btn-today').addEventListener('click', () => { currentDate = new Date(); renderCalendar(); });
+        
+        document.getElementById('btn-open-add').addEventListener('click', () => openModal());
+        document.getElementById('btn-close-modal').addEventListener('click', () => closeModal());
+        document.getElementById('btn-cancel-modal').addEventListener('click', () => closeModal());
+        document.getElementById('btn-close-day-modal').addEventListener('click', () => closeDayModal());
+        document.getElementById('btn-add-from-day').addEventListener('click', () => {
+            const dateToPass = selectedDateForModal;
+            closeDayModal();
+            openModal(null, dateToPass);
+        });
+        document.getElementById('btn-close-view').addEventListener('click', () => closeViewModal());
+        document.getElementById('btn-edit-from-view').addEventListener('click', () => {
+            const id = currentViewingId;
+            closeViewModal();
+            setTimeout(() => openModal(id), 100);
+        });
+
+        document.getElementById('btn-copy-from-view').addEventListener('click', () => {
+            const id = currentViewingId;
+            closeViewModal();
+            setTimeout(() => copyEventToModal(id), 100);
+        });
+
+        function openModal(eventId = null, defaultDate = null) {
+            document.getElementById('event-form').reset();
+            currentEditingId = eventId;
+            if (eventId) {
+                document.getElementById('modal-title').innerText = '編輯活動';
+                document.getElementById('btn-delete').classList.remove('hidden');
+                const evt = events.find(e => e.id === eventId);
+                if (evt) {
+                    document.getElementById('event-title').value = evt.title;
+                    document.getElementById('event-start-date').value = evt.startDate;
+                    document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
+                    document.getElementById('event-time').value = evt.time || '';
+                    document.getElementById('event-author').value = evt.author || '爸爸';
+                    document.getElementById('event-desc').value = evt.description || '';
+                    document.getElementById('event-is-nav').checked = evt.isNav || false;
+                    document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
+                }
+            } else {
+                document.getElementById('modal-title').innerText = '新增活動';
+                document.getElementById('btn-delete').classList.add('hidden');
+                const dStr = defaultDate || formatDateStr(new Date());
+                document.getElementById('event-start-date').value = dStr;
+                document.getElementById('event-end-date').value = dStr;
+                document.getElementById('event-is-nav').checked = false;
+            }
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+
+        function copyEventToModal(eventId) {
+            document.getElementById('event-form').reset();
+            currentEditingId = null;
+            document.getElementById('modal-title').innerText = '複製並新增活動';
+            document.getElementById('btn-delete').classList.add('hidden');
+            
+            const evt = events.find(e => e.id === eventId);
+            if (evt) {
+                document.getElementById('event-title').value = evt.title;
+                document.getElementById('event-start-date').value = evt.startDate;
+                document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
+                document.getElementById('event-time').value = evt.time || '';
+                document.getElementById('event-author').value = evt.author || '爸爸';
+                document.getElementById('event-desc').value = evt.description || '';
+                document.getElementById('event-is-nav').checked = evt.isNav || false;
+                document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
+            }
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+        
+        function closeModal() { 
+            document.getElementById('event-modal').classList.add('hidden'); 
+            currentEditingId = null; 
+        }
+        
+        function openViewModal(eventId) {
+            const evt = events.find(e => e.id === eventId);
+            if(!evt) return;
+            currentViewingId = eventId;
+            document.getElementById('view-modal-header').className = `h-20 w-full ${evt.color}`;
+            document.getElementById('view-title').innerText = evt.title;
+            
+            const dateStr = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
+            document.getElementById('view-date').innerText = dateStr;
+            document.getElementById('view-author').innerText = `建立者：${evt.author || '未署名'}`;
+            
+            const timeContainer = document.getElementById('view-time-container');
+            if (evt.time) {
+                document.getElementById('view-time').innerText = evt.time;
+                timeContainer.classList.remove('hidden');
+            } else { timeContainer.classList.add('hidden'); }
+            
+            const descContainer = document.getElementById('view-desc-container');
+            const mapBtnContainer = document.getElementById('map-btn-container');
+            
+            if (evt.description) {
+                document.getElementById('view-desc').innerText = evt.description;
+                descContainer.classList.remove('hidden');
+            } else { 
+                descContainer.classList.add('hidden');
+            }
+
+            if (evt.description && evt.isNav) {
+                const encodedQuery = encodeURIComponent(evt.description);
+                document.getElementById('map-nav-link').href = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+                mapBtnContainer.classList.remove('hidden');
+            } else {
+                mapBtnContainer.classList.add('hidden');
+            }
+            
+            document.getElementById('view-modal').classList.remove('hidden');
+        }
+        
+        function closeViewModal() { 
+            document.getElementById('view-modal').classList.add('hidden'); 
+            currentViewingId = null; 
+        }
+        
+        document.getElementById('event-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const startDate = document.getElementById('event-start-date').value;
+            const endDate = document.getElementById('event-end-date').value || startDate;
+            
+            const eventData = {
+                title: document.getElementById('event-title').value.trim(),
+                startDate: startDate,
+                endDate: endDate < startDate ? startDate : endDate,
+                time: document.getElementById('event-time').value,
+                author: document.getElementById('event-author').value,
+                description: document.getElementById('event-desc').value.trim(),
+                isNav: document.getElementById('event-is-nav').checked,
+                color: document.querySelector('input[name="event-color"]:checked').value
+            };
+            
+            try {
+                if (currentEditingId) {
+                    await updateDoc(doc(eventsRef, currentEditingId), eventData);
+                } else {
+                    await addDoc(eventsRef, eventData);
+                }
+                closeModal();
+            } catch (error) {
+                console.error("Error saving document: ", error);
+            }
+        });
+        
+        document.getElementById('btn-delete').addEventListener('click', async () => {
+            if (!currentEditingId) return;
+            try {
+                await deleteDoc(doc(eventsRef, currentEditingId));
+                closeModal();
+            } catch (error) {
+                console.error("Error removing document: ", error);
+            }
+        });
+
+        renderApp();
+    </script>
+</body>
+</html>
