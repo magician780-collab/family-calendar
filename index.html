@@ -262,7 +262,6 @@
         let clickCount = 0;
         let clickTimer = null;
 
-        // 隱藏後台觸發機制：連續點擊「我們這一家」標題 3 下
         document.getElementById('admin-trigger').addEventListener('click', () => {
             clickCount++;
             if (clickTimer) clearTimeout(clickTimer);
@@ -459,12 +458,12 @@
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
             
-            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && e.author !== '政府行事曆').sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            // 修正：同時顯示家族成員的行程與政府行事曆行程（讓您可以正常看到匯入的假日）
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             
-            const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
-            const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
+            const isMakeUpWorkDay = dayEvents.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-            const isGovHoliday = allEventsForCheck.some(e => e.author === '政府行事曆');
+            const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
             
             const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
 
@@ -522,7 +521,7 @@
             const dParts = dateStr.split('-');
             document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
             
-            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && e.author !== '政府行事曆').sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             const listContainer = document.getElementById('day-modal-list');
             listContainer.innerHTML = '';
             
@@ -574,12 +573,11 @@
             const todayStr = formatDateStr(new Date());
             const upcoming = events.filter(e => {
                 const matchDate = e.endDate >= todayStr;
-                const matchAuthor = e.author !== '政府行事曆';
                 const matchSearch = !searchQuery || 
                     e.title.toLowerCase().includes(searchQuery) || 
                     e.author.toLowerCase().includes(searchQuery) || 
                     e.description.toLowerCase().includes(searchQuery);
-                return matchDate && matchAuthor && matchSearch;
+                return matchDate && matchSearch;
             }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
             
             if (upcoming.length === 0) {
@@ -725,7 +723,6 @@
                 mapBtnContainer.classList.add('hidden');
             }
             
-            document.getElementById('view-modal').classList.add('hidden'); // Fix view modal state handling if needed, keeping as original logic
             document.getElementById('view-modal').classList.remove('hidden');
         }
         
