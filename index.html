@@ -13,8 +13,6 @@
     <link rel="apple-touch-icon" href="./family-icon.jpg">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入農曆計算工具庫 (lunar-javascript) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.7.7/lunar.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script>
@@ -73,7 +71,7 @@
         <header class="px-4 py-4 md:px-8 md:py-6 flex items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100">
             <div class="flex items-center gap-2 md:gap-4">
                 <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-left"></i></button>
-                <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-36 md:w-56 text-center"></h2>
+                <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-32 md:w-48 text-center"></h2>
                 <button id="btn-next-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-right"></i></button>
             </div>
             <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
@@ -88,7 +86,7 @@
                 <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">五</div>
                 <div class="text-center font-bold text-blue-500 text-xs md:text-sm py-2">六</div>
             </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(75px,1fr)] md:auto-rows-[minmax(110px,1fr)]"></div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2 auto-rows-[minmax(60px,1fr)] md:auto-rows-[minmax(100px,1fr)]"></div>
         </div>
     </main>
 
@@ -263,18 +261,6 @@
         let clickCount = 0;
         let clickTimer = null;
 
-        // 🎂 家族固定農曆生日與傳統節日設定（可自行在此自由增減）
-        // month: 農曆月份, day: 農曆日期, isLeap: 是否為閏月(預設false), title: 名稱, color: 標籤顏色
-        const familyLunarReminders = [
-            { month: 1, day: 15, title: '🧨 元宵節', color: 'bg-amber-500' },
-            { month: 5, day: 5, title: '🛶 端午節', color: 'bg-amber-500' },
-            { month: 8, day: 15, title: '🥮 中秋節', color: 'bg-amber-500' },
-            { month: 12, day: 16, title: '🧧 尾牙', color: 'bg-amber-500' },
-            // 範例：家族成員農曆生日（可修改或新增）
-            { month: 3, day: 23, title: '🎂 媽媽農曆生日', color: 'bg-purple-500' },
-            { month: 9,  day: 9,  title: '🎂 爸爸農曆生日', color: 'bg-purple-500' }
-        ];
-
         document.getElementById('admin-trigger').addEventListener('click', () => {
             clickCount++;
             if (clickTimer) clearTimeout(clickTimer);
@@ -319,61 +305,6 @@
             return `${y}-${m}-${d}`;
         }
 
-        // 取得農曆顯示字串與農曆年份干支
-        function getLunarInfo(dateObj) {
-            try {
-                const solar = Solar.fromDate(dateObj);
-                const lunar = solar.getLunar();
-                let lunarStr = lunar.getFestivals()[0] || lunar.getJieQi() || lunar.getDayInChinese();
-                return {
-                    text: lunarStr,
-                    yearStr: `${lunar.getYearInGanZhi()}年 [${lunar.getYearShengXiao()}]`,
-                    lunarObj: lunar
-                };
-            } catch (e) {
-                return { text: '', yearStr: '', lunarObj: null };
-            }
-        }
-
-        // 取得指定國曆年份中，所有「自訂農曆生日與節日」轉換後的國曆行程清單
-        function getLunarReminderEvents(year) {
-            const reminderEvents = [];
-            familyLunarReminders.forEach((item, index) => {
-                try {
-                    // 用 Lunar 建立指定農曆年份的物件
-                    const lunar = Lunar.fromYmd(year, item.month, item.day);
-                    const solar = lunar.getSolar();
-                    const solarStr = `${solar.getYear()}-${String(solar.getMonth()).padStart(2, '0')}-${String(solar.getDay()).padStart(2, '0')}`;
-                    
-                    reminderEvents.push({
-                        id: `lunar_reminder_${year}_${index}`,
-                        title: item.title,
-                        startDate: solarStr,
-                        endDate: solarStr,
-                        time: '',
-                        author: '家族節日',
-                        description: `農曆 ${item.month}月${item.day}日`,
-                        isNav: false,
-                        color: item.color,
-                        isSystemLunar: true
-                    });
-                } catch (err) {
-                    console.error("Lunar Reminder Error:", err);
-                }
-            });
-            return reminderEvents;
-        }
-
-        // 取得包含自訂農曆提醒的所有總行程清單
-        function getAllEventsForYear(year) {
-            const currentYearReminders = getLunarReminderEvents(year);
-            // 也可以順便把前後年份納入計算，讓跨年時的提醒也能正確顯示
-            const prevYearReminders = getLunarReminderEvents(year - 1);
-            const nextYearReminders = getLunarReminderEvents(year + 1);
-            
-            return [...events, ...prevYearReminders, ...currentYearReminders, ...nextYearReminders];
-        }
-
         document.getElementById('search-input').addEventListener('input', (e) => {
             searchQuery = e.target.value.trim().toLowerCase();
             renderApp();
@@ -410,6 +341,7 @@
             reader.readAsText(file);
         });
 
+        // 修改後：一鍵清空政府重複行事曆（相同標題與日期的只留一個，其餘刪除）
         document.getElementById('btn-clear-gov').addEventListener('click', async () => {
             const govEvents = events.filter(e => e.author === '政府行事曆');
             if (govEvents.length === 0) {
@@ -417,14 +349,17 @@
                 return;
             }
 
+            // 檢查重複邏輯：用「標題 + 開始日期」作為唯一識別
             const seen = new Set();
             const duplicatesToDelete = [];
 
             govEvents.forEach(evt => {
                 const key = `${evt.title}_${evt.startDate}`;
                 if (seen.has(key)) {
+                    // 如果已經看過相同的，代表這是重複的，加入刪除清單
                     duplicatesToDelete.push(evt);
                 } else {
+                    // 第一次看到就保留
                     seen.add(key);
                 }
             });
@@ -510,12 +445,9 @@
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            const firstDateObj = new Date(year, month, 1);
-            const lunarInfoMonth = getLunarInfo(firstDateObj);
-
-            document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月 (${lunarInfoMonth.yearStr})`;
+            document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月`;
             
-            const firstDay = firstDateObj.getDay();
+            const firstDay = new Date(year, month, 1).getDay();
             const totalDays = new Date(year, month + 1, 0).getDate();
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
@@ -526,29 +458,27 @@
             for (let i = 0; i < firstDay; i++) {
                 const dayNum = prevMonthLastDay - firstDay + i + 1;
                 const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
-                grid.appendChild(createDayCell(dayNum, true, dateStr, year));
+                grid.appendChild(createDayCell(dayNum, true, dateStr));
             }
             for (let i = 1; i <= totalDays; i++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                grid.appendChild(createDayCell(i, false, dateStr, year, dateStr === todayStr));
+                grid.appendChild(createDayCell(i, false, dateStr, dateStr === todayStr));
             }
             
             const remainingCells = 42 - (firstDay + totalDays);
             if (remainingCells < 14) {
                 for (let i = 1; i <= remainingCells; i++) {
                     const dateStr = `${year}-${String(month + 2).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                    grid.appendChild(createDayCell(i, true, dateStr, year));
+                    grid.appendChild(createDayCell(i, true, dateStr));
                 }
             }
         }
 
-        function createDayCell(dayNum, isMuted, dateStr, year, isToday = false) {
+        function createDayCell(dayNum, isMuted, dateStr, isToday = false) {
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
-            const lunarData = getLunarInfo(dateObj);
             
-            const allEventsForYear = getAllEventsForYear(year);
-            const allEventsForCheck = allEventsForYear.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+            const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
             const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
             const isGovHoliday = allEventsForCheck.some(e => e.author === '政府行事曆');
@@ -568,18 +498,14 @@
             }
 
             const cell = document.createElement('div');
-            cell.className = `min-h-[85px] md:min-h-[110px] border border-warm-100 rounded-xl md:rounded-2xl p-1.5 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
-            cell.addEventListener('click', () => openDayModal(dateStr, year));
+            cell.className = `min-h-[80px] md:min-h-[100px] border border-warm-100 rounded-xl md:rounded-2xl p-1 md:p-2 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
+            cell.addEventListener('click', () => openDayModal(dateStr));
             
-            let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-700');
-            let lunarTextColor = (lunarData.text.length > 3 || lunarData.text.includes('節') || lunarData.text.includes('初一')) ? 'text-warm-600 font-bold' : 'text-gray-400';
+            let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
 
             const header = document.createElement('div');
-            header.className = 'flex justify-between items-center px-0.5';
-            header.innerHTML = `
-                <span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
-                <span class="text-[10px] md:text-xs ${lunarTextColor} truncate max-w-[55px] md:max-w-[80px] text-right" title="${lunarData.text}">${lunarData.text}</span>
-            `;
+            header.className = 'flex justify-between items-center px-1';
+            header.innerHTML = `<span class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>`;
             cell.appendChild(header);
 
             const eventsContainer = document.createElement('div');
@@ -594,18 +520,14 @@
                 const evtEl = document.createElement('div');
                 const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
                 
-                const authorTagHtml = (evt.author && evt.author !== '政府行事曆' && evt.author !== '家族節日') ? `<span class="text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
+                const authorTagHtml = (evt.author && evt.author !== '政府行事曆') ? `<span class="text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
 
                 evtEl.className = `${evt.color} text-white text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-1 rounded md:rounded-md shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
                 evtEl.innerHTML = `<span class="whitespace-normal break-words leading-tight">${evt.time ? `<span class="opacity-75 font-normal text-[9px] mr-1">${evt.time}</span>` : ''}${evt.title}</span>${authorTagHtml}`;
                 
                 evtEl.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (evt.isSystemLunar) {
-                        openDayModal(dateStr, year);
-                    } else {
-                        openViewModal(evt.id);
-                    }
+                    openViewModal(evt.id);
                 });
 
                 eventsContainer.appendChild(evtEl);
@@ -615,17 +537,12 @@
             return cell;
         }
 
-        function openDayModal(dateStr, year, setGlobal = true) {
+        function openDayModal(dateStr, setGlobal = true) {
             if (setGlobal) selectedDateForModal = dateStr;
             const dParts = dateStr.split('-');
-            const dateObj = new Date(dateStr);
-            const lunarData = getLunarInfo(dateObj);
-
-            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 (${lunarData.text})`;
+            document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 行程`;
             
-            const allEventsForYear = getAllEventsForYear(year || currentDate.getFullYear());
-            const dayEvents = allEventsForYear.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
-            
+            const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             const listContainer = document.getElementById('day-modal-list');
             listContainer.innerHTML = '';
             
@@ -642,12 +559,10 @@
                     item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 hover:bg-warm-50 transition-all cursor-pointer flex items-center justify-between gap-3';
                     item.addEventListener('click', () => {
                         closeDayModal();
-                        if (!evt.isSystemLunar) {
-                            openViewModal(evt.id);
-                        }
+                        openViewModal(evt.id);
                     });
                     
-                    const displayAuthor = evt.author === '政府行事曆' ? '國定假日' : (evt.author === '家族節日' ? '農曆節日/生日' : evt.author);
+                    const displayAuthor = evt.author === '政府行事曆' ? '國定假日' : evt.author;
                     item.innerHTML = `
                         <div class="flex items-center gap-3 min-w-0">
                             <div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div>
@@ -659,7 +574,7 @@
                                 </p>
                             </div>
                         </div>
-                        ${!evt.isSystemLunar ? '<i class="fas fa-chevron-right text-gray-300 text-xs"></i>' : ''}
+                        <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
                     `;
                     listContainer.appendChild(item);
                 });
@@ -678,10 +593,7 @@
             container.innerHTML = '';
             
             const todayStr = formatDateStr(new Date());
-            const year = currentDate.getFullYear();
-            const allEventsForYear = getAllEventsForYear(year);
-
-            const upcoming = allEventsForYear.filter(e => {
+            const upcoming = events.filter(e => {
                 const matchDate = e.endDate >= todayStr;
                 const matchSearch = !searchQuery || 
                     e.title.toLowerCase().includes(searchQuery) || 
@@ -697,12 +609,10 @@
                 upcoming.forEach(evt => {
                     const el = document.createElement('div');
                     el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 group';
-                    el.addEventListener('click', () => {
-                        if (!evt.isSystemLunar) openViewModal(evt.id);
-                    });
+                    el.addEventListener('click', () => openViewModal(evt.id));
                     
                     const d = new Date(evt.startDate);
-                    const displayAuthor = (evt.author === '政府行事曆' || evt.author === '家族節日') ? '' : evt.author;
+                    const displayAuthor = evt.author === '政府行事曆' ? '' : evt.author;
                     el.innerHTML = `
                         <div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                             <span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span>
