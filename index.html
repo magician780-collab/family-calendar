@@ -104,7 +104,7 @@
                     <input type="file" id="ics-file-input" accept=".ics" class="hidden">
                 </label>
                 <button id="btn-clear-gov" class="w-full py-3 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-                    <i class="fas fa-trash-alt"></i> 一鍵清空政府行事曆
+                    <i class="fas fa-trash-alt"></i> 一鍵清空政府重複行事曆
                 </button>
             </div>
         </div>
@@ -341,23 +341,44 @@
             reader.readAsText(file);
         });
 
+        // 修改後：一鍵清空政府重複行事曆（相同標題與日期的只留一個，其餘刪除）
         document.getElementById('btn-clear-gov').addEventListener('click', async () => {
             const govEvents = events.filter(e => e.author === '政府行事曆');
             if (govEvents.length === 0) {
-                alert('目前沒有任何政府行事曆資料需要清除！');
+                alert('目前沒有任何政府行事曆資料需要清理！');
                 return;
             }
 
-            if (confirm(`確定要一鍵刪除所有 ${govEvents.length} 筆政府行事曆行程嗎？`)) {
+            // 檢查重複邏輯：用「標題 + 開始日期」作為唯一識別
+            const seen = new Set();
+            const duplicatesToDelete = [];
+
+            govEvents.forEach(evt => {
+                const key = `${evt.title}_${evt.startDate}`;
+                if (seen.has(key)) {
+                    // 如果已經看過相同的，代表這是重複的，加入刪除清單
+                    duplicatesToDelete.push(evt);
+                } else {
+                    // 第一次看到就保留
+                    seen.add(key);
+                }
+            });
+
+            if (duplicatesToDelete.length === 0) {
+                alert('檢查完畢！目前沒有發現重複的政府行事曆項目。');
+                return;
+            }
+
+            if (confirm(`檢測到共有 ${duplicatesToDelete.length} 筆重複的政府行事曆，是否確認一鍵清除重複、每項只留一個？`)) {
                 try {
-                    for (let evt of govEvents) {
+                    for (let evt of duplicatesToDelete) {
                         await deleteDoc(doc(eventsRef, evt.id));
                     }
-                    alert('已成功清空所有政府行事曆！');
+                    alert('已成功清除重複的政府行事曆，每項都只保留一個！');
                     document.getElementById('admin-modal').classList.add('hidden');
                 } catch (err) {
-                    console.error("Clear Gov Events Error:", err);
-                    alert('清除失敗，請稍後再試。');
+                    console.error("Clear Duplicate Gov Events Error:", err);
+                    alert('清理失敗，請稍後再試。');
                 }
             }
         });
@@ -463,8 +484,6 @@
             const isGovHoliday = allEventsForCheck.some(e => e.author === '政府行事曆');
             
             const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
-
-            // 讓節日（政府行事曆）正常顯示，但透過三元運算子把作者標籤隱藏（不顯示「政府行事曆」字樣）
             const dayEvents = allEventsForCheck.sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
 
             let cellBgClass = 'bg-white';
@@ -501,7 +520,6 @@
                 const evtEl = document.createElement('div');
                 const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
                 
-                // 如果是政府行事曆，不顯示右側的作者小標籤；如果是家族成員則正常顯示
                 const authorTagHtml = (evt.author && evt.author !== '政府行事曆') ? `<span class="text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
 
                 evtEl.className = `${evt.color} text-white text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-1 rounded md:rounded-md shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
