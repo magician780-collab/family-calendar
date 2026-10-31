@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>溫馨家族行事曆</title>
     
-    <!-- PWA 全螢幕與手機端設定 -->
+    <!-- PWA 全螢幕與 iOS 頂級體驗設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -286,11 +286,19 @@
         let clickCount = 0;
         let clickTimer = null;
 
+        // iOS 觸控回饋輔助函數（輕微震動）
+        function triggerHaptic() {
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(10); // 輕微震動 10 毫秒
+            }
+        }
+
         const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal'];
         modals.forEach(modalId => {
             const modalEl = document.getElementById(modalId);
             modalEl.addEventListener('click', (e) => {
                 if (e.target === modalEl) {
+                    triggerHaptic();
                     modalEl.classList.add('hidden');
                     if (modalId === 'day-modal') selectedDateForModal = null;
                 }
@@ -313,10 +321,12 @@
         function handleSwipe() {
             const swipeThreshold = 50;
             if (touchEndX < touchStartX - swipeThreshold) {
+                triggerHaptic();
                 currentDate.setMonth(currentDate.getMonth() + 1);
                 renderCalendar();
             }
             if (touchEndX > touchStartX + swipeThreshold) {
+                triggerHaptic();
                 currentDate.setMonth(currentDate.getMonth() - 1);
                 renderCalendar();
             }
@@ -327,6 +337,7 @@
             if (clickTimer) clearTimeout(clickTimer);
             if (clickCount >= 3) {
                 clickCount = 0;
+                triggerHaptic();
                 document.getElementById('admin-modal').classList.remove('hidden');
             } else {
                 clickTimer = setTimeout(() => { clickCount = 0; }, 500);
@@ -334,6 +345,7 @@
         });
 
         document.getElementById('btn-close-admin').addEventListener('click', () => {
+            triggerHaptic();
             document.getElementById('admin-modal').classList.add('hidden');
         });
 
@@ -391,6 +403,7 @@
                         for (let evt of eventsToImport) {
                             await addDoc(eventsRef, evt);
                         }
+                        triggerHaptic();
                         alert('政府行事曆批次匯入成功！');
                         document.getElementById('admin-modal').classList.add('hidden');
                     } catch (err) {
@@ -432,6 +445,7 @@
                     for (let evt of duplicatesToDelete) {
                         await deleteDoc(doc(eventsRef, evt.id));
                     }
+                    triggerHaptic();
                     alert('已成功清除重複的政府行事曆，每項都只保留一個！');
                     document.getElementById('admin-modal').classList.add('hidden');
                 } catch (err) {
@@ -559,7 +573,10 @@
 
             const cell = document.createElement('div');
             cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
-            cell.addEventListener('click', () => openDayModal(dateStr));
+            cell.addEventListener('click', () => {
+                triggerHaptic();
+                openDayModal(dateStr);
+            });
             
             let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
 
@@ -591,6 +608,7 @@
                 
                 evtEl.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    triggerHaptic();
                     openViewModal(evt.id);
                 });
 
@@ -630,6 +648,7 @@
                     const item = document.createElement('div');
                     item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 hover:bg-warm-50 transition-all cursor-pointer flex items-center justify-between gap-3';
                     item.addEventListener('click', () => {
+                        triggerHaptic();
                         closeDayModal();
                         openViewModal(evt.id);
                     });
@@ -682,7 +701,10 @@
                 upcoming.forEach(evt => {
                     const el = document.createElement('div');
                     el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 group';
-                    el.addEventListener('click', () => openViewModal(evt.id));
+                    el.addEventListener('click', () => {
+                        triggerHaptic();
+                        openViewModal(evt.id);
+                    });
                     
                     const d = new Date(evt.startDate);
                     const displayAuthor = evt.author === '政府行事曆' ? '' : evt.author;
@@ -706,27 +728,30 @@
             }
         }
 
-        document.getElementById('btn-prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-        document.getElementById('btn-next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-        document.getElementById('btn-today').addEventListener('click', () => { currentDate = new Date(); renderCalendar(); });
+        document.getElementById('btn-prev-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById('btn-next-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        document.getElementById('btn-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
         
-        document.getElementById('btn-open-add').addEventListener('click', () => openModal());
-        document.getElementById('btn-close-modal').addEventListener('click', () => closeModal());
-        document.getElementById('btn-cancel-modal').addEventListener('click', () => closeModal());
-        document.getElementById('btn-close-day-modal').addEventListener('click', () => closeDayModal());
+        document.getElementById('btn-open-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
+        document.getElementById('btn-close-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
+        document.getElementById('btn-cancel-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
+        document.getElementById('btn-close-day-modal').addEventListener('click', () => { triggerHaptic(); closeDayModal(); });
         document.getElementById('btn-add-from-day').addEventListener('click', () => {
+            triggerHaptic();
             const dateToPass = selectedDateForModal;
             closeDayModal();
             openModal(null, dateToPass);
         });
-        document.getElementById('btn-close-view').addEventListener('click', () => closeViewModal());
+        document.getElementById('btn-close-view').addEventListener('click', () => { triggerHaptic(); closeViewModal(); });
         document.getElementById('btn-edit-from-view').addEventListener('click', () => {
+            triggerHaptic();
             const id = currentViewingId;
             closeViewModal();
             setTimeout(() => openModal(id), 100);
         });
 
         document.getElementById('btn-copy-from-view').addEventListener('click', () => {
+            triggerHaptic();
             const id = currentViewingId;
             closeViewModal();
             setTimeout(() => copyEventToModal(id), 100);
@@ -835,6 +860,7 @@
         
         document.getElementById('event-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            triggerHaptic();
             const startDate = document.getElementById('event-start-date').value;
             const endDate = document.getElementById('event-end-date').value || startDate;
             
@@ -864,6 +890,7 @@
         
         document.getElementById('btn-delete').addEventListener('click', async () => {
             if (!currentEditingId) return;
+            triggerHaptic();
             try {
                 await deleteDoc(doc(eventsRef, currentEditingId));
                 closeModal();
