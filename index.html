@@ -63,6 +63,10 @@
                 <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
                 <input type="file" id="ics-file-input" accept=".ics" class="hidden">
             </label>
+            <!-- 新增一鍵清空政府行事曆按鈕 -->
+            <button id="btn-clear-gov" class="w-full py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2">
+                <i class="fas fa-trash-alt"></i> 一鍵清空政府行事曆
+            </button>
             <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> 新增活動
             </button>
@@ -276,6 +280,7 @@
             renderApp();
         });
 
+        // 處理 ICS 檔案上傳與解析
         document.getElementById('ics-file-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -304,6 +309,27 @@
                 e.target.value = '';
             };
             reader.readAsText(file);
+        });
+
+        // 一鍵清空所有政府行事曆
+        document.getElementById('btn-clear-gov').addEventListener('click', async () => {
+            const govEvents = events.filter(e => e.author === '政府行事曆');
+            if (govEvents.length === 0) {
+                alert('目前沒有任何政府行事曆資料需要清除！');
+                return;
+            }
+
+            if (confirm(`確定要一鍵刪除所有 ${govEvents.length} 筆政府行事曆行程嗎？`)) {
+                try {
+                    for (let evt of govEvents) {
+                        await deleteDoc(doc(eventsRef, evt.id));
+                    }
+                    alert('已成功清空所有政府行事曆！');
+                } catch (err) {
+                    console.error("Clear Gov Events Error:", err);
+                    alert('清除失敗，請稍後再試。');
+                }
+            }
         });
 
         function parseICS(icsText) {
@@ -399,18 +425,14 @@
 
         function createDayCell(dayNum, isMuted, dateStr, isToday = false) {
             const dateObj = new Date(dateStr);
-            const dayOfWeek = dateObj.getDay(); // 0 是週日，6 是週六
+            const dayOfWeek = dateObj.getDay();
             
             const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
             
-            // 檢查當天是否有政府行事曆標記「補行上班」或「補班」
             const isMakeUpWorkDay = dayEvents.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
-            
-            // 週末預設為放假（週日、週六），除非遇到補行上班日取消紅底
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
             const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
             
-            // 紅字放假條件：是週末且沒有被補班取消，或者有政府行事曆的國定假日放假
             const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
 
             let cellBgClass = 'bg-white';
@@ -419,7 +441,7 @@
             } else if (isToday) {
                 cellBgClass = 'bg-warm-50 border-warm-300 ring-2 ring-warm-400';
             } else if (isRedDay) {
-                cellBgClass = 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80'; // 週末與放假日紅底
+                cellBgClass = 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80';
             } else {
                 cellBgClass = 'bg-white hover:border-warm-300 hover:shadow-sm';
             }
