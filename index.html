@@ -80,7 +80,8 @@
             </div>
             <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
         </header>
-        <div class="flex-1 overflow-y-auto p-2 md:p-6 hide-scrollbar relative">
+        <!-- 主畫面的月曆網格容器，支援左右滑動切換月份 -->
+        <div id="calendar-swipe-container" class="flex-1 overflow-y-auto p-2 md:p-6 hide-scrollbar relative select-none">
             <div class="grid grid-cols-7 gap-1 md:gap-2 mb-2">
                 <div class="text-center font-bold text-rose-500 text-xs md:text-sm py-2">日</div>
                 <div class="text-center font-bold text-gray-500 text-xs md:text-sm py-2">一</div>
@@ -95,8 +96,8 @@
     </main>
 
     <!-- 隱藏後台管理 Modal -->
-    <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col">
+    <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="admin-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 class="text-lg font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-tools text-warm-500"></i> 行事曆後台管理</h3>
                 <button id="btn-close-admin" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
@@ -115,8 +116,8 @@
     </div>
 
     <!-- 點擊日期彈出的「當日行程列表」Modal -->
-    <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[80vh]">
+    <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[80vh] modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 id="day-modal-title" class="text-lg font-bold text-warm-800">當日行程</h3>
                 <button id="btn-close-day-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
@@ -131,8 +132,8 @@
     </div>
 
     <!-- 新增/編輯活動 Modal -->
-    <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+    <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="event-modal">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 id="modal-title" class="text-lg font-bold text-warm-800">新增活動</h3>
                 <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
@@ -200,8 +201,8 @@
     </div>
 
     <!-- 單一活動詳細檢視 Modal -->
-    <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in relative">
+    <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="view-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in relative modal-content">
             <div id="view-modal-header" class="h-16 w-full"></div>
             <button id="btn-close-view" class="absolute top-4 right-4 w-8 h-8 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors"><i class="fas fa-times"></i></button>
             <div class="p-6">
@@ -264,6 +265,49 @@
         let searchQuery = '';
         let clickCount = 0;
         let clickTimer = null;
+
+        // 1. 實現「點擊周圍背景直接關閉 Modal」的功能
+        const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal'];
+        modals.forEach(modalId => {
+            const modalEl = document.getElementById(modalId);
+            const contentEl = modalEl.querySelector('.modal-content');
+            
+            modalEl.addEventListener('click', (e) => {
+                // 如果點擊的目標是背景本身（而不是內部的白色卡片內容），就關閉視窗
+                if (e.target === modalEl) {
+                    modalEl.classList.add('hidden');
+                    if (modalId === 'day-modal') selectedDateForModal = null;
+                }
+            });
+        });
+
+        // 2. 實現「手機觸控左右滑動切換月份」功能 (Swipe to change month)
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const swipeContainer = document.getElementById('calendar-swipe-container');
+
+        swipeContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        swipeContainer.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeThreshold = 50; // 滑動距離超過 50px 才會觸發
+            if (touchEndX < touchStartX - swipeThreshold) {
+                // 向左滑動 -> 下一個月
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                renderCalendar();
+            }
+            if (touchEndX > touchStartX + swipeThreshold) {
+                // 向右滑動 -> 上一個月
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                renderCalendar();
+            }
+        }
 
         document.getElementById('admin-trigger').addEventListener('click', () => {
             clickCount++;
@@ -478,7 +522,6 @@
             const dateObj = new Date(dateStr);
             const dayOfWeek = dateObj.getDay();
             
-            // 顯示農曆日期小字
             let lunarStr = '';
             try {
                 const solar = Solar.fromDate(dateObj);
