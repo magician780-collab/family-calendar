@@ -23,7 +23,6 @@ let searchQuery = '';
 let clickCount = 0;
 let clickTimer = null;
 
-// iOS 觸控回饋輔助函數（輕微震動）
 function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(10);
@@ -31,13 +30,45 @@ function triggerHaptic() {
 }
 
 // 記帳區塊開關聯動
-document.getElementById('event-is-expense').addEventListener('change', (e) => {
-    const fields = document.getElementById('expense-fields');
+const expenseCheckbox = document.getElementById('event-is-expense');
+const expenseFields = document.getElementById('expense-fields');
+const payersContainer = document.getElementById('payers-container');
+
+expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
-        fields.classList.remove('hidden');
+        expenseFields.classList.remove('hidden');
+        if (payersContainer.children.length === 0) {
+            addPayerRow('爸爸', '');
+        }
     } else {
-        fields.classList.add('hidden');
+        expenseFields.classList.add('hidden');
     }
+});
+
+// 動態新增代墊人行
+function addPayerRow(name = '爸爸', amount = '') {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 payer-row';
+    row.innerHTML = `
+        <select class="payer-name px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none">
+            <option value="爸爸" ${name === '爸爸' ? 'selected' : ''}>爸爸</option>
+            <option value="媽媽" ${name === '媽媽' ? 'selected' : ''}>媽媽</option>
+            <option value="大妹" ${name === '大妹' ? 'selected' : ''}>大妹</option>
+            <option value="小女兒" ${name === '小女兒' ? 'selected' : ''}>小女兒</option>
+            <option value="家族成員" ${name === '家族成員' ? 'selected' : ''}>其他成員</option>
+        </select>
+        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none">
+        <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('.btn-remove-payer').addEventListener('click', () => {
+        row.remove();
+    });
+    payersContainer.appendChild(row);
+}
+
+document.getElementById('btn-add-payer').addEventListener('click', () => {
+    triggerHaptic();
+    addPayerRow();
 });
 
 const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal'];
@@ -112,8 +143,7 @@ onSnapshot(eventsRef, (snapshot) => {
             isNav: data.isNav || false,
             color: data.color || 'bg-rose-400',
             isExpense: data.isExpense || false,
-            expenseAmount: data.expenseAmount || 0,
-            expensePayer: data.expensePayer || '爸爸',
+            payers: data.payers || [], // 格式: [{name: '爸爸', amount: 2000}, ...]
             expenseSplits: data.expenseSplits || 4
         });
     });
@@ -214,7 +244,7 @@ function parseICS(icsText) {
     for (let line of lines) {
         line = line.trim();
         if (line === 'BEGIN:VEVENT') {
-            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, expenseAmount: 0, expensePayer: '', expenseSplits: 1 };
+            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1 };
         } else if (line === 'END:VEVENT' && currentEvent) {
             if (currentEvent.title && currentEvent.startDate) {
                 if (!currentEvent.endDate) currentEvent.endDate = currentEvent.startDate;
@@ -289,6 +319,11 @@ function renderCalendar() {
     }
 }
 
+function getTotalExpense(evt) {
+    if (!evt.payers || evt.payers.length === 0) return 0;
+    return evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+}
+
 function createDayCell(dayNum, dateStr, isToday = false) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
@@ -353,7 +388,8 @@ function createDayCell(dayNum, dateStr, isToday = false) {
         
         const authorTagHtml = (evt.author && evt.author !== '政府行事曆') ? `<span class="text-[7px] md:text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
         const iconDisplay = evt.icon ? `${evt.icon} ` : '';
-        const expenseBadge = evt.isExpense ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
+        const totalExp = getTotalExpense(evt);
+        const expenseBadge = evt.isExpense && totalExp > 0 ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
 
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
         evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${iconDisplay}${evt.title}${expenseBadge}</span>${authorTagHtml}`;
@@ -407,7 +443,8 @@ function openDayModal(dateStr, setGlobal = true) {
             
             const displayAuthor = evt.author === '政府行事曆' ? '國定假日' : evt.author;
             const iconDisplay = evt.icon ? `${evt.icon} ` : '';
-            const expenseText = evt.isExpense ? ` <span class="text-amber-600 font-bold">($${evt.expenseAmount})</span>` : '';
+            const totalExp = getTotalExpense(evt);
+            const expenseText = evt.isExpense && totalExp > 0 ? ` <span class="text-amber-600 font-bold">($${totalExp})</span>` : '';
             item.innerHTML = `
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div>
@@ -424,7 +461,7 @@ function openDayModal(dateStr, setGlobal = true) {
             listContainer.appendChild(item);
         });
     }
-    document.getElementById('day-modal').classList.remove('hidden');
+    document.getElementById('day-modal').classList.add('hidden');
 }
 
 function closeDayModal() {
@@ -462,7 +499,8 @@ function renderUpcoming() {
             const d = new Date(evt.startDate);
             const displayAuthor = evt.author === '政府行事曆' ? '' : evt.author;
             const iconDisplay = evt.icon ? `${evt.icon} ` : '';
-            const expenseBadge = evt.isExpense ? ` <span class="text-xs text-amber-600 font-bold">($${evt.expenseAmount})</span>` : '';
+            const totalExp = getTotalExpense(evt);
+            const expenseBadge = evt.isExpense && totalExp > 0 ? ` <span class="text-xs text-amber-600 font-bold">($${totalExp})</span>` : '';
             el.innerHTML = `
                 <div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                     <span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span>
@@ -513,7 +551,8 @@ document.getElementById('btn-copy-from-view').addEventListener('click', () => {
 
 function openModal(eventId = null, defaultDate = null) {
     document.getElementById('event-form').reset();
-    document.getElementById('expense-fields').classList.add('hidden');
+    expenseFields.classList.add('hidden');
+    payersContainer.innerHTML = '';
     currentEditingId = eventId;
     if (eventId) {
         document.getElementById('modal-title').innerText = '編輯活動';
@@ -530,22 +569,19 @@ function openModal(eventId = null, defaultDate = null) {
             document.getElementById('event-is-nav').checked = evt.isNav || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
 
-            // 記帳欄位還原
-            if (evt.isExpense) {
-                document.getElementById('event-is-expense').checked = true;
-                document.getElementById('expense-fields').classList.remove('hidden');
-                document.getElementById('expense-amount').value = evt.expenseAmount || '';
-                document.getElementById('expense-payer').value = evt.expensePayer || '爸爸';
+            if (evt.isExpense && evt.payers && evt.payers.length > 0) {
+                expenseCheckbox.checked = true;
+                expenseFields.classList.remove('hidden');
+                evt.payers.forEach(p => addPayerRow(p.name, p.amount));
                 document.getElementById('expense-splits').value = evt.expenseSplits || 4;
             } else {
-                document.getElementById('event-is-expense').checked = false;
+                expenseCheckbox.checked = false;
             }
         }
     } else {
         document.getElementById('modal-title').innerText = '新增活動';
         document.getElementById('btn-delete').classList.add('hidden');
-        document.getElementById('event-icon').value = '';
-        document.getElementById('event-is-expense').checked = false;
+        expenseCheckbox.checked = false;
         const dStr = defaultDate || formatDateStr(new Date());
         document.getElementById('event-start-date').value = dStr;
         document.getElementById('event-end-date').value = dStr;
@@ -556,7 +592,8 @@ function openModal(eventId = null, defaultDate = null) {
 
 function copyEventToModal(eventId) {
     document.getElementById('event-form').reset();
-    document.getElementById('expense-fields').classList.add('hidden');
+    expenseFields.classList.add('hidden');
+    payersContainer.innerHTML = '';
     currentEditingId = null;
     document.getElementById('modal-title').innerText = '複製並新增活動';
     document.getElementById('btn-delete').classList.add('hidden');
@@ -573,11 +610,10 @@ function copyEventToModal(eventId) {
         document.getElementById('event-is-nav').checked = evt.isNav || false;
         document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
 
-        if (evt.isExpense) {
-            document.getElementById('event-is-expense').checked = true;
-            document.getElementById('expense-fields').classList.remove('hidden');
-            document.getElementById('expense-amount').value = evt.expenseAmount || '';
-            document.getElementById('expense-payer').value = evt.expensePayer || '爸爸';
+        if (evt.isExpense && evt.payers && evt.payers.length > 0) {
+            expenseCheckbox.checked = true;
+            expenseFields.classList.remove('hidden');
+            evt.payers.forEach(p => addPayerRow(p.name, p.amount));
             document.getElementById('expense-splits').value = evt.expenseSplits || 4;
         }
     }
@@ -616,15 +652,21 @@ function openViewModal(eventId) {
         descContainer.classList.add('hidden');
     }
 
-    // 顯示分帳結果
     const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
-    if (evt.isExpense && evt.expenseAmount > 0) {
-        const perPerson = Math.round((evt.expenseAmount / evt.expenseSplits) * 10) / 10;
+    const totalExp = getTotalExpense(evt);
+
+    if (evt.isExpense && totalExp > 0) {
+        const splits = evt.expenseSplits || 4;
+        const perPerson = Math.round((totalExp / splits) * 10) / 10;
+        
+        let payersHtml = evt.payers.map(p => `• ${p.name} 墊付：$${p.amount}`).join('<br>');
+        
         expenseDetails.innerHTML = `
-            <div>💰 總金額：<strong>$${evt.expenseAmount}</strong> 元（墊付人：${evt.expensePayer}）</div>
-            <div>👥 分攤人數：<strong>${evt.expenseSplits} 人</strong></div>
-            <div>⚖️ 每人平均分攤：<strong class="text-amber-700">$${perPerson}</strong> 元</div>
+            <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${splits} 人均分，每人應付 $${perPerson}）</div>
+            <div class="pt-1 border-t border-amber-200 text-[11px] text-amber-800">
+                <strong>代墊明細：</strong><br>${payersHtml}
+            </div>
         `;
         expenseContainer.classList.remove('hidden');
     } else {
@@ -654,7 +696,19 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     const startDate = document.getElementById('event-start-date').value;
     const endDate = document.getElementById('event-end-date').value || startDate;
     
-    const isExpense = document.getElementById('event-is-expense').checked;
+    const isExpense = expenseCheckbox.checked;
+    let payersList = [];
+    if (isExpense) {
+        const rows = payersContainer.querySelectorAll('.payer-row');
+        rows.forEach(row => {
+            const name = row.querySelector('.payer-name').value;
+            const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
+            if (amount > 0) {
+                payersList.push({ name, amount });
+            }
+        });
+    }
+
     const eventData = {
         title: document.getElementById('event-title').value.trim(),
         icon: document.getElementById('event-icon').value,
@@ -665,9 +719,8 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         description: document.getElementById('event-desc').value.trim(),
         isNav: document.getElementById('event-is-nav').checked,
         color: document.querySelector('input[name="event-color"]:checked').value,
-        isExpense: isExpense,
-        expenseAmount: isExpense ? parseFloat(document.getElementById('expense-amount').value) || 0 : 0,
-        expensePayer: isExpense ? document.getElementById('expense-payer').value : '',
+        isExpense: isExpense && payersList.length > 0,
+        payers: payersList,
         expenseSplits: isExpense ? parseInt(document.getElementById('expense-splits').value) || 4 : 4
     };
     

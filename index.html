@@ -186,34 +186,25 @@
                     <textarea id="event-desc" rows="2" placeholder="例如：裝備清單、注意事項..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
                 </div>
                 
-                <!-- 記帳與分帳區塊 -->
+                <!-- 多人多筆記帳與分帳區塊 -->
                 <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
-                            <i class="fas fa-receipt text-amber-600"></i> 啟用活動記帳／分帳
+                            <i class="fas fa-receipt text-amber-600"></i> 啟用多人多筆代墊記帳
                         </label>
                         <input type="checkbox" id="event-is-expense" class="w-4 h-4 text-warm-500 rounded focus:ring-warm-400 cursor-pointer">
                     </div>
                     <div id="expense-fields" class="hidden space-y-3 pt-1">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600 mb-1">總花費金額 ($)</label>
-                                <input type="number" id="expense-amount" placeholder="例如：3500" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-400">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-600 mb-1">付款人 (誰墊錢)</label>
-                                <select id="expense-payer" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-400">
-                                    <option value="爸爸">爸爸</option>
-                                    <option value="媽媽">媽媽</option>
-                                    <option value="大妹">大妹</option>
-                                    <option value="小女兒">小女兒</option>
-                                    <option value="家族成員">其他成員</option>
-                                </select>
-                            </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">誰先出錢了？（可新增多筆代墊紀錄）</label>
+                            <div id="payers-container" class="space-y-2"></div>
+                            <button type="button" id="btn-add-payer" class="mt-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                                <i class="fas fa-plus"></i> 新增一筆代墊人
+                            </button>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">分攤人數 (平均均分)</label>
-                            <input type="number" id="expense-splits" value="4" min="1" max="10" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-400">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">平均分攤總人數 (例如：4人均分)</label>
+                            <input type="number" id="expense-splits" value="4" min="1" max="20" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-400">
                         </div>
                     </div>
                 </div>
@@ -271,10 +262,10 @@
                         <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0 mt-0.5"><i class="far fa-file-alt"></i></div>
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
-                    <!-- 檢視視窗中的分帳資訊容器 -->
-                    <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-1.5 hidden text-amber-900">
-                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 活動記帳與分帳</div>
-                        <div id="view-expense-details" class="text-xs space-y-1"></div>
+                    <!-- 檢視視窗中的多筆分帳結算清單 -->
+                    <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
+                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 多筆代墊與分帳結算</div>
+                        <div id="view-expense-details" class="text-xs space-y-1.5"></div>
                     </div>
                 </div>
 
