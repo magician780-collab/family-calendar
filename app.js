@@ -31,7 +31,7 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
-/* ================== 🌟 主題風格切換管理 ================== */
+/* ================== 主題風格切換管理 ================== */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
@@ -50,7 +50,6 @@ function setTheme(themeName) {
     if (selectEl) selectEl.value = themeName;
 }
 
-// 初始化載入儲存的主題
 const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
 setTheme(savedTheme);
 
@@ -415,6 +414,7 @@ onSnapshot(eventsRef, (snapshot) => {
             id: doc.id, title: data.title, icon: data.icon || '', startDate: data.startDate || data.date, endDate: data.endDate || data.date, time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', 
             isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4, sharers: data.sharers || [],
             photoUrl: data.photoUrl || null,
+            fileUrl: data.fileUrl || null,
             isPoll: data.isPoll || false, pollOptions: data.pollOptions || [],
             isChecklist: data.isChecklist || false, checklist: data.checklist || []
         });
@@ -479,7 +479,7 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
 document.getElementById('btn-export-backup').addEventListener('click', () => {
     triggerHaptic();
     const backupData = {
-        version: '4.2',
+        version: '4.3',
         exportedAt: new Date().toISOString(),
         familyMembers: familyMembers.map(m => ({ name: m.name })),
         familyEvents: events.map(({ id, ...rest }) => rest),
@@ -539,7 +539,7 @@ function parseICS(icsText) {
     for (let line of lines) {
         line = line.trim();
         if (line === 'BEGIN:VEVENT') {
-            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1, sharers: [], isPoll: false, pollOptions: [], isChecklist: false, checklist: [] };
+            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1, sharers: [], isPoll: false, pollOptions: [], isChecklist: false, checklist: [], fileUrl: null };
         } else if (line === 'END:VEVENT' && currentEvent) {
             if (currentEvent.title && currentEvent.startDate) {
                 if (!currentEvent.endDate) currentEvent.endDate = currentEvent.startDate;
@@ -628,12 +628,13 @@ function createDayCell(dayNum, dateStr, isToday = false) {
         const totalExp = getTotalExpense(evt);
         const expenseBadge = evt.isExpense && totalExp > 0 ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
         const photoBadge = evt.photoUrl ? ` <i class="fas fa-image text-[9px] opacity-90"></i>` : '';
+        const fileBadge = evt.fileUrl ? ` <i class="fas fa-paperclip text-[9px] opacity-90"></i>` : '';
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px] opacity-90"></i>` : '';
         const checkBadge = evt.isChecklist && evt.checklist && evt.checklist.length > 0 ? ` <i class="fas fa-clipboard-check text-[9px] opacity-90"></i>` : '';
 
         const evtEl = document.createElement('div');
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
-        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}${photoBadge}${pollBadge}${checkBadge}</span>${authorTagHtml}`;
+        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}${photoBadge}${fileBadge}${pollBadge}${checkBadge}</span>${authorTagHtml}`;
         evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
         eventsContainer.appendChild(evtEl);
     });
@@ -664,7 +665,8 @@ function openDayModal(dateStr, setGlobal = true) {
             const expenseText = evt.isExpense && totalExp > 0 ? ` <span class="text-amber-600 font-bold">($${totalExp})</span>` : '';
             const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
             const checkIcon = evt.isChecklist ? ` <i class="fas fa-clipboard-check text-emerald-500"></i>` : '';
-            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}${pollIcon}${checkIcon}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
+            const fileIcon = evt.fileUrl ? ` <i class="fas fa-paperclip text-blue-500"></i>` : '';
+            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}${pollIcon}${checkIcon}${fileIcon}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
             listContainer.appendChild(item);
         });
     }
@@ -755,6 +757,7 @@ function openModal(eventId = null, defaultDate = null) {
     photoUrlInput.value = '';
     previewImg.src = '';
     photoPreview.classList.add('hidden');
+    document.getElementById('event-file-url').value = '';
 
     currentEditingId = eventId;
     if (eventId) {
@@ -776,6 +779,10 @@ function openModal(eventId = null, defaultDate = null) {
                 photoUrlInput.value = evt.photoUrl;
                 previewImg.src = evt.photoUrl;
                 photoPreview.classList.remove('hidden');
+            }
+
+            if (evt.fileUrl) {
+                document.getElementById('event-file-url').value = evt.fileUrl;
             }
 
             if (evt.isChecklist && evt.checklist && evt.checklist.length > 0) {
@@ -840,6 +847,17 @@ function openViewModal(eventId) {
     } else {
         viewPhotoContainer.classList.add('hidden');
         viewPhoto.src = '';
+    }
+
+    // 🌟 檔案附件按鈕渲染邏輯
+    const viewFileContainer = document.getElementById('view-file-container');
+    const viewFileLink = document.getElementById('view-file-link');
+    if (evt.fileUrl && evt.fileUrl.trim() !== '') {
+        viewFileLink.href = evt.fileUrl;
+        viewFileContainer.classList.remove('hidden');
+    } else {
+        viewFileContainer.classList.add('hidden');
+        viewFileLink.href = '#';
     }
 
     if (evt.time) { document.getElementById('view-time').innerText = evt.time; document.getElementById('view-time-container').classList.remove('hidden'); } 
@@ -1064,6 +1082,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
 
     try {
         const finalPhotoUrl = photoUrlInput.value.trim();
+        const finalFileUrl = document.getElementById('event-file-url').value.trim();
 
         const eventData = {
             title: document.getElementById('event-title').value.trim(),
@@ -1083,7 +1102,8 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
             pollOptions: pollOptionsList,
             isChecklist: isChecklist && checklistData.length > 0,
             checklist: checklistData,
-            photoUrl: finalPhotoUrl
+            photoUrl: finalPhotoUrl,
+            fileUrl: finalFileUrl
         };
         
         if (currentEditingId) await updateDoc(doc(eventsRef, currentEditingId), eventData);

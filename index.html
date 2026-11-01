@@ -50,7 +50,7 @@
         </div>
         
         <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2">
-            <!-- 🌟 主題風格切換選單 -->
+            <!-- 主題風格切換選單 -->
             <div class="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-warm-200 shadow-sm">
                 <span class="text-xs font-bold text-warm-800 flex items-center gap-1.5"><i class="fas fa-palette text-warm-500"></i> 主題風格</span>
                 <select id="theme-select" class="bg-warm-50 border border-warm-200 text-xs font-bold text-warm-800 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-warm-400 cursor-pointer">
@@ -88,7 +88,7 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.2</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.3</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
@@ -218,6 +218,12 @@
                         <img src="" class="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm">
                         <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur rounded-full text-rose-500 flex items-center justify-center hover:bg-white transition-colors shadow-sm"><i class="fas fa-trash-alt"></i></button>
                     </div>
+                </div>
+
+                <!-- 🌟 新增：行程檔案附件夾 (PDF, 雲端文件等) -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-paperclip text-blue-500"></i> 相關檔案/文件附件網址 (可選)</label>
+                    <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF / 訂位截圖網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -350,6 +356,13 @@
                         <img id="view-photo" src="" class="w-full object-cover max-h-64">
                     </div>
 
+                    <!-- 🌟 檔案附件按鈕顯示區塊 -->
+                    <div id="view-file-container" class="hidden mb-2">
+                        <a id="view-file-link" href="#" target="_blank" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fas fa-paperclip text-blue-500"></i> 開啟相關檔案與附件文件
+                        </a>
+                    </div>
+
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-calendar"></i></div>
                         <span id="view-date"></span>
@@ -421,7 +434,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=4.2 強制清除快取) -->
-    <script type="module" src="./app.js?v=4.2"></script>
+    <!-- 載入主程式模組 (升級為 v=4.3 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.3"></script>
 </body>
 </html>
