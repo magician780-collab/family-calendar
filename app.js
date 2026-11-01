@@ -64,7 +64,7 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
         if (backdrop.id === 'day-modal') selectedDateForModal = null;
         if (backdrop.id === 'view-modal') {
             currentViewingId = null;
-            stopViewVideo(); // 停止影片
+            stopViewVideo(); 
         }
     });
 });
@@ -441,7 +441,7 @@ onSnapshot(eventsRef, (snapshot) => {
             author: data.author || '家族成員',
             color: data.color || 'bg-rose-400',
             photoUrl: data.photoUrl || null,
-            videoUrl: data.videoUrl || null,   // 🎥 讀取影片網址
+            videoUrl: data.videoUrl || null,
             fileUrl: data.fileUrl || null,
             location: data.location || '',
             mapUrl: data.mapUrl || '',
@@ -489,6 +489,7 @@ function createDayCell(dayNum, dateStr, isToday) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
     
+    // 🔍 搜尋過濾邏輯
     const dayEvents = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
@@ -533,6 +534,7 @@ function openDayModal(dateStr, setGlobal = true) {
     const list = document.getElementById('day-modal-list');
     list.innerHTML = '';
     
+    // 🔍 搜尋過濾邏輯
     const dayEvts = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
@@ -568,6 +570,7 @@ function renderUpcoming() {
     todayObj.setHours(0, 0, 0, 0);
     const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
     
+    // 🔍 搜尋過濾邏輯
     const upcoming = events.filter(e => {
         if (e.endDate < todayStr) return false;
         if (!searchQuery) return true;
@@ -623,7 +626,7 @@ document.getElementById('btn-close-modal').addEventListener('click', closeModal)
 document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
 document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
 
-/* 🛑 在這兩個地方呼叫關閉視窗與停止影片的邏輯 */
+/* 🛑 關閉視窗與停止影片的邏輯 */
 document.getElementById('btn-close-view').addEventListener('click', () => { 
     document.getElementById('view-modal').classList.add('hidden');
     stopViewVideo(); 
@@ -638,7 +641,7 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
-    document.getElementById('event-video-url').value = ''; // 🎥 清空影片網址
+    document.getElementById('event-video-url').value = '';
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
     document.getElementById('event-location').value = '';
@@ -678,7 +681,7 @@ function openModal(id = null) {
                 document.querySelector('#photo-preview img').src = evt.photoUrl;
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
-            if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl; // 🎥 載入影片網址
+            if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl;
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
             if (evt.location) document.getElementById('event-location').value = evt.location;
             if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
@@ -723,7 +726,7 @@ function openViewModal(id) {
     const pBox = document.getElementById('view-photo-container');
     if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = evt.photoUrl; } else pBox.classList.add('hidden');
 
-    // 🎥 處理影片播放 (支援 YouTube / Drive / 網址直連 MP4)
+    // 🎥 處理影片播放 (完美支援 Drive 預覽)
     const vBox = document.getElementById('view-video-container');
     const vIframe = document.getElementById('view-video-iframe');
     const vElement = document.getElementById('view-video-element');
@@ -741,18 +744,23 @@ function openViewModal(id) {
             let vId = url.split('youtu.be/')[1].split('?')[0];
             vIframe.src = `https://www.youtube.com/embed/${vId}`;
             vIframe.classList.remove('hidden');
-        } else if (url.includes('drive.google.com/file/d/')) {
-            // Google Drive 雲端影片轉換為內嵌播放模式
-            let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                vIframe.src = `https://drive.google.com/file/d/${match[1]}/preview`;
+        } else if (url.includes('drive.google.com')) {
+            // 完美處理 Google Drive 影片預覽轉換
+            let fileId = '';
+            if (url.includes('/d/')) {
+                fileId = url.split('/d/')[1].split('/')[0];
+            } else if (url.includes('id=')) {
+                fileId = new URL(url).searchParams.get('id');
+            }
+            if (fileId) {
+                vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 vIframe.classList.remove('hidden');
             } else {
                 vIframe.src = url;
                 vIframe.classList.remove('hidden');
             }
         } else {
-            // 原生 mp4 直連影片
+            // 原生 mp4
             vElement.src = url;
             vElement.classList.remove('hidden');
         }
@@ -977,7 +985,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
-        videoUrl: document.getElementById('event-video-url').value.trim(), // 🎥 儲存影片網址
+        videoUrl: document.getElementById('event-video-url').value.trim(), 
         fileUrl: document.getElementById('event-file-url').value.trim(),
         location: document.getElementById('event-location').value.trim(),
         mapUrl: document.getElementById('event-map-url').value.trim(),
