@@ -43,7 +43,13 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ================== 通用：點擊背景自動關閉 Modal (iOS 優化版) ================== */
+/* ⚙️ 點擊設定按鈕直接開啟成員管理後台 */
+document.getElementById('btn-open-admin').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+
+/* 通用：點擊背景自動關閉 Modal */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
         triggerHaptic();
@@ -53,7 +59,7 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     });
 });
 
-/* ================== 手機版：左右滑動切換月份手勢監聽 ================== */
+/* 手機版：左右滑動切換月份手勢監聽 */
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
@@ -171,10 +177,9 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
         input.value = '';
     }
 });
-document.getElementById('btn-manage-members').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* 📸 相片牆開啟與渲染 */
+/* 相片牆開啟與渲染 */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
@@ -514,7 +519,6 @@ function openViewModal(id) {
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
 
-    // 🗺️ 檢視導航按鈕顯示
     const mMapBox = document.getElementById('view-map-container');
     const mMapLink = document.getElementById('view-map-link');
     const mLocText = document.getElementById('view-location-text');
@@ -526,7 +530,6 @@ function openViewModal(id) {
         mMapBox.classList.add('hidden');
     }
 
-    // 裝備清單檢視與勾選
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItems = document.getElementById('view-checklist-items');
     const checkProgress = document.getElementById('view-checklist-progress');
@@ -557,7 +560,6 @@ function openViewModal(id) {
         checkContainer.classList.add('hidden');
     }
 
-    // 保密投票檢視
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -622,7 +624,6 @@ function openViewModal(id) {
         pollContainer.classList.add('hidden');
     }
 
-    // 代墊分帳檢視
     const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
     if (evt.isExpense && evt.payers && evt.payers.length > 0) {
