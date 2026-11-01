@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+// 🌟 已經移除 Firebase Storage 相關套件，免綁卡！
 
 const firebaseConfig = {
     apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
@@ -19,7 +20,7 @@ const noteRef = doc(db, 'familyNotes', 'mainNote');
 let currentDate = new Date();
 let events = [];
 let familyMembers = [];
-let weatherData = {}; // 存放未來 7 天天氣
+let weatherData = {}; 
 let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
@@ -28,39 +29,29 @@ let clickCount = 0;
 let clickTimer = null;
 
 function triggerHaptic() {
-    if (window.navigator && window.navigator.vibrate) {
-        window.navigator.vibrate(10);
-    }
+    if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
 /* ================== 天氣 API (台南市) ================== */
 async function fetchWeather() {
     try {
-        // 使用 Open-Meteo 免費氣象 API，定位台南市 (Lat: 22.99, Lon: 120.21)
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
         const data = await res.json();
-        
         const weatherMoji = {
             0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
             45: '🌫️', 48: '🌫️', 51: '🌧️', 53: '🌧️', 55: '🌧️',
             61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '❄️', 73: '❄️', 75: '❄️', 95: '⛈️'
         };
-
         if (data && data.daily) {
             data.daily.time.forEach((dateStr, index) => {
                 const code = data.daily.weathercode[index];
                 const maxTemp = Math.round(data.daily.temperature_2m_max[index]);
-                const emoji = weatherMoji[code] || '☁️';
-                weatherData[dateStr] = `${emoji} ${maxTemp}°`;
+                weatherData[dateStr] = `${weatherMoji[code] || '☁️'} ${maxTemp}°`;
             });
         }
-    } catch (e) {
-        console.log("氣象載入失敗:", e);
-    }
+    } catch (e) { console.log("氣象載入失敗:", e); }
 }
-// 啟動時自動抓取天氣
 fetchWeather().then(() => renderCalendar());
-
 
 /* ================== 一鍵快增模板 ================== */
 document.querySelectorAll('.btn-quick-add').forEach(btn => {
@@ -72,7 +63,6 @@ document.querySelectorAll('.btn-quick-add').forEach(btn => {
     });
 });
 
-
 /* ================== 家庭共用便利貼 ================== */
 const stickyNoteEl = document.getElementById('family-sticky-note');
 const noteStatusEl = document.getElementById('note-status');
@@ -81,9 +71,7 @@ let noteTimeout = null;
 onSnapshot(noteRef, (docSnap) => {
     if (docSnap.exists()) {
         const data = docSnap.data();
-        if (document.activeElement !== stickyNoteEl) {
-            stickyNoteEl.value = data.content || '';
-        }
+        if (document.activeElement !== stickyNoteEl) stickyNoteEl.value = data.content || '';
     }
 });
 
@@ -96,9 +84,7 @@ stickyNoteEl.addEventListener('input', () => {
             await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
             noteStatusEl.textContent = '已同步';
             setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
-        } catch (e) {
-            noteStatusEl.textContent = '儲存失敗';
-        }
+        } catch (e) { noteStatusEl.textContent = '儲存失敗'; }
     }, 1000); 
 });
 
@@ -115,13 +101,32 @@ onSnapshot(membersRef, (snapshot) => {
 
 function renderMemberSelects() {
     const datalist = document.getElementById('member-list');
-    if (datalist) {
-        datalist.innerHTML = '';
-        familyMembers.forEach(m => {
+    const voterSelect = document.getElementById('poll-voter-select');
+    
+    if (datalist) datalist.innerHTML = '';
+    
+    let currentVoter = '';
+    if (voterSelect) {
+        currentVoter = voterSelect.value;
+        voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
+    }
+
+    familyMembers.forEach(m => {
+        if (datalist) {
             const opt = document.createElement('option');
             opt.value = m.name;
             datalist.appendChild(opt);
-        });
+        }
+        if (voterSelect) {
+            const vOpt = document.createElement('option');
+            vOpt.value = m.name;
+            vOpt.textContent = m.name;
+            voterSelect.appendChild(vOpt);
+        }
+    });
+
+    if (voterSelect && familyMembers.some(m => m.name === currentVoter)) {
+        voterSelect.value = currentVoter;
     }
 }
 
@@ -145,19 +150,14 @@ function renderMemberManageList() {
                 <button class="btn-delete-member text-rose-400 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-colors"><i class="fas fa-trash-alt"></i></button>
             </div>
         `;
-        
         item.querySelector('.btn-edit-member').addEventListener('click', async () => {
             triggerHaptic();
             const newName = prompt('請輸入新的成員名稱：', m.name);
             if (newName && newName.trim() !== '' && newName.trim() !== m.name) {
-                if (familyMembers.some(ext => ext.name === newName.trim())) {
-                    alert('此名字已經存在囉！');
-                    return;
-                }
+                if (familyMembers.some(ext => ext.name === newName.trim())) return alert('此名字已經存在囉！');
                 await updateDoc(doc(db, 'familyMembers', m.id), { name: newName.trim() });
             }
         });
-
         item.querySelector('.btn-delete-member').addEventListener('click', async () => {
             triggerHaptic();
             if (confirm(`確定要刪除成員「${m.name}」嗎？\n(注意：這不會影響過去已經建立的歷史行程)`)) {
@@ -173,23 +173,61 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
     const input = document.getElementById('new-member-name');
     const name = input.value.trim();
     if (name) {
-        if(familyMembers.some(m => m.name === name)) {
-            alert('這個成員已經存在囉！');
-            return;
-        }
+        if(familyMembers.some(m => m.name === name)) return alert('這個成員已經存在囉！');
         await addDoc(membersRef, { name: name });
         input.value = '';
     }
 });
+document.getElementById('btn-manage-members').addEventListener('click', () => { triggerHaptic(); document.getElementById('member-modal').classList.remove('hidden'); });
+document.getElementById('btn-close-member-modal').addEventListener('click', () => { triggerHaptic(); document.getElementById('member-modal').classList.add('hidden'); });
 
-document.getElementById('btn-manage-members').addEventListener('click', () => {
-    triggerHaptic();
-    document.getElementById('member-modal').classList.remove('hidden');
+/* ================== 相片牆 (網址預覽) ================== */
+const photoUrlInput = document.getElementById('event-photo-url');
+const photoPreview = document.getElementById('photo-preview');
+const previewImg = photoPreview.querySelector('img');
+
+photoUrlInput.addEventListener('input', (e) => {
+    const url = e.target.value.trim();
+    if (url) {
+        previewImg.src = url;
+        photoPreview.classList.remove('hidden');
+    } else {
+        previewImg.src = '';
+        photoPreview.classList.add('hidden');
+    }
 });
-document.getElementById('btn-close-member-modal').addEventListener('click', () => {
+document.getElementById('btn-remove-photo').addEventListener('click', () => {
     triggerHaptic();
-    document.getElementById('member-modal').classList.add('hidden');
+    photoUrlInput.value = '';
+    previewImg.src = '';
+    photoPreview.classList.add('hidden');
 });
+
+/* ================== 投票表決系統 ================== */
+const pollCheckbox = document.getElementById('event-is-poll');
+const pollFields = document.getElementById('poll-fields');
+const pollOptionsContainer = document.getElementById('poll-options-container');
+
+pollCheckbox.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        pollFields.classList.remove('hidden');
+        if (pollOptionsContainer.children.length === 0) addPollOptionRow('');
+    } else {
+        pollFields.classList.add('hidden');
+    }
+});
+
+function addPollOptionRow(title = '') {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 poll-row';
+    row.innerHTML = `
+        <input type="text" placeholder="輸入選項 (例: 去山上露營 / 10月20日)" value="${title}" class="poll-option-title flex-1 px-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-400" required>
+        <button type="button" class="btn-remove-poll text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('.btn-remove-poll').addEventListener('click', () => row.remove());
+    pollOptionsContainer.appendChild(row);
+}
+document.getElementById('btn-add-poll-option').addEventListener('click', () => { triggerHaptic(); addPollOptionRow(); });
 
 /* ================== 記帳與分帳 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
@@ -200,9 +238,7 @@ expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
         expenseFields.classList.remove('hidden');
         if (payersContainer.children.length === 0) addPayerRow('', '');
-    } else {
-        expenseFields.classList.add('hidden');
-    }
+    } else { expenseFields.classList.add('hidden'); }
 });
 
 function addPayerRow(name = '', amount = '') {
@@ -213,17 +249,10 @@ function addPayerRow(name = '', amount = '') {
         <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
     `;
-    row.querySelector('.btn-remove-payer').addEventListener('click', () => {
-        row.remove();
-    });
+    row.querySelector('.btn-remove-payer').addEventListener('click', () => row.remove());
     payersContainer.appendChild(row);
 }
-
-document.getElementById('btn-add-payer').addEventListener('click', () => {
-    triggerHaptic();
-    addPayerRow();
-});
-
+document.getElementById('btn-add-payer').addEventListener('click', () => { triggerHaptic(); addPayerRow(); });
 
 /* ================== 行事曆核心 ================== */
 const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal'];
@@ -234,6 +263,7 @@ modals.forEach(modalId => {
             triggerHaptic();
             modalEl.classList.add('hidden');
             if (modalId === 'day-modal') selectedDateForModal = null;
+            if (modalId === 'view-modal') currentViewingId = null;
         }
     });
 });
@@ -241,7 +271,6 @@ modals.forEach(modalId => {
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
-
 swipeContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
 swipeContainer.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
@@ -261,22 +290,22 @@ document.getElementById('admin-trigger').addEventListener('click', () => {
         clickTimer = setTimeout(() => { clickCount = 0; }, 500);
     }
 });
-
-document.getElementById('btn-close-admin').addEventListener('click', () => {
-    triggerHaptic();
-    document.getElementById('admin-modal').classList.add('hidden');
-});
+document.getElementById('btn-close-admin').addEventListener('click', () => { triggerHaptic(); document.getElementById('admin-modal').classList.add('hidden'); });
 
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((doc) => {
         const data = doc.data();
         events.push({ 
-            id: doc.id, title: data.title, icon: data.icon || '', startDate: data.startDate || data.date, endDate: data.endDate || data.date, time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4
+            id: doc.id, title: data.title, icon: data.icon || '', startDate: data.startDate || data.date, endDate: data.endDate || data.date, time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', 
+            isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4,
+            photoUrl: data.photoUrl || null,
+            isPoll: data.isPoll || false, pollOptions: data.pollOptions || []
         });
     });
     renderApp();
     if (selectedDateForModal) openDayModal(selectedDateForModal, false);
+    if (currentViewingId) openViewModal(currentViewingId);
 });
 
 function formatDateStr(date) {
@@ -286,10 +315,7 @@ function formatDateStr(date) {
     return `${y}-${m}-${d}`;
 }
 
-document.getElementById('search-input').addEventListener('input', (e) => {
-    searchQuery = e.target.value.trim().toLowerCase();
-    renderApp();
-});
+document.getElementById('search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
 
 document.getElementById('ics-file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -340,7 +366,7 @@ function parseICS(icsText) {
     for (let line of lines) {
         line = line.trim();
         if (line === 'BEGIN:VEVENT') {
-            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1 };
+            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1, isPoll: false, pollOptions: [] };
         } else if (line === 'END:VEVENT' && currentEvent) {
             if (currentEvent.title && currentEvent.startDate) {
                 if (!currentEvent.endDate) currentEvent.endDate = currentEvent.startDate;
@@ -359,15 +385,8 @@ function parseICS(icsText) {
     parsedEvents.forEach(e => { if (!e.endDate) e.endDate = e.startDate; });
     return parsedEvents;
 }
-
-function formatICSDate(str) {
-    if (str.length >= 8) return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
-    return str;
-}
-function parseICSDateObj(str) {
-    if (str.length >= 8) return new Date(parseInt(str.substring(0,4)), parseInt(str.substring(4,6))-1, parseInt(str.substring(6,8)));
-    return null;
-}
+function formatICSDate(str) { if (str.length >= 8) return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`; return str; }
+function parseICSDateObj(str) { if (str.length >= 8) return new Date(parseInt(str.substring(0,4)), parseInt(str.substring(4,6))-1, parseInt(str.substring(6,8))); return null; }
 
 function renderApp() { renderCalendar(); renderUpcoming(); }
 
@@ -419,19 +438,11 @@ function createDayCell(dayNum, dateStr, isToday = false) {
     cell.addEventListener('click', () => { triggerHaptic(); openDayModal(dateStr); });
     
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
-    
-    // 🌟 整合氣象資訊：如果當天有氣象預報，顯示在右上角
     const weatherInfo = weatherData[dateStr] ? `<span class="text-[8px] text-blue-500 font-bold bg-blue-50 px-1 rounded-full">${weatherData[dateStr]}</span>` : '';
     
     const header = document.createElement('div');
     header.className = 'flex justify-between items-center px-0.5 shrink-0';
-    header.innerHTML = `
-        <div class="flex items-center gap-1">
-            <span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
-            ${weatherInfo}
-        </div>
-        <span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>
-    `;
+    header.innerHTML = `<div class="flex items-center gap-1"><span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>${weatherInfo}</div><span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>`;
     cell.appendChild(header);
 
     const eventsContainer = document.createElement('div');
@@ -443,10 +454,12 @@ function createDayCell(dayNum, dateStr, isToday = false) {
         const authorTagHtml = (evt.author && evt.author !== '政府行事曆') ? `<span class="text-[7px] md:text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
         const totalExp = getTotalExpense(evt);
         const expenseBadge = evt.isExpense && totalExp > 0 ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
+        const photoBadge = evt.photoUrl ? ` <i class="fas fa-image text-[9px] opacity-90"></i>` : '';
+        const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px] opacity-90"></i>` : '';
 
         const evtEl = document.createElement('div');
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
-        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}</span>${authorTagHtml}`;
+        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}${photoBadge}${pollBadge}</span>${authorTagHtml}`;
         evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
         eventsContainer.appendChild(evtEl);
     });
@@ -475,7 +488,8 @@ function openDayModal(dateStr, setGlobal = true) {
             item.addEventListener('click', () => { triggerHaptic(); closeDayModal(); openViewModal(evt.id); });
             const totalExp = getTotalExpense(evt);
             const expenseText = evt.isExpense && totalExp > 0 ? ` <span class="text-amber-600 font-bold">($${totalExp})</span>` : '';
-            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
+            const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
+            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}${pollIcon}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
             listContainer.appendChild(item);
         });
     }
@@ -523,6 +537,13 @@ function openModal(eventId = null, defaultDate = null) {
     document.getElementById('event-form').reset();
     expenseFields.classList.add('hidden');
     payersContainer.innerHTML = '';
+    pollFields.classList.add('hidden');
+    pollOptionsContainer.innerHTML = '';
+    
+    photoUrlInput.value = '';
+    previewImg.src = '';
+    photoPreview.classList.add('hidden');
+
     currentEditingId = eventId;
     if (eventId) {
         document.getElementById('modal-title').innerText = '編輯活動';
@@ -539,6 +560,18 @@ function openModal(eventId = null, defaultDate = null) {
             document.getElementById('event-is-nav').checked = evt.isNav || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
 
+            if (evt.photoUrl) {
+                photoUrlInput.value = evt.photoUrl;
+                previewImg.src = evt.photoUrl;
+                photoPreview.classList.remove('hidden');
+            }
+
+            if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+                pollCheckbox.checked = true;
+                pollFields.classList.remove('hidden');
+                evt.pollOptions.forEach(opt => addPollOptionRow(opt.title));
+            } else { pollCheckbox.checked = false; }
+
             if (evt.isExpense && evt.payers && evt.payers.length > 0) {
                 expenseCheckbox.checked = true;
                 expenseFields.classList.remove('hidden');
@@ -550,6 +583,7 @@ function openModal(eventId = null, defaultDate = null) {
         document.getElementById('modal-title').innerText = '新增活動';
         document.getElementById('btn-delete').classList.add('hidden');
         expenseCheckbox.checked = false;
+        pollCheckbox.checked = false;
         document.getElementById('event-author').value = '';
         document.getElementById('event-start-date').value = defaultDate || formatDateStr(new Date());
         document.getElementById('event-end-date').value = defaultDate || formatDateStr(new Date());
@@ -562,6 +596,13 @@ function copyEventToModal(eventId) {
     document.getElementById('event-form').reset();
     expenseFields.classList.add('hidden');
     payersContainer.innerHTML = '';
+    pollFields.classList.add('hidden');
+    pollOptionsContainer.innerHTML = '';
+    
+    photoUrlInput.value = '';
+    previewImg.src = '';
+    photoPreview.classList.add('hidden');
+
     currentEditingId = null;
     document.getElementById('modal-title').innerText = '複製並新增活動';
     document.getElementById('btn-delete').classList.add('hidden');
@@ -577,6 +618,12 @@ function copyEventToModal(eventId) {
         document.getElementById('event-desc').value = evt.description || '';
         document.getElementById('event-is-nav').checked = evt.isNav || false;
         document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
+
+        if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+            pollCheckbox.checked = true;
+            pollFields.classList.remove('hidden');
+            evt.pollOptions.forEach(opt => addPollOptionRow(opt.title));
+        }
 
         if (evt.isExpense && evt.payers && evt.payers.length > 0) {
             expenseCheckbox.checked = true;
@@ -599,12 +646,61 @@ function openViewModal(eventId) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author === '政府行事曆' ? '國定假日' : (evt.author || '未署名')}`;
     
+    // 照片預覽
+    const viewPhotoContainer = document.getElementById('view-photo-container');
+    const viewPhoto = document.getElementById('view-photo');
+    if (evt.photoUrl) {
+        viewPhoto.src = evt.photoUrl;
+        viewPhotoContainer.classList.remove('hidden');
+    } else {
+        viewPhotoContainer.classList.add('hidden');
+        viewPhoto.src = '';
+    }
+
     if (evt.time) { document.getElementById('view-time').innerText = evt.time; document.getElementById('view-time-container').classList.remove('hidden'); } 
     else { document.getElementById('view-time-container').classList.add('hidden'); }
     
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
+    // 投票表決區塊
+    const pollContainer = document.getElementById('view-poll-container');
+    const pollOptionsEl = document.getElementById('view-poll-options');
+    if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+        pollOptionsEl.innerHTML = '';
+        evt.pollOptions.forEach((opt, idx) => {
+            const row = document.createElement('div');
+            row.className = 'bg-white p-2.5 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
+            const voterText = opt.voters.length > 0 ? opt.voters.join(', ') : '尚未有人投票';
+            row.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-gray-700 text-sm">${opt.title}</span>
+                    <button class="btn-vote bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-colors active:scale-95">
+                        <i class="fas fa-thumbs-up"></i> 投票 (${opt.voters.length})
+                    </button>
+                </div>
+                <div class="text-[10px] text-gray-400"><i class="fas fa-users"></i> ${voterText}</div>
+            `;
+            row.querySelector('.btn-vote').addEventListener('click', async () => {
+                triggerHaptic();
+                const voterName = document.getElementById('poll-voter-select').value;
+                if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
+                
+                let updatedOptions = [...evt.pollOptions];
+                let vList = updatedOptions[idx].voters;
+                if (vList.includes(voterName)) vList = vList.filter(n => n !== voterName); 
+                else vList.push(voterName); 
+                updatedOptions[idx].voters = vList;
+                
+                try { await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); } 
+                catch(e) { console.error("Vote failed", e); }
+            });
+            pollOptionsEl.appendChild(row);
+        });
+        pollContainer.classList.remove('hidden');
+    } else { pollContainer.classList.add('hidden'); }
+
+    // 分帳區塊
     const expenseContainer = document.getElementById('view-expense-container');
     const totalExp = getTotalExpense(evt);
     if (evt.isExpense && totalExp > 0) {
@@ -635,63 +731,85 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     const authorInput = document.getElementById('event-author').value.trim();
     if (authorInput !== '' && authorInput !== '政府行事曆') {
         const isAuthorExist = familyMembers.some(m => m.name === authorInput);
-        if (!isAuthorExist) {
-            alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在「管理成員」中新增。`);
-            return; 
-        }
+        if (!isAuthorExist) return alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在「管理成員」新增。`);
     }
 
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
-    
     if (isExpense) {
         let payerError = false;
         document.querySelectorAll('.payer-row').forEach(row => {
             const name = row.querySelector('.payer-name').value.trim();
             const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            
             if (name || amount > 0) {
-                const isPayerExist = familyMembers.some(m => m.name === name);
-                if (!isPayerExist) {
-                    alert(`【墊付人驗證失敗】\n「${name}」不在名冊內！請從選單挑選，或先在「管理成員」中新增。`);
+                if (!familyMembers.some(m => m.name === name)) {
+                    alert(`【墊付人驗證失敗】\n「${name}」不在名冊內！`);
                     payerError = true;
-                } else {
-                    payersList.push({ name, amount });
-                }
+                } else { payersList.push({ name, amount }); }
             }
         });
         if (payerError) return; 
     }
 
-    const eventData = {
-        title: document.getElementById('event-title').value.trim(),
-        icon: document.getElementById('event-icon').value,
-        startDate: document.getElementById('event-start-date').value,
-        endDate: document.getElementById('event-end-date').value < document.getElementById('event-start-date').value ? document.getElementById('event-start-date').value : (document.getElementById('event-end-date').value || document.getElementById('event-start-date').value),
-        time: document.getElementById('event-time').value,
-        author: authorInput,
-        description: document.getElementById('event-desc').value.trim(),
-        isNav: document.getElementById('event-is-nav').checked,
-        color: document.querySelector('input[name="event-color"]:checked').value,
-        isExpense: isExpense && payersList.length > 0,
-        payers: payersList,
-        expenseSplits: isExpense ? parseInt(document.getElementById('expense-splits').value) || 4 : 4
-    };
-    
+    const isPoll = pollCheckbox.checked;
+    let pollOptionsList = [];
+    if (isPoll) {
+        const existingEvt = events.find(ev => ev.id === currentEditingId);
+        document.querySelectorAll('.poll-row').forEach((row, idx) => {
+            const title = row.querySelector('.poll-option-title').value.trim();
+            if (title) {
+                let voters = [];
+                if (existingEvt && existingEvt.pollOptions && existingEvt.pollOptions[idx] && existingEvt.pollOptions[idx].title === title) {
+                    voters = existingEvt.pollOptions[idx].voters;
+                }
+                pollOptionsList.push({ title, voters });
+            }
+        });
+    }
+
+    const submitBtn = document.getElementById('btn-save-event');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
+    submitBtn.disabled = true;
+
     try {
+        const finalPhotoUrl = photoUrlInput.value.trim();
+
+        const eventData = {
+            title: document.getElementById('event-title').value.trim(),
+            icon: document.getElementById('event-icon').value,
+            startDate: document.getElementById('event-start-date').value,
+            endDate: document.getElementById('event-end-date').value < document.getElementById('event-start-date').value ? document.getElementById('event-start-date').value : (document.getElementById('event-end-date').value || document.getElementById('event-start-date').value),
+            time: document.getElementById('event-time').value,
+            author: authorInput,
+            description: document.getElementById('event-desc').value.trim(),
+            isNav: document.getElementById('event-is-nav').checked,
+            color: document.querySelector('input[name="event-color"]:checked').value,
+            isExpense: isExpense && payersList.length > 0,
+            payers: payersList,
+            expenseSplits: isExpense ? parseInt(document.getElementById('expense-splits').value) || 4 : 4,
+            isPoll: isPoll && pollOptionsList.length > 0,
+            pollOptions: pollOptionsList,
+            photoUrl: finalPhotoUrl
+        };
+        
         if (currentEditingId) await updateDoc(doc(eventsRef, currentEditingId), eventData);
         else await addDoc(eventsRef, eventData);
+        
         closeModal();
-    } catch (error) { console.error("Error saving: ", error); }
+    } catch (error) { 
+        console.error("Error saving: ", error); 
+    } finally {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+    }
 });
 
 document.getElementById('btn-delete').addEventListener('click', async () => {
     if (!currentEditingId) return;
     triggerHaptic();
-    try {
-        await deleteDoc(doc(eventsRef, currentEditingId));
-        closeModal();
-    } catch (error) { console.error("Error deleting: ", error); }
+    try { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); } 
+    catch (error) { console.error("Error deleting: ", error); }
 });
 
 renderApp();
