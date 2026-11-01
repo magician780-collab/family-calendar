@@ -18,12 +18,30 @@
 
     <script>
         tailwind.config = {
-            theme: { extend: { fontFamily: { sans: ['Nunito', 'sans-serif'] }, colors: { warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' } } } }
+            theme: { 
+                extend: { 
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] }, 
+                    colors: { 
+                        warm: { 
+                            50: 'var(--color-50)', 
+                            100: 'var(--color-100)', 
+                            200: 'var(--color-200)', 
+                            300: 'var(--color-300)', 
+                            400: 'var(--color-400)', 
+                            500: 'var(--color-500)', 
+                            600: 'var(--color-600)', 
+                            700: 'var(--color-700)', 
+                            800: 'var(--color-800)', 
+                            900: 'var(--color-900)' 
+                        } 
+                    } 
+                } 
+            }
         }
     </script>
     <link rel="stylesheet" href="./style.css">
 </head>
-<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden">
+<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden theme-warm" id="app-body">
     <!-- 側邊欄 -->
     <aside class="w-full md:w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-[4px_0_24px_rgba(249,115,22,0.05)] z-10 order-2 md:order-1 h-2/5 md:h-full transition-all">
         <div id="admin-trigger" class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between cursor-pointer select-none" title="連續點擊3下開啟後台">
@@ -32,11 +50,22 @@
         </div>
         
         <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2">
+            <!-- 🌟 主題風格切換選單 -->
+            <div class="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-warm-200 shadow-sm">
+                <span class="text-xs font-bold text-warm-800 flex items-center gap-1.5"><i class="fas fa-palette text-warm-500"></i> 主題風格</span>
+                <select id="theme-select" class="bg-warm-50 border border-warm-200 text-xs font-bold text-warm-800 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-warm-400 cursor-pointer">
+                    <option value="warm">🍊 溫馨暖橘</option>
+                    <option value="forest">🌿 清新森林</option>
+                    <option value="purple">💜 浪漫柔紫</option>
+                    <option value="dark">🌙 極簡暗黑</option>
+                </select>
+            </div>
+
             <div class="relative">
                 <i class="fas fa-search absolute left-3.5 top-3 text-gray-400 text-sm"></i>
                 <input type="text" id="search-input" placeholder="搜尋行程、地點或成員..." class="w-full pl-10 pr-4 py-2 bg-white border border-warm-200 rounded-xl text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all shadow-sm">
             </div>
-            <!-- 🌟 新增：開啟回憶相簿按鈕 -->
+            
             <button id="btn-open-gallery" class="w-full py-2.5 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
             </button>
@@ -59,7 +88,7 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.1</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.2</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
@@ -94,16 +123,14 @@
         </div>
     </main>
     
-    <!-- 🌟 新增：家庭回憶相簿牆 Modal -->
+    <!-- 家庭回憶相簿牆 Modal -->
     <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
         <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 class="text-xl font-extrabold text-warm-800 flex items-center gap-2"><i class="fas fa-photo-film text-warm-500"></i> 家庭回憶相簿牆</h3>
                 <button id="btn-close-gallery" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <div id="gallery-grid-container" class="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 bg-gray-50">
-                <!-- 動態載入照片 -->
-            </div>
+            <div id="gallery-grid-container" class="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 bg-gray-50"></div>
         </div>
     </div>
 
@@ -222,7 +249,6 @@
                     <textarea id="event-desc" rows="2" placeholder="例如：注意事項、集合時間..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
                 </div>
 
-                <!-- 攜帶物品與任務認領清單 -->
                 <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-emerald-900 flex items-center gap-1.5 cursor-pointer">
@@ -238,7 +264,6 @@
                     </div>
                 </div>
                 
-                <!-- 投票表決區塊 -->
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
@@ -254,7 +279,6 @@
                     </div>
                 </div>
 
-                <!-- 記帳與權重分帳區塊 -->
                 <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
@@ -343,7 +367,6 @@
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
 
-                    <!-- 攜帶物品與任務認領顯示區塊 -->
                     <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
                         <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
                             <span><i class="fas fa-clipboard-check text-sm mr-1"></i> 裝備與任務認領清單</span>
@@ -352,7 +375,6 @@
                         <div id="view-checklist-items" class="space-y-1.5 text-xs"></div>
                     </div>
                     
-                    <!-- 匿名投票顯示區塊 -->
                     <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 space-y-3 hidden">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-indigo-800 border-b border-indigo-100 pb-2">
                             <i class="fas fa-poll text-lg"></i> 匿名活動意願表決 (單選)
@@ -364,7 +386,6 @@
                         <div id="view-poll-options" class="space-y-2 text-sm"></div>
                     </div>
 
-                    <!-- 分帳與權重結算顯示區塊 -->
                     <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 代墊與分帳結算</div>
                         <div id="view-expense-details" class="text-xs space-y-1.5"></div>
@@ -400,7 +421,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=4.1 強制清除快取) -->
-    <script type="module" src="./app.js?v=4.1"></script>
+    <!-- 載入主程式模組 (升級為 v=4.2 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.2"></script>
 </body>
 </html>

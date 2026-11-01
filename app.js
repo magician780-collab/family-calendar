@@ -31,6 +31,34 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
+/* ================== 🌟 主題風格切換管理 ================== */
+const themePalettes = {
+    warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
+    forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
+    purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
+    dark: { 50: '#18181b', 100: '#27272a', 200: '#3f3f46', 300: '#52525b', 400: '#71717a', 500: '#a1a1aa', 600: '#d4d4d8', 700: '#e4e4e7', 800: '#f4f4f5', 900: '#fafafa' }
+};
+
+function setTheme(themeName) {
+    const palette = themePalettes[themeName] || themePalettes.warm;
+    const root = document.documentElement;
+    Object.keys(palette).forEach(key => {
+        root.style.setProperty(`--color-${key}`, palette[key]);
+    });
+    localStorage.setItem('family_app_theme', themeName);
+    const selectEl = document.getElementById('theme-select');
+    if (selectEl) selectEl.value = themeName;
+}
+
+// 初始化載入儲存的主題
+const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
+setTheme(savedTheme);
+
+document.getElementById('theme-select').addEventListener('change', (e) => {
+    triggerHaptic();
+    setTheme(e.target.value);
+});
+
 /* ================== 天氣 API (台南市) ================== */
 async function fetchWeather() {
     try {
@@ -192,7 +220,7 @@ document.getElementById('btn-remove-photo').addEventListener('click', () => {
     photoPreview.classList.add('hidden');
 });
 
-/* ================== 🌟 家庭回憶相簿牆互動邏輯 ================== */
+/* ================== 家庭回憶相簿牆互動邏輯 ================== */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => {
     triggerHaptic();
@@ -208,7 +236,6 @@ function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
     
-    // 篩選出所有有上傳照片的行程
     const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
 
     if (photoEvents.length === 0) {
@@ -452,7 +479,7 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
 document.getElementById('btn-export-backup').addEventListener('click', () => {
     triggerHaptic();
     const backupData = {
-        version: '4.1',
+        version: '4.2',
         exportedAt: new Date().toISOString(),
         familyMembers: familyMembers.map(m => ({ name: m.name })),
         familyEvents: events.map(({ id, ...rest }) => rest),
@@ -821,7 +848,6 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 攜帶物品清單渲染
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItemsEl = document.getElementById('view-checklist-items');
     const checkProgressEl = document.getElementById('view-checklist-progress');
@@ -854,7 +880,6 @@ function openViewModal(eventId) {
         checkContainer.classList.add('hidden');
     }
 
-    // 匿名投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -899,7 +924,6 @@ function openViewModal(eventId) {
         pollContainer.classList.remove('hidden');
     } else { pollContainer.classList.add('hidden'); }
 
-    // 分帳與權重結算邏輯
     const expenseContainer = document.getElementById('view-expense-container');
     const totalExp = getTotalExpense(evt);
     if (evt.isExpense && totalExp > 0) {
@@ -950,7 +974,7 @@ function openViewModal(eventId) {
         document.getElementById('map-btn-container').classList.remove('hidden');
     } else document.getElementById('map-btn-container').classList.add('hidden');
     
-    document.getElementById('view-modal').classList.add('hidden'); // 避免衝突
+    document.getElementById('view-modal').classList.add('hidden');
     document.getElementById('view-modal').classList.remove('hidden');
 }
 
