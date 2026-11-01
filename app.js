@@ -43,6 +43,18 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
+/* ================== 通用：點擊背景自動關閉 Modal ================== */
+document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+            triggerHaptic();
+            backdrop.classList.add('hidden');
+            if (backdrop.id === 'day-modal') selectedDateForModal = null;
+            if (backdrop.id === 'view-modal') currentViewingId = null;
+        }
+    });
+});
+
 /* 主題風格 */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
@@ -156,7 +168,7 @@ function renderGalleryGrid() {
     });
 }
 
-/* 裝備清單、投票與分帳動態輸入欄位 */
+/* 動態輸入欄位 */
 const checklistCheckbox = document.getElementById('event-is-checklist');
 const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
@@ -215,7 +227,7 @@ function addSharerRow(name = '', weight = 1) {
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
 
-/* 核心事件聆聽 (完整支援清單、投票、分帳與相片) */
+/* 核心事件聆聽 */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((docSnap) => {
@@ -499,7 +511,7 @@ function openViewModal(id) {
         checkContainer.classList.add('hidden');
     }
 
-    // 保密投票檢視
+    // 保密投票檢視 (隱藏個人投票狀態，按鈕全為統一「投一票」)
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -608,7 +620,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         lDay = lunar.getDay();
     }
 
-    // 收集裝備清單
     let checklistArr = [];
     if (checklistCheckbox.checked) {
         document.querySelectorAll('.checklist-row').forEach(row => {
@@ -619,7 +630,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         });
     }
 
-    // 收集投票選項
     let pollOpts = [];
     if (pollCheckbox.checked) {
         const existing = events.find(ev => ev.id === currentEditingId);
@@ -632,7 +642,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         });
     }
 
-    // 收集代墊記帳
     let payersArr = [];
     let sharersArr = [];
     if (expenseCheckbox.checked) {

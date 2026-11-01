@@ -89,7 +89,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v5.8</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v5.9</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -132,7 +132,7 @@
         </div>
     </main>
     
-    <!-- 新增/編輯活動 Modal -->
+    <!-- 新增/編輯活動 Modal (加上 modal-backdrop 類別以便點背景關閉) -->
     <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="event-modal">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
@@ -292,7 +292,7 @@
         </div>
     </div>
 
-    <!-- Gallery, Day, View, Member Modals -->
+    <!-- Gallery Modal (含 modal-backdrop) -->
     <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
         <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-xl font-extrabold">相簿牆</h3><button id="btn-close-gallery" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
@@ -300,6 +300,7 @@
         </div>
     </div>
 
+    <!-- Day Modal (含 modal-backdrop) -->
     <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 id="day-modal-title" class="text-lg font-bold">當日行程</h3><button id="btn-close-day-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
@@ -307,6 +308,7 @@
         </div>
     </div>
 
+    <!-- View Modal (含 modal-backdrop) -->
     <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="view-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative modal-content flex flex-col max-h-[90vh]">
             <div id="view-modal-header" class="h-16 w-full shrink-0"></div>
@@ -357,6 +359,7 @@
         </div>
     </div>
 
+    <!-- Member Modal (含 modal-backdrop) -->
     <div id="member-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-lg font-bold">成員管理</h3><button id="btn-close-member-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
@@ -370,6 +373,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=5.8"></script>
+    <script type="module" src="./app.js?v=5.9"></script>
 </body>
 </html>
