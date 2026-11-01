@@ -134,7 +134,46 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-manage-members').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* 投票選項動態新增 */
+/* 📸 相片牆開啟與渲染 */
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (photoEvents.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-400"><i class="far fa-images text-4xl mb-3 opacity-50"></i><p class="text-sm">目前還沒有任何相片記錄喔！</p></div>`;
+        return;
+    }
+    photoEvents.forEach(evt => {
+        const item = document.createElement('div');
+        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
+        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${evt.photoUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
+        item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
+        container.appendChild(item);
+    });
+}
+
+/* 裝備清單、投票與分帳動態輸入欄位 */
+const checklistCheckbox = document.getElementById('event-is-checklist');
+const checklistFields = document.getElementById('checklist-fields');
+const checklistContainer = document.getElementById('checklist-items-container');
+checklistCheckbox.addEventListener('change', (e) => {
+    checklistFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
+});
+function addChecklistRow(text = '', assignee = '', done = false) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 checklist-row';
+    row.dataset.done = done ? 'true' : 'false';
+    row.innerHTML = `<input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="text" list="member-list" placeholder="認領人" value="${assignee}" class="checklist-assignee w-28 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none"><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    checklistContainer.appendChild(row);
+}
+document.getElementById('btn-add-checklist-item').addEventListener('click', () => addChecklistRow());
+
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
@@ -151,7 +190,32 @@ function addPollOptionRow(title = '') {
 }
 document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
 
-/* 核心事件聆聽 */
+const expenseCheckbox = document.getElementById('event-is-expense');
+const expenseFields = document.getElementById('expense-fields');
+const payersContainer = document.getElementById('payers-container');
+const sharersContainer = document.getElementById('sharers-container');
+expenseCheckbox.addEventListener('change', (e) => {
+    expenseFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && payersContainer.children.length === 0) { addPayerRow(); addSharerRow(); }
+});
+function addPayerRow(name = '', amount = '') {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 payer-row';
+    row.innerHTML = `<input type="text" list="member-list" placeholder="墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    payersContainer.appendChild(row);
+}
+document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow());
+function addSharerRow(name = '', weight = 1) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 sharer-row';
+    row.innerHTML = `<input type="text" list="member-list" placeholder="分攤成員" value="${name}" class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><div class="flex items-center bg-white border rounded-xl px-2 py-1"><input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none"><span class="text-[10px]">份</span></div><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    sharersContainer.appendChild(row);
+}
+document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
+
+/* 核心事件聆聽 (完整支援清單、投票、分帳與相片) */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((docSnap) => {
@@ -179,8 +243,13 @@ onSnapshot(eventsRef, (snapshot) => {
             color: data.color || 'bg-rose-400',
             photoUrl: data.photoUrl || null,
             fileUrl: data.fileUrl || null,
+            isChecklist: data.isChecklist || false,
+            checklist: data.checklist || [],
             isPoll: data.isPoll || false,
-            pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] }))
+            pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
+            isExpense: data.isExpense || false,
+            payers: data.payers || [],
+            sharers: data.sharers || []
         });
     });
     renderApp();
@@ -328,9 +397,16 @@ function openModal(id = null) {
     document.getElementById('event-photo-url').value = '';
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
+    checklistCheckbox.checked = false;
+    checklistFields.classList.add('hidden');
+    checklistContainer.innerHTML = '';
     pollCheckbox.checked = false;
     pollFields.classList.add('hidden');
     pollOptionsContainer.innerHTML = '';
+    expenseCheckbox.checked = false;
+    expenseFields.classList.add('hidden');
+    payersContainer.innerHTML = '';
+    sharersContainer.innerHTML = '';
 
     currentEditingId = id;
     if (id) {
@@ -351,10 +427,21 @@ function openModal(id = null) {
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
+            if (evt.isChecklist && evt.checklist) {
+                checklistCheckbox.checked = true;
+                checklistFields.classList.remove('hidden');
+                evt.checklist.forEach(item => addChecklistRow(item.text, item.assignee, item.done));
+            }
             if (evt.isPoll && evt.pollOptions) {
                 pollCheckbox.checked = true;
                 pollFields.classList.remove('hidden');
                 evt.pollOptions.forEach(o => addPollOptionRow(o.title));
+            }
+            if (evt.isExpense) {
+                expenseCheckbox.checked = true;
+                expenseFields.classList.remove('hidden');
+                (evt.payers || []).forEach(p => addPayerRow(p.name, p.amount));
+                (evt.sharers || []).forEach(s => addSharerRow(s.name, s.weight));
             }
         }
     } else {
@@ -381,44 +468,64 @@ function openViewModal(id) {
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
 
+    // 裝備清單檢視與勾選
+    const checkContainer = document.getElementById('view-checklist-container');
+    const checkItems = document.getElementById('view-checklist-items');
+    const checkProgress = document.getElementById('view-checklist-progress');
+    if (evt.isChecklist && evt.checklist && evt.checklist.length > 0) {
+        checkItems.innerHTML = '';
+        let doneCount = 0;
+        evt.checklist.forEach((item, idx) => {
+            if (item.done) doneCount++;
+            const row = document.createElement('label');
+            row.className = 'flex items-center justify-between bg-white p-2 rounded-xl border cursor-pointer';
+            row.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" ${item.done ? 'checked' : ''} class="w-4 h-4 text-emerald-600 rounded cursor-pointer">
+                    <span class="${item.done ? 'line-through text-gray-400' : 'text-gray-700 font-bold'}">${item.text}</span>
+                </div>
+                <span class="text-[10px] bg-warm-50 text-warm-700 px-2 py-0.5 rounded-full font-bold">${item.assignee || '未認領'}</span>
+            `;
+            row.querySelector('input').addEventListener('change', async (e) => {
+                let updatedChecklist = [...evt.checklist];
+                updatedChecklist[idx].done = e.target.checked;
+                await updateDoc(doc(eventsRef, evt.id), { checklist: updatedChecklist });
+            });
+            checkItems.appendChild(row);
+        });
+        checkProgress.innerText = `${doneCount}/${evt.checklist.length}`;
+        checkContainer.classList.remove('hidden');
+    } else {
+        checkContainer.classList.add('hidden');
+    }
+
+    // 保密投票檢視
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
     const finalizeBtn = document.getElementById('btn-finalize-poll');
-    const pollBadge = document.getElementById('poll-summary-badge');
     const votedMembersBanner = document.getElementById('voted-members-banner');
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
         const voter = voterSelect ? voterSelect.value : '';
 
-        // 收集所有已投票的成員名單（去重複）
         let allVotedMembersSet = new Set();
-        evt.pollOptions.forEach(opt => {
-            opt.voters.forEach(name => allVotedMembersSet.add(name));
-        });
+        evt.pollOptions.forEach(opt => opt.voters.forEach(name => allVotedMembersSet.add(name)));
         const allVotedMembersArr = Array.from(allVotedMembersSet);
 
-        if (allVotedMembersArr.length > 0) {
-            votedMembersBanner.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>`;
-        } else {
-            votedMembersBanner.innerHTML = `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
-        }
+        votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? 
+            `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : 
+            `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
 
         let maxVotes = -1;
-        evt.pollOptions.forEach(opt => {
-            if (opt.voters.length > maxVotes) maxVotes = opt.voters.length;
-        });
-
-        let totalVotesCount = allVotedMembersArr.length;
-        pollBadge.innerText = `已參與: ${totalVotesCount} 人`;
+        evt.pollOptions.forEach(opt => { if (opt.voters.length > maxVotes) maxVotes = opt.voters.length; });
 
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
             row.className = 'bg-white p-2.5 rounded-xl border flex flex-col gap-1.5 shadow-sm';
             const isWinner = maxVotes > 0 && opt.voters.length === maxVotes;
 
-            // 🌟 核心修改：統一按鈕文字為「投一票」，絕不顯示「✓ 已投這項」，徹底保密個別選項歸屬！
             row.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-gray-800 flex items-center gap-1.5">
@@ -433,23 +540,19 @@ function openViewModal(id) {
             row.querySelector('button').addEventListener('click', async () => {
                 if (!voter) return alert('請先在上方選擇您是哪位成員！');
                 let updated = evt.pollOptions.map(o => ({ title: o.title, voters: [...o.voters] }));
-                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter)); // 單選：先從其他選項移除
-                updated[idx].voters.push(voter); // 加入當前選項
+                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter));
+                updated[idx].voters.push(voter);
                 await updateDoc(doc(eventsRef, evt.id), { pollOptions: updated });
             });
             pollOptionsEl.appendChild(row);
         });
 
-        // 🌟 總結報告與一鍵拍板定案
         finalizeBtn.onclick = async () => {
             const winnerOpt = evt.pollOptions.reduce((prev, curr) => (curr.voters.length > prev.voters.length) ? curr : prev);
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
-                await updateDoc(doc(eventsRef, evt.id), {
-                    title: winnerOpt.title,
-                    isPoll: false // 結束投票
-                });
+                await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
                 alert('🎉 已成功將最高票拍板定案！');
                 document.getElementById('view-modal').classList.add('hidden');
             }
@@ -459,6 +562,27 @@ function openViewModal(id) {
         pollContainer.classList.remove('hidden');
     } else {
         pollContainer.classList.add('hidden');
+    }
+
+    // 代墊分帳檢視
+    const expenseContainer = document.getElementById('view-expense-container');
+    const expenseDetails = document.getElementById('view-expense-details');
+    if (evt.isExpense && evt.payers && evt.payers.length > 0) {
+        let totalExpense = evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
+        let perWeightAmount = totalExpense / totalWeight;
+
+        let html = `<div class="font-bold border-b border-amber-200 pb-1 mb-1">總支出：$${totalExpense.toLocaleString()} 元</div>`;
+        html += `<div class="space-y-1">`;
+        (evt.sharers || []).forEach(s => {
+            let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
+            html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} 元</span></div>`;
+        });
+        html += `</div>`;
+        expenseDetails.innerHTML = html;
+        expenseContainer.classList.remove('hidden');
+    } else {
+        expenseContainer.classList.add('hidden');
     }
 
     document.getElementById('view-modal').classList.add('hidden');
@@ -484,9 +608,20 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         lDay = lunar.getDay();
     }
 
-    const isPoll = pollCheckbox.checked;
+    // 收集裝備清單
+    let checklistArr = [];
+    if (checklistCheckbox.checked) {
+        document.querySelectorAll('.checklist-row').forEach(row => {
+            const text = row.querySelector('.checklist-text').value.trim();
+            const assignee = row.querySelector('.checklist-assignee').value.trim();
+            const done = row.dataset.done === 'true';
+            if (text) checklistArr.push({ text, assignee, done });
+        });
+    }
+
+    // 收集投票選項
     let pollOpts = [];
-    if (isPoll) {
+    if (pollCheckbox.checked) {
         const existing = events.find(ev => ev.id === currentEditingId);
         document.querySelectorAll('.poll-row').forEach((row, idx) => {
             const t = row.querySelector('.poll-option-title').value.trim();
@@ -494,6 +629,22 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
                 let voters = (existing && existing.pollOptions && existing.pollOptions[idx] && existing.pollOptions[idx].title === t) ? existing.pollOptions[idx].voters : [];
                 pollOpts.push({ title: t, voters: voters });
             }
+        });
+    }
+
+    // 收集代墊記帳
+    let payersArr = [];
+    let sharersArr = [];
+    if (expenseCheckbox.checked) {
+        document.querySelectorAll('.payer-row').forEach(row => {
+            const name = row.querySelector('.payer-name').value.trim();
+            const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
+            if (name && amount > 0) payersArr.push({ name, amount });
+        });
+        document.querySelectorAll('.sharer-row').forEach(row => {
+            const name = row.querySelector('.sharer-name').value.trim();
+            const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
+            if (name) sharersArr.push({ name, weight });
         });
     }
 
@@ -509,8 +660,13 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
         fileUrl: document.getElementById('event-file-url').value.trim(),
-        isPoll: isPoll && pollOpts.length > 0,
-        pollOptions: pollOpts
+        isChecklist: checklistCheckbox.checked && checklistArr.length > 0,
+        checklist: checklistArr,
+        isPoll: pollCheckbox.checked && pollOpts.length > 0,
+        pollOptions: pollOpts,
+        isExpense: expenseCheckbox.checked && payersArr.length > 0,
+        payers: payersArr,
+        sharers: sharersArr
     };
 
     if (currentEditingId) {
