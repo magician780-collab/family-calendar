@@ -43,15 +43,13 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ================== 通用：點擊背景自動關閉 Modal ================== */
+/* ================== 通用：點擊背景自動關閉 Modal (iOS 優化版) ================== */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-    backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) {
-            triggerHaptic();
-            backdrop.classList.add('hidden');
-            if (backdrop.id === 'day-modal') selectedDateForModal = null;
-            if (backdrop.id === 'view-modal') currentViewingId = null;
-        }
+    backdrop.addEventListener('click', () => {
+        triggerHaptic();
+        backdrop.classList.add('hidden');
+        if (backdrop.id === 'day-modal') selectedDateForModal = null;
+        if (backdrop.id === 'view-modal') currentViewingId = null;
     });
 });
 
