@@ -230,9 +230,9 @@ document.getElementById('input-import-json').addEventListener('change', (e) => {
         try {
             const json = JSON.parse(event.target.result);
             if (json.events && Array.isArray(json.events)) {
-                if (confirm(`確定要還原 ${json.events.length 5} 筆行程資料嗎？這將會匯入至您的行事曆中。`)) {
+                if (confirm(`確定要還原 ${json.events.length} 筆行程資料嗎？這將會匯入至您的行事曆中。`)) {
                     for (const ev of json.events) {
-                        delete ev.id; // 移除舊 ID 以免衝突
+                        delete ev.id; 
                         await addDoc(eventsRef, ev);
                     }
                     alert('🎉 資料還原與匯入成功！');
