@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-// 🌟 已經移除 Firebase Storage 相關套件，免綁卡！
 
 const firebaseConfig = {
     apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
@@ -16,6 +15,13 @@ const db = getFirestore(app);
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
 const noteRef = doc(db, 'familyNotes', 'mainNote'); 
+
+// 🌟 自動產生裝置專屬的匿名投票 ID (儲存在手機本機中防作弊)
+let deviceId = localStorage.getItem('family_app_device_id');
+if (!deviceId) {
+    deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + Date.now();
+    localStorage.setItem('family_app_device_id', deviceId);
+}
 
 let currentDate = new Date();
 let events = [];
@@ -52,16 +58,6 @@ async function fetchWeather() {
     } catch (e) { console.log("氣象載入失敗:", e); }
 }
 fetchWeather().then(() => renderCalendar());
-
-/* ================== 一鍵快增模板 ================== */
-document.querySelectorAll('.btn-quick-add').forEach(btn => {
-    btn.addEventListener('click', () => {
-        triggerHaptic();
-        document.getElementById('event-title').value = btn.dataset.title;
-        document.getElementById('event-icon').value = btn.dataset.icon;
-        document.querySelector(`input[name="event-color"][value="${btn.dataset.color}"]`).checked = true;
-    });
-});
 
 /* ================== 家庭共用便利貼 ================== */
 const stickyNoteEl = document.getElementById('family-sticky-note');
@@ -101,32 +97,13 @@ onSnapshot(membersRef, (snapshot) => {
 
 function renderMemberSelects() {
     const datalist = document.getElementById('member-list');
-    const voterSelect = document.getElementById('poll-voter-select');
-    
-    if (datalist) datalist.innerHTML = '';
-    
-    let currentVoter = '';
-    if (voterSelect) {
-        currentVoter = voterSelect.value;
-        voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
-    }
-
-    familyMembers.forEach(m => {
-        if (datalist) {
+    if (datalist) {
+        datalist.innerHTML = '';
+        familyMembers.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.name;
             datalist.appendChild(opt);
-        }
-        if (voterSelect) {
-            const vOpt = document.createElement('option');
-            vOpt.value = m.name;
-            vOpt.textContent = m.name;
-            voterSelect.appendChild(vOpt);
-        }
-    });
-
-    if (voterSelect && familyMembers.some(m => m.name === currentVoter)) {
-        voterSelect.value = currentVoter;
+        });
     }
 }
 
@@ -203,7 +180,7 @@ document.getElementById('btn-remove-photo').addEventListener('click', () => {
     photoPreview.classList.add('hidden');
 });
 
-/* ================== 投票表決系統 ================== */
+/* ================== 匿名投票表決系統 ================== */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
@@ -646,7 +623,6 @@ function openViewModal(eventId) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author === '政府行事曆' ? '國定假日' : (evt.author || '未署名')}`;
     
-    // 照片預覽
     const viewPhotoContainer = document.getElementById('view-photo-container');
     const viewPhoto = document.getElementById('view-photo');
     if (evt.photoUrl) {
@@ -663,33 +639,39 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 投票表決區塊
+    // 🌟 匿名投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
-            row.className = 'bg-white p-2.5 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
-            const voterText = opt.voters.length > 0 ? opt.voters.join(', ') : '尚未有人投票';
+            row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
+            
+            // 檢查本機 deviceId 是否有投給這個選項
+            const hasVoted = opt.voters && opt.voters.includes(deviceId);
+            const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
+            
             row.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-gray-700 text-sm">${opt.title}</span>
-                    <button class="btn-vote bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-colors active:scale-95">
-                        <i class="fas fa-thumbs-up"></i> 投票 (${opt.voters.length})
+                    <button class="btn-vote ${btnClass} px-4 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5">
+                        <i class="fas fa-thumbs-up"></i> 投一票 (${opt.voters ? opt.voters.length : 0})
                     </button>
                 </div>
-                <div class="text-[10px] text-gray-400"><i class="fas fa-users"></i> ${voterText}</div>
             `;
             row.querySelector('.btn-vote').addEventListener('click', async () => {
                 triggerHaptic();
-                const voterName = document.getElementById('poll-voter-select').value;
-                if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
                 
                 let updatedOptions = [...evt.pollOptions];
-                let vList = updatedOptions[idx].voters;
-                if (vList.includes(voterName)) vList = vList.filter(n => n !== voterName); 
-                else vList.push(voterName); 
+                let vList = updatedOptions[idx].voters || [];
+                
+                if (vList.includes(deviceId)) {
+                    vList = vList.filter(id => id !== deviceId); 
+                } else {
+                    vList.push(deviceId); 
+                }
+                
                 updatedOptions[idx].voters = vList;
                 
                 try { await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); } 
@@ -700,7 +682,6 @@ function openViewModal(eventId) {
         pollContainer.classList.remove('hidden');
     } else { pollContainer.classList.add('hidden'); }
 
-    // 分帳區塊
     const expenseContainer = document.getElementById('view-expense-container');
     const totalExp = getTotalExpense(evt);
     if (evt.isExpense && totalExp > 0) {
