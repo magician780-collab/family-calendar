@@ -14,11 +14,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
-const noteRef = doc(db, 'familyNotes', 'mainNote'); // 便利貼專屬資料庫位置
+const noteRef = doc(db, 'familyNotes', 'mainNote'); 
 
 let currentDate = new Date();
 let events = [];
 let familyMembers = [];
+let weatherData = {}; // 存放未來 7 天天氣
 let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
@@ -32,37 +33,70 @@ function triggerHaptic() {
     }
 }
 
-/* ================== 家庭共用便利貼 (即時同步) ================== */
+/* ================== 天氣 API (台南市) ================== */
+async function fetchWeather() {
+    try {
+        // 使用 Open-Meteo 免費氣象 API，定位台南市 (Lat: 22.99, Lon: 120.21)
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
+        const data = await res.json();
+        
+        const weatherMoji = {
+            0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+            45: '🌫️', 48: '🌫️', 51: '🌧️', 53: '🌧️', 55: '🌧️',
+            61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '❄️', 73: '❄️', 75: '❄️', 95: '⛈️'
+        };
+
+        if (data && data.daily) {
+            data.daily.time.forEach((dateStr, index) => {
+                const code = data.daily.weathercode[index];
+                const maxTemp = Math.round(data.daily.temperature_2m_max[index]);
+                const emoji = weatherMoji[code] || '☁️';
+                weatherData[dateStr] = `${emoji} ${maxTemp}°`;
+            });
+        }
+    } catch (e) {
+        console.log("氣象載入失敗:", e);
+    }
+}
+// 啟動時自動抓取天氣
+fetchWeather().then(() => renderCalendar());
+
+
+/* ================== 一鍵快增模板 ================== */
+document.querySelectorAll('.btn-quick-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+        triggerHaptic();
+        document.getElementById('event-title').value = btn.dataset.title;
+        document.getElementById('event-icon').value = btn.dataset.icon;
+        document.querySelector(`input[name="event-color"][value="${btn.dataset.color}"]`).checked = true;
+    });
+});
+
+
+/* ================== 家庭共用便利貼 ================== */
 const stickyNoteEl = document.getElementById('family-sticky-note');
 const noteStatusEl = document.getElementById('note-status');
 let noteTimeout = null;
 
-// 即時監聽雲端便利貼內容
 onSnapshot(noteRef, (docSnap) => {
     if (docSnap.exists()) {
         const data = docSnap.data();
-        // 只有當使用者「不在打字中」時才覆蓋畫面，避免打斷當前的輸入
         if (document.activeElement !== stickyNoteEl) {
             stickyNoteEl.value = data.content || '';
         }
     }
 });
 
-// 當使用者打字時，防手震 (Debounce) 自動儲存
 stickyNoteEl.addEventListener('input', () => {
     noteStatusEl.textContent = '儲存中...';
     noteStatusEl.classList.remove('opacity-0');
-    
     if (noteTimeout) clearTimeout(noteTimeout);
-    
-    // 停止打字 1 秒鐘後，自動上傳到 Firebase
     noteTimeout = setTimeout(async () => {
         try {
             await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
             noteStatusEl.textContent = '已同步';
             setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
         } catch (e) {
-            console.error('Save note error:', e);
             noteStatusEl.textContent = '儲存失敗';
         }
     }, 1000); 
@@ -157,7 +191,6 @@ document.getElementById('btn-close-member-modal').addEventListener('click', () =
     document.getElementById('member-modal').classList.add('hidden');
 });
 
-
 /* ================== 記帳與分帳 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
@@ -166,9 +199,7 @@ const payersContainer = document.getElementById('payers-container');
 expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
         expenseFields.classList.remove('hidden');
-        if (payersContainer.children.length === 0) {
-            addPayerRow('', '');
-        }
+        if (payersContainer.children.length === 0) addPayerRow('', '');
     } else {
         expenseFields.classList.add('hidden');
     }
@@ -211,28 +242,13 @@ let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
 
-swipeContainer.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-}, { passive: true });
-
+swipeContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
 swipeContainer.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, { passive: true });
-
-function handleSwipe() {
     const swipeThreshold = 50;
-    if (touchEndX < touchStartX - swipeThreshold) {
-        triggerHaptic();
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    }
-    if (touchEndX > touchStartX + swipeThreshold) {
-        triggerHaptic();
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    }
-}
+    if (touchEndX < touchStartX - swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
+    if (touchEndX > touchStartX + swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
+}, { passive: true });
 
 document.getElementById('admin-trigger').addEventListener('click', () => {
     clickCount++;
@@ -256,25 +272,11 @@ onSnapshot(eventsRef, (snapshot) => {
     snapshot.forEach((doc) => {
         const data = doc.data();
         events.push({ 
-            id: doc.id, 
-            title: data.title,
-            icon: data.icon || '',
-            startDate: data.startDate || data.date,
-            endDate: data.endDate || data.date,
-            time: data.time || '',
-            author: data.author || '',
-            description: data.description || '',
-            isNav: data.isNav || false,
-            color: data.color || 'bg-rose-400',
-            isExpense: data.isExpense || false,
-            payers: data.payers || [],
-            expenseSplits: data.expenseSplits || 4
+            id: doc.id, title: data.title, icon: data.icon || '', startDate: data.startDate || data.date, endDate: data.endDate || data.date, time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4
         });
     });
     renderApp();
-    if (selectedDateForModal) {
-        openDayModal(selectedDateForModal, false);
-    }
+    if (selectedDateForModal) openDayModal(selectedDateForModal, false);
 });
 
 function formatDateStr(date) {
@@ -296,19 +298,14 @@ document.getElementById('ics-file-input').addEventListener('change', async (e) =
     reader.onload = async function(event) {
         const text = event.target.result;
         const eventsToImport = parseICS(text);
-        if (eventsToImport.length === 0) {
-            alert('無法解析該 ICS 檔案！');
-            return;
-        }
+        if (eventsToImport.length === 0) return alert('無法解析該 ICS 檔案！');
         if (confirm(`確認批次匯入 ${eventsToImport.length} 筆資料？`)) {
             try {
                 for (let evt of eventsToImport) await addDoc(eventsRef, evt);
                 triggerHaptic();
                 alert('匯入成功！');
                 document.getElementById('admin-modal').classList.add('hidden');
-            } catch (err) {
-                alert('匯入失敗，請稍後再試。');
-            }
+            } catch (err) { alert('匯入失敗，請稍後再試。'); }
         }
         e.target.value = '';
     };
@@ -332,9 +329,7 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
             triggerHaptic();
             alert('清除成功！');
             document.getElementById('admin-modal').classList.add('hidden');
-        } catch (err) {
-            alert('清理失敗。');
-        }
+        } catch (err) { alert('清理失敗。'); }
     }
 });
 
@@ -358,9 +353,7 @@ function parseICS(icsText) {
             else if (line.startsWith('DTEND')) {
                 let d = parseICSDateObj(line.split(':').pop().trim());
                 if (d) { d.setDate(d.getDate() - 1); currentEvent.endDate = formatDateStr(d); }
-            } else if (line.startsWith('DESCRIPTION:')) {
-                currentEvent.description = line.substring(12).trim();
-            }
+            } else if (line.startsWith('DESCRIPTION:')) { currentEvent.description = line.substring(12).trim(); }
         }
     }
     parsedEvents.forEach(e => { if (!e.endDate) e.endDate = e.startDate; });
@@ -422,13 +415,23 @@ function createDayCell(dayNum, dateStr, isToday = false) {
     let cellBgClass = isToday ? 'bg-warm-50 border-warm-300 ring-2 ring-warm-400' : (isRedDay ? 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80' : 'bg-white hover:border-warm-300 hover:shadow-sm');
 
     const cell = document.createElement('div');
-    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
+    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden relative`;
     cell.addEventListener('click', () => { triggerHaptic(); openDayModal(dateStr); });
     
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
+    
+    // 🌟 整合氣象資訊：如果當天有氣象預報，顯示在右上角
+    const weatherInfo = weatherData[dateStr] ? `<span class="text-[8px] text-blue-500 font-bold bg-blue-50 px-1 rounded-full">${weatherData[dateStr]}</span>` : '';
+    
     const header = document.createElement('div');
     header.className = 'flex justify-between items-center px-0.5 shrink-0';
-    header.innerHTML = `<span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span><span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>`;
+    header.innerHTML = `
+        <div class="flex items-center gap-1">
+            <span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
+            ${weatherInfo}
+        </div>
+        <span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>
+    `;
     cell.appendChild(header);
 
     const eventsContainer = document.createElement('div');
@@ -541,9 +544,7 @@ function openModal(eventId = null, defaultDate = null) {
                 expenseFields.classList.remove('hidden');
                 evt.payers.forEach(p => addPayerRow(p.name, p.amount));
                 document.getElementById('expense-splits').value = evt.expenseSplits || 4;
-            } else {
-                expenseCheckbox.checked = false;
-            }
+            } else { expenseCheckbox.checked = false; }
         }
     } else {
         document.getElementById('modal-title').innerText = '新增活動';
