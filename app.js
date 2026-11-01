@@ -13,9 +13,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const eventsRef = collection(db, 'familyEvents');
+const membersRef = collection(db, 'familyMembers');
 
 let currentDate = new Date();
 let events = [];
+let familyMembers = [];
 let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
@@ -29,7 +31,117 @@ function triggerHaptic() {
     }
 }
 
-// 記帳區塊開關聯動
+/* ================== 成員管理系統 (Member Management) ================== */
+onSnapshot(membersRef, (snapshot) => {
+    familyMembers = [];
+    snapshot.forEach((doc) => {
+        familyMembers.push({ id: doc.id, name: doc.data().name });
+    });
+    // 依名字拼音排序
+    familyMembers.sort((a, b) => a.name.localeCompare(b.name));
+    renderMemberSelects();
+    renderMemberManageList();
+});
+
+// 同步更新畫面上所有的下拉成員選單 (包含建立者與所有動態產生的墊付人)
+function renderMemberSelects() {
+    const selects = document.querySelectorAll('.member-select');
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="" disabled selected>請選擇成員...</option>';
+        familyMembers.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.textContent = m.name;
+            select.appendChild(opt);
+        });
+        
+        // 若之前選的值依然存在，或屬於歷史遺留資料，則將其保留顯示
+        if (familyMembers.some(m => m.name === currentValue)) {
+            select.value = currentValue;
+        } else if (currentValue && currentValue !== '政府行事曆') {
+            const opt = document.createElement('option');
+            opt.value = currentValue;
+            opt.textContent = `${currentValue} (已刪除)`;
+            select.appendChild(opt);
+            select.value = currentValue;
+        }
+    });
+}
+
+// 渲染成員管理視窗的列表
+function renderMemberManageList() {
+    const container = document.getElementById('member-list-container');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    if(familyMembers.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-400 text-sm py-6"><i class="fas fa-user-plus mb-2 text-xl opacity-50"></i><br>目前尚未建立任何成員</p>';
+        return;
+    }
+
+    familyMembers.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'flex justify-between items-center bg-white p-3 rounded-xl border border-warm-100 shadow-sm transition-all hover:border-warm-300';
+        item.innerHTML = `
+            <span class="font-bold text-gray-700 text-sm">${m.name}</span>
+            <div class="flex gap-1">
+                <button class="btn-edit-member text-warm-500 hover:bg-warm-50 px-2.5 py-1.5 rounded-lg transition-colors"><i class="fas fa-pen"></i></button>
+                <button class="btn-delete-member text-rose-400 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-colors"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        `;
+        
+        // 編輯成員名稱
+        item.querySelector('.btn-edit-member').addEventListener('click', async () => {
+            triggerHaptic();
+            const newName = prompt('請輸入新的成員名稱：', m.name);
+            if (newName && newName.trim() !== '' && newName.trim() !== m.name) {
+                if (familyMembers.some(ext => ext.name === newName.trim())) {
+                    alert('此名字已經存在囉！');
+                    return;
+                }
+                await updateDoc(doc(db, 'familyMembers', m.id), { name: newName.trim() });
+            }
+        });
+
+        // 刪除成員
+        item.querySelector('.btn-delete-member').addEventListener('click', async () => {
+            triggerHaptic();
+            if (confirm(`確定要刪除成員「${m.name}」嗎？\n(注意：這不會影響過去已經建立的歷史行程，但未來的下拉選單中將無法再選取此成員)`)) {
+                await deleteDoc(doc(db, 'familyMembers', m.id));
+            }
+        });
+        container.appendChild(item);
+    });
+}
+
+// 新增成員按鈕
+document.getElementById('btn-add-member').addEventListener('click', async () => {
+    triggerHaptic();
+    const input = document.getElementById('new-member-name');
+    const name = input.value.trim();
+    if (name) {
+        if(familyMembers.some(m => m.name === name)) {
+            alert('這個成員已經存在囉！');
+            return;
+        }
+        await addDoc(membersRef, { name: name });
+        input.value = '';
+    }
+});
+
+// 開啟/關閉成員管理 Modal
+document.getElementById('btn-manage-members').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+document.getElementById('btn-close-member-modal').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.add('hidden');
+});
+
+
+/* ================== 記帳與分帳區塊 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
@@ -38,28 +150,43 @@ expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
         expenseFields.classList.remove('hidden');
         if (payersContainer.children.length === 0) {
-            addPayerRow('爸爸', '');
+            addPayerRow('', '');
         }
     } else {
         expenseFields.classList.add('hidden');
     }
 });
 
-// 動態新增代墊人行
-function addPayerRow(name = '爸爸', amount = '') {
+function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
     row.innerHTML = `
-        <select class="payer-name px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none">
-            <option value="爸爸" ${name === '爸爸' ? 'selected' : ''}>爸爸</option>
-            <option value="媽媽" ${name === '媽媽' ? 'selected' : ''}>媽媽</option>
-            <option value="大妹" ${name === '大妹' ? 'selected' : ''}>大妹</option>
-            <option value="小女兒" ${name === '小女兒' ? 'selected' : ''}>小女兒</option>
-            <option value="家族成員" ${name === '家族成員' ? 'selected' : ''}>其他成員</option>
+        <select class="payer-name member-select w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
+            <option value="" disabled selected>請選擇...</option>
         </select>
-        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none">
+        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
     `;
+    
+    // 動態載入目前資料庫中的成員選項
+    const newSelect = row.querySelector('.member-select');
+    familyMembers.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = m.name;
+        newSelect.appendChild(opt);
+    });
+    
+    if (name) {
+        if (!familyMembers.some(m => m.name === name)) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = `${name} (已刪除)`;
+            newSelect.appendChild(opt);
+        }
+        newSelect.value = name;
+    }
+
     row.querySelector('.btn-remove-payer').addEventListener('click', () => {
         row.remove();
     });
@@ -71,7 +198,9 @@ document.getElementById('btn-add-payer').addEventListener('click', () => {
     addPayerRow();
 });
 
-const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal'];
+
+/* ================== 行事曆核心邏輯 ================== */
+const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal'];
 modals.forEach(modalId => {
     const modalEl = document.getElementById(modalId);
     modalEl.addEventListener('click', (e) => {
@@ -138,12 +267,12 @@ onSnapshot(eventsRef, (snapshot) => {
             startDate: data.startDate || data.date,
             endDate: data.endDate || data.date,
             time: data.time || '',
-            author: data.author || '家族成員',
+            author: data.author || '',
             description: data.description || '',
             isNav: data.isNav || false,
             color: data.color || 'bg-rose-400',
             isExpense: data.isExpense || false,
-            payers: data.payers || [], // 格式: [{name: '爸爸', amount: 2000}, ...]
+            payers: data.payers || [],
             expenseSplits: data.expenseSplits || 4
         });
     });
@@ -461,7 +590,7 @@ function openDayModal(dateStr, setGlobal = true) {
             listContainer.appendChild(item);
         });
     }
-    document.getElementById('day-modal').classList.add('hidden');
+    document.getElementById('day-modal').classList.remove('hidden');
 }
 
 function closeDayModal() {
@@ -564,7 +693,7 @@ function openModal(eventId = null, defaultDate = null) {
             document.getElementById('event-start-date').value = evt.startDate;
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
             document.getElementById('event-time').value = evt.time || '';
-            document.getElementById('event-author').value = evt.author === '政府行事曆' ? '爸爸' : (evt.author || '爸爸');
+            document.getElementById('event-author').value = evt.author === '政府行事曆' ? '' : (evt.author || '');
             document.getElementById('event-desc').value = evt.description || '';
             document.getElementById('event-is-nav').checked = evt.isNav || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
@@ -582,6 +711,7 @@ function openModal(eventId = null, defaultDate = null) {
         document.getElementById('modal-title').innerText = '新增活動';
         document.getElementById('btn-delete').classList.add('hidden');
         expenseCheckbox.checked = false;
+        document.getElementById('event-author').value = '';
         const dStr = defaultDate || formatDateStr(new Date());
         document.getElementById('event-start-date').value = dStr;
         document.getElementById('event-end-date').value = dStr;
@@ -605,7 +735,7 @@ function copyEventToModal(eventId) {
         document.getElementById('event-start-date').value = evt.startDate;
         document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
         document.getElementById('event-time').value = evt.time || '';
-        document.getElementById('event-author').value = evt.author === '政府行事曆' ? '爸爸' : (evt.author || '爸爸');
+        document.getElementById('event-author').value = evt.author === '政府行事曆' ? '' : (evt.author || '');
         document.getElementById('event-desc').value = evt.description || '';
         document.getElementById('event-is-nav').checked = evt.isNav || false;
         document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
@@ -703,7 +833,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         rows.forEach(row => {
             const name = row.querySelector('.payer-name').value;
             const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            if (amount > 0) {
+            if (name && amount > 0) {
                 payersList.push({ name, amount });
             }
         });
