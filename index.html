@@ -50,7 +50,6 @@
         <div class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between select-none">
             <h1 class="text-xl md:text-2xl font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
             <div class="flex items-center gap-2">
-                <!-- ⚙️ 直接顯示的設定 / 管理後台按鈕 -->
                 <button id="btn-open-admin" class="w-9 h-9 bg-warm-100 hover:bg-warm-200 text-warm-700 rounded-xl flex items-center justify-center font-bold transition-all active:scale-95 shadow-sm" title="管理員後台">
                     <i class="fas fa-cog"></i>
                 </button>
@@ -91,7 +90,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v6.2</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v6.3</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -177,7 +176,6 @@
                     <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF 網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
                 </div>
                 
-                <!-- 地點與導航連結欄位 -->
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-map-marker-alt text-rose-500"></i> 地點名稱與導航連結 (可選)</label>
                     <div class="space-y-2">
@@ -223,7 +221,6 @@
                     <textarea id="event-desc" rows="2" placeholder="注意事項..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"></textarea>
                 </div>
 
-                <!-- 裝備/任務清單啟用 -->
                 <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-emerald-900 flex items-center gap-1.5 cursor-pointer">
@@ -239,7 +236,6 @@
                     </div>
                 </div>
 
-                <!-- 投票啟用 -->
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
@@ -255,7 +251,6 @@
                     </div>
                 </div>
 
-                <!-- 代墊記帳啟用 -->
                 <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
@@ -330,7 +325,6 @@
                 <div id="view-photo-container" class="hidden mb-2"><img id="view-photo" class="w-full object-cover max-h-48 rounded-xl"></div>
                 <div id="view-file-container" class="hidden mb-2"><a id="view-file-link" href="#" target="_blank" class="w-full py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><i class="fas fa-paperclip"></i> 開啟附件檔案</a></div>
                 
-                <!-- 檢視導航按鈕 -->
                 <div id="view-map-container" class="hidden mb-2">
                     <a id="view-map-link" href="#" target="_blank" class="w-full py-2 bg-rose-50 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
                         <i class="fas fa-map-marked-alt"></i> 地點導航：<span id="view-location-text"></span>
@@ -340,7 +334,6 @@
                 <p id="view-date" class="text-sm font-bold text-gray-600"></p>
                 <p id="view-author" class="text-xs text-gray-400"></p>
 
-                <!-- 裝備/任務清單檢視 -->
                 <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
                     <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
                         <span><i class="fas fa-clipboard-check text-sm mr-1"></i> 裝備與任務清單</span>
@@ -349,7 +342,6 @@
                     <div id="view-checklist-items" class="space-y-1.5 text-xs"></div>
                 </div>
 
-                <!-- 投票檢視 -->
                 <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl space-y-2.5 hidden border border-indigo-100">
                     <div class="font-bold text-xs text-indigo-800 flex items-center justify-between">
                         <span><i class="fas fa-poll text-base mr-1"></i> 家族保密投票</span>
@@ -366,7 +358,6 @@
                     </button>
                 </div>
 
-                <!-- 代墊記帳檢視 -->
                 <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
                     <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 代墊與分帳結算</div>
                     <div id="view-expense-details" class="text-xs space-y-1.5"></div>
@@ -379,12 +370,51 @@
         </div>
     </div>
 
-    <!-- Member Modal (管理成員後台) -->
+    <!-- Member Modal (管理成員與備份/匯入後台) -->
     <div id="member-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-modal">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content" onclick="event.stopPropagation()">
-            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-lg font-bold">成員管理</h3><button id="btn-close-member-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
-            <div class="p-4 border-b flex gap-2"><input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none"><button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button></div>
-            <div id="member-list-container" class="p-4 space-y-2 overflow-y-auto flex-1 bg-gray-50"></div>
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] modal-content" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold">管理與資料備份</h3>
+                <button id="btn-close-member-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                <!-- 成員管理區塊 -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">家族成員管理</label>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
+                        <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="member-list-container" class="space-y-2 max-h-36 overflow-y-auto bg-gray-50 p-2 rounded-xl border"></div>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <!-- 📅 匯入政府行事曆/節日區塊 -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-gray-700">政府行事曆與節日</label>
+                    <button id="btn-import-gov-holidays" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fas fa-calendar-alt"></i> 一鍵匯入 2026 政府行事曆與國定假日
+                    </button>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <!-- 💾 備份與還原資料區塊 -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-gray-700">資料備份與還原 (JSON)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-export-json" class="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm">
+                            <i class="fas fa-download"></i> 匯出備份
+                        </button>
+                        <label class="py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+                            <i class="fas fa-upload"></i> 還原檔案
+                            <input type="file" id="input-import-json" accept=".json" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -393,6 +423,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=6.2"></script>
+    <script type="module" src="./app.js?v=6.3"></script>
 </body>
 </html>

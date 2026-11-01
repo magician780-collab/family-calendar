@@ -43,7 +43,7 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ⚙️ 點擊設定按鈕直接開啟成員管理後台 */
+/* ⚙️ 點擊設定按鈕開啟管理與備份後台 */
 document.getElementById('btn-open-admin').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
@@ -178,6 +178,75 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
     }
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+
+/* 📅 2026 政府行事曆與國定假日一鍵匯入功能 */
+document.getElementById('btn-import-gov-holidays').addEventListener('click', async () => {
+    if (!confirm('確定要一鍵匯入 2026 年政府行事曆與國定假日嗎？')) return;
+    triggerHaptic();
+
+    const govHolidays = [
+        { title: '元旦', startDate: '2026-01-01', endDate: '2026-01-01', icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+        { title: '農曆除夕', startDate: '2026-02-16', endDate: '2026-02-16', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+        { title: '春節', startDate: '2026-02-17', endDate: '2026-02-21', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+        { title: '和平紀念日', startDate: '2026-02-28', endDate: '2026-02-28', icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+        { title: '兒童節/民族掃墓節', startDate: '2026-04-04', endDate: '2026-04-05', icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+        { title: '勞動節', startDate: '2026-05-01', endDate: '2026-05-01', icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+        { title: '端午節', startDate: '2026-06-19', endDate: '2026-06-19', icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+        { title: '中秋節', startDate: '2026-09-25', endDate: '2026-09-25', icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+        { title: '國慶日', startDate: '2026-10-10', endDate: '2026-10-10', icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+    ];
+
+    try {
+        for (const h of govHolidays) {
+            await addDoc(eventsRef, h);
+        }
+        alert('🎉 2026 政府行事曆與國定假日已成功匯入！');
+    } catch (err) {
+        alert('匯入失敗，請檢查網路連線。');
+    }
+});
+
+/* 💾 JSON 備份與還原功能 */
+document.getElementById('btn-export-json').addEventListener('click', () => {
+    triggerHaptic();
+    const backupData = {
+        exportDate: new Date().toISOString(),
+        events: events
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `family_calendar_backup_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+});
+
+document.getElementById('input-import-json').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const json = JSON.parse(event.target.result);
+            if (json.events && Array.isArray(json.events)) {
+                if (confirm(`確定要還原 ${json.events.length 5} 筆行程資料嗎？這將會匯入至您的行事曆中。`)) {
+                    for (const ev of json.events) {
+                        delete ev.id; // 移除舊 ID 以免衝突
+                        await addDoc(eventsRef, ev);
+                    }
+                    alert('🎉 資料還原與匯入成功！');
+                    document.getElementById('member-modal').classList.add('hidden');
+                }
+            } else {
+                alert('檔案格式錯誤，找不到有效的行程資料。');
+            }
+        } catch (err) {
+            alert('解析 JSON 檔案失敗，請確認檔案格式。');
+        }
+    };
+    reader.readAsText(file);
+});
 
 /* 相片牆開啟與渲染 */
 const galleryModal = document.getElementById('gallery-modal');
