@@ -639,7 +639,7 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 🌟 匿名投票顯示邏輯
+    // 🌟 單選匿名投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
@@ -648,7 +648,6 @@ function openViewModal(eventId) {
             const row = document.createElement('div');
             row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
             
-            // 檢查本機 deviceId 是否有投給這個選項
             const hasVoted = opt.voters && opt.voters.includes(deviceId);
             const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
             
@@ -660,19 +659,23 @@ function openViewModal(eventId) {
                     </button>
                 </div>
             `;
+            
             row.querySelector('.btn-vote').addEventListener('click', async () => {
                 triggerHaptic();
                 
-                let updatedOptions = [...evt.pollOptions];
-                let vList = updatedOptions[idx].voters || [];
+                // 複製原陣列，避免直接污染前端暫存資料
+                let updatedOptions = evt.pollOptions.map(o => ({...o, voters: [...(o.voters || [])]}));
+                const isCurrentlyVoted = updatedOptions[idx].voters.includes(deviceId);
                 
-                if (vList.includes(deviceId)) {
-                    vList = vList.filter(id => id !== deviceId); 
-                } else {
-                    vList.push(deviceId); 
+                // 🌟 單選核心邏輯：先強制把這個 deviceId 從「所有選項」中拔除
+                updatedOptions.forEach(o => {
+                    o.voters = o.voters.filter(id => id !== deviceId);
+                });
+                
+                // 🌟 如果原本沒投給這個選項，就把票加上去 (如果原本就有投，上面已經拔除，就等於取消投票)
+                if (!isCurrentlyVoted) {
+                    updatedOptions[idx].voters.push(deviceId);
                 }
-                
-                updatedOptions[idx].voters = vList;
                 
                 try { await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); } 
                 catch(e) { console.error("Vote failed", e); }
