@@ -215,15 +215,27 @@ function renderCalendar() {
 }
 
 function createDayCell(dayNum, dateStr, isToday) {
+    const dateObj = new Date(dateStr);
+    const dayOfWeek = dateObj.getDay();
+
+    // 🌟 檢查是否為國定假日或週末（自動反紅）
+    const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+    const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    const isRedDay = isWeekend || isGovHoliday;
+
+    let cellBgClass = isToday ? 'bg-warm-50 ring-2 ring-warm-400' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
+
     const cell = document.createElement('div');
-    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 bg-white cursor-pointer relative ${isToday ? 'bg-warm-50 ring-2 ring-warm-400' : ''}`;
+    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass}`;
     cell.addEventListener('click', () => openDayModal(dateStr));
     
-    cell.innerHTML = `<div class="flex justify-between items-center px-0.5"><span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-warm-500 text-white' : 'text-gray-600'}">${dayNum}</span><span class="text-[9px] text-blue-500">${weatherData[dateStr] || ''}</span></div>`;
+    let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
+    cell.innerHTML = `<div class="flex justify-between items-center px-0.5"><span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span><span class="text-[9px] text-blue-500">${weatherData[dateStr] || ''}</span></div>`;
     
     const container = document.createElement('div');
     container.className = 'flex flex-col gap-0.5 overflow-y-auto flex-1 hide-scrollbar';
-    events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).forEach(evt => {
+    dayEvents.forEach(evt => {
         const el = document.createElement('div');
         el.className = `${evt.color} text-white text-[9px] font-bold px-1 py-0.5 rounded truncate`;
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}`;
@@ -259,7 +271,11 @@ function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const empty = document.getElementById('no-upcoming');
     container.innerHTML = '';
-    const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+    
+    const todayObj = new Date();
+    todayObj.setHours(0, 0, 0, 0);
+    const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+    
     const upcoming = events.filter(e => e.endDate >= todayStr).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
     empty.classList.toggle('hidden', upcoming.length > 0);
@@ -267,8 +283,35 @@ function renderUpcoming() {
         const el = document.createElement('div');
         el.className = 'bg-white p-3 rounded-xl border shadow-sm cursor-pointer flex items-center gap-3';
         el.addEventListener('click', () => openViewModal(evt.id));
+
+        // 🌟 智慧倒數天數計算
+        const [sY, sM, sD] = evt.startDate.split('-').map(Number);
+        const startObj = new Date(sY, sM - 1, sD);
+        const diffDays = Math.round((startObj - todayObj) / (1000 * 60 * 60 * 24));
+        
+        let countdownHtml = '';
+        if (diffDays <= 0) {
+            countdownHtml = `<span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-extrabold animate-pulse">🎉 今天</span>`;
+        } else if (diffDays === 1) {
+            countdownHtml = `<span class="px-2 py-0.5 bg-orange-500 text-white rounded-full text-[10px] font-bold">🔥 明天</span>`;
+        } else if (diffDays <= 7) {
+            countdownHtml = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold">⏳ 倒數 ${diffDays} 天</span>`;
+        } else {
+            countdownHtml = `<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">還有 ${diffDays} 天</span>`;
+        }
+
         const [y, m, d] = evt.startDate.split('-');
-        el.innerHTML = `<div class="${evt.color} text-white rounded-xl w-10 h-10 flex flex-col items-center justify-center shrink-0"><span class="text-[10px]">${m}月</span><span class="text-sm font-bold">${d}</span></div><div class="flex-1 truncate"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4></div>`;
+        el.innerHTML = `
+            <div class="${evt.color} text-white rounded-xl w-11 h-11 flex flex-col items-center justify-center shrink-0">
+                <span class="text-[9px]">${m}月</span><span class="text-sm font-bold">${d}</span>
+            </div>
+            <div class="flex-1 truncate">
+                <div class="flex justify-between items-center gap-1">
+                    <h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4>
+                    ${countdownHtml}
+                </div>
+                <span class="text-[10px] text-gray-400 mt-0.5 block">${evt.startDate}</span>
+            </div>`;
         container.appendChild(el);
     });
 }
