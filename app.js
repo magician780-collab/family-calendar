@@ -43,7 +43,7 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* 設定按鈕開啟管理與備份後台 */
+/* ⚙️ 點擊設定按鈕開啟管理與備份後台 */
 document.getElementById('btn-open-admin').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
@@ -87,6 +87,15 @@ function handleSwipeGesture() {
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
     }
+}
+
+/* 🔍 搜尋功能監聽 */
+const searchInputEl = document.getElementById('search-input');
+if (searchInputEl) {
+    searchInputEl.addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim().toLowerCase();
+        renderApp(); // 觸發重新渲染，動態過濾行事曆與即將到來
+    });
 }
 
 /* 主題風格 */
@@ -259,9 +268,7 @@ function renderGalleryGrid() {
 }
 
 
-/* ================= 👑 核心優化：建立原生的下拉選單，並在已選清單中將名單自動去重（不可再選） ================= */
-
-// 取得全部成員下拉選單的通用 HTML 結構
+/* ================= 下拉選單處理 ================= */
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
     familyMembers.forEach(m => {
@@ -270,7 +277,6 @@ function getMemberOptions(selected = '', defaultText = '請選擇...') {
     return html;
 }
 
-// CheckList 專用的下拉（允許留空為未認領）
 function getChecklistMemberOptions(selected = '') {
     let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
     familyMembers.forEach(m => {
@@ -279,20 +285,16 @@ function getChecklistMemberOptions(selected = '') {
     return html;
 }
 
-// 即時動態排除已選過的成員（防呆機制）
 function updateUniqueSelects(containerId, selectClass) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const selects = Array.from(container.querySelectorAll(selectClass));
-    // 找出當前在該區塊中所有已被選取的名字
     const selectedValues = selects.map(s => s.value).filter(v => v !== '');
 
     selects.forEach(select => {
         const currentValue = select.value;
         Array.from(select.options).forEach(option => {
-            if (option.value === '') return; // 略過佔位符提示
-            
-            // 如果這個選項在其他列被選過了，就禁用它，不准重複選
+            if (option.value === '') return;
             if (selectedValues.includes(option.value) && option.value !== currentValue) {
                 option.disabled = true;
                 option.textContent = `${option.value} (已選)`;
@@ -476,7 +478,19 @@ function renderCalendar() {
 function createDayCell(dayNum, dateStr, isToday) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
-    const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+    
+    // 🔍 加入過濾邏輯
+    const dayEvents = events.filter(e => {
+        const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
+        if (!inRange) return false;
+        if (!searchQuery) return true;
+        
+        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
+        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
+        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
+        return tMatch || aMatch || lMatch;
+    });
+
     const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
     const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
     const isRedDay = isWeekend || isGovHoliday;
@@ -509,9 +523,21 @@ function openDayModal(dateStr, setGlobal = true) {
     document.getElementById('day-modal-title').innerText = `${dateStr} 行程`;
     const list = document.getElementById('day-modal-list');
     list.innerHTML = '';
-    const dayEvts = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+    
+    // 🔍 加入過濾邏輯
+    const dayEvts = events.filter(e => {
+        const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
+        if (!inRange) return false;
+        if (!searchQuery) return true;
+        
+        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
+        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
+        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
+        return tMatch || aMatch || lMatch;
+    });
+
     if (dayEvts.length === 0) {
-        list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">這一天沒有行程</p>';
+        list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">這一天沒有符合的行程</p>';
     } else {
         dayEvts.forEach(evt => {
             const item = document.createElement('div');
@@ -533,7 +559,17 @@ function renderUpcoming() {
     const todayObj = new Date();
     todayObj.setHours(0, 0, 0, 0);
     const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
-    const upcoming = events.filter(e => e.endDate >= todayStr).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
+    
+    // 🔍 加入過濾邏輯
+    const upcoming = events.filter(e => {
+        if (e.endDate < todayStr) return false;
+        if (!searchQuery) return true;
+        
+        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
+        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
+        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
+        return tMatch || aMatch || lMatch;
+    }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
     empty.classList.toggle('hidden', upcoming.length > 0);
     upcoming.forEach(evt => {
@@ -582,7 +618,6 @@ document.getElementById('btn-close-day-modal').addEventListener('click', closeDa
 document.getElementById('btn-close-view').addEventListener('click', () => document.getElementById('view-modal').classList.add('hidden'));
 document.getElementById('btn-edit-from-view').addEventListener('click', () => { const id = currentViewingId; document.getElementById('view-modal').classList.add('hidden'); openModal(id); });
 
-
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
@@ -606,7 +641,6 @@ function openModal(id = null) {
 
     currentEditingId = id;
     
-    // 動態載入建立者的原生 Select 列表
     const authorSelect = document.getElementById('event-author');
 
     if (id) {
@@ -726,7 +760,6 @@ function openViewModal(id) {
         evt.pollOptions.forEach(opt => opt.voters.forEach(name => allVotedMembersSet.add(name)));
         const allVotedMembersArr = Array.from(allVotedMembersSet);
 
-        // 建立投票者下拉選單，過濾已經投過票的人！
         voterSelect.innerHTML = '<option value="" disabled selected>請選擇您是哪位成員...</option>';
         familyMembers.forEach(m => {
             const hasVoted = allVotedMembersArr.includes(m.name);
@@ -788,9 +821,6 @@ function openViewModal(id) {
             }
         };
 
-        if (voterSelect) voterSelect.onchange = () => {
-            // 當選擇了成員，不需要重新整理 Modal，只要記錄目前選擇的身份即可
-        };
         pollContainer.classList.remove('hidden');
     } else {
         pollContainer.classList.add('hidden');
