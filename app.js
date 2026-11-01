@@ -192,7 +192,61 @@ document.getElementById('btn-remove-photo').addEventListener('click', () => {
     photoPreview.classList.add('hidden');
 });
 
-/* ================== 🌟 攜帶物品與任務認領系統 ================== */
+/* ================== 🌟 家庭回憶相簿牆互動邏輯 ================== */
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => {
+    triggerHaptic();
+    renderGalleryGrid();
+    galleryModal.classList.remove('hidden');
+});
+document.getElementById('btn-close-gallery').addEventListener('click', () => {
+    triggerHaptic();
+    galleryModal.classList.add('hidden');
+});
+
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    
+    // 篩選出所有有上傳照片的行程
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    if (photoEvents.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-16 text-gray-400">
+                <i class="far fa-images text-4xl mb-3 opacity-50"></i>
+                <p class="text-sm">目前還沒有任何相片記錄喔！</p>
+                <p class="text-xs text-gray-300 mt-1">在建立或編輯行程時貼上相片網址，照片就會自動收錄在這裡。</p>
+            </div>
+        `;
+        return;
+    }
+
+    photoEvents.forEach(evt => {
+        const item = document.createElement('div');
+        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer flex flex-col group';
+        item.innerHTML = `
+            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative">
+                <img src="${evt.photoUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    ${evt.startDate}
+                </div>
+            </div>
+            <div class="p-3 flex flex-col justify-between flex-1">
+                <h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
+                <p class="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><i class="far fa-user"></i> ${evt.author || '家族成員'}</p>
+            </div>
+        `;
+        item.addEventListener('click', () => {
+            triggerHaptic();
+            galleryModal.classList.add('hidden');
+            openViewModal(evt.id);
+        });
+        container.appendChild(item);
+    });
+}
+
+/* ================== 攜帶物品與任務認領系統 ================== */
 const checklistCheckbox = document.getElementById('event-is-checklist');
 const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
@@ -246,7 +300,7 @@ function addPollOptionRow(title = '') {
 }
 document.getElementById('btn-add-poll-option').addEventListener('click', () => { triggerHaptic(); addPollOptionRow(); });
 
-/* ================== 🌟 記帳與權重分帳系統 ================== */
+/* ================== 記帳與權重分帳系統 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
@@ -272,7 +326,6 @@ function addPayerRow(name = '', amount = '') {
 }
 document.getElementById('btn-add-payer').addEventListener('click', () => { triggerHaptic(); addPayerRow(); });
 
-// 新增權重分攤人列
 function addSharerRow(name = '', weight = 1) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 sharer-row';
@@ -290,7 +343,7 @@ function addSharerRow(name = '', weight = 1) {
 document.getElementById('btn-add-sharer').addEventListener('click', () => { triggerHaptic(); addSharerRow('', 1); });
 
 /* ================== 行事曆核心 ================== */
-const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal'];
+const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal', 'gallery-modal'];
 modals.forEach(modalId => {
     const modalEl = document.getElementById(modalId);
     modalEl.addEventListener('click', (e) => {
@@ -353,7 +406,7 @@ function formatDateStr(date) {
 
 document.getElementById('search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
 
-/* ================== 後台管理：ICS 與 🌟 JSON 完整備份還原 ================== */
+/* ================== 後台管理：ICS 與 JSON 完整備份還原 ================== */
 document.getElementById('ics-file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -396,11 +449,10 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
     }
 });
 
-// 🌟 一鍵匯出 JSON 備份檔
 document.getElementById('btn-export-backup').addEventListener('click', () => {
     triggerHaptic();
     const backupData = {
-        version: '4.0',
+        version: '4.1',
         exportedAt: new Date().toISOString(),
         familyMembers: familyMembers.map(m => ({ name: m.name })),
         familyEvents: events.map(({ id, ...rest }) => rest),
@@ -415,7 +467,6 @@ document.getElementById('btn-export-backup').addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
-// 🌟 匯入 JSON 備份檔還原
 document.getElementById('json-restore-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -426,7 +477,6 @@ document.getElementById('json-restore-input').addEventListener('change', (e) => 
             if (!data.familyEvents && !data.familyMembers) return alert('備份檔案格式不正確！');
             
             if (confirm(`確定要從備份檔還原嗎？\n將匯入 ${data.familyMembers?.length || 0} 位成員與 ${data.familyEvents?.length || 0} 筆行程。`)) {
-                // 還原成員 (過濾已存在的同名成員)
                 if (data.familyMembers) {
                     for (let m of data.familyMembers) {
                         if (m.name && !familyMembers.some(ext => ext.name === m.name)) {
@@ -434,13 +484,11 @@ document.getElementById('json-restore-input').addEventListener('change', (e) => 
                         }
                     }
                 }
-                // 還原行程
                 if (data.familyEvents) {
                     for (let evt of data.familyEvents) {
                         await addDoc(eventsRef, evt);
                     }
                 }
-                // 還原便利貼
                 if (typeof data.stickyNote === 'string') {
                     await setDoc(noteRef, { content: data.stickyNote }, { merge: true });
                 }
@@ -598,7 +646,6 @@ function openDayModal(dateStr, setGlobal = true) {
 
 function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); selectedDateForModal = null; }
 
-/* ================== 🌟 即將到來 (含倒數計時標籤) ================== */
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const emptyState = document.getElementById('no-upcoming');
@@ -621,7 +668,6 @@ function renderUpcoming() {
             const startObj = new Date(sY, sM - 1, sD);
             const diffDays = Math.round((startObj - todayObj) / (1000 * 60 * 60 * 24));
             
-            // 計算倒數計時標籤
             let countdownHtml = '';
             if (diffDays <= 0) {
                 countdownHtml = `<span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-extrabold shadow-sm animate-pulse shrink-0">🎉 今天</span>`;
@@ -775,7 +821,7 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 🌟 攜帶物品與任務認領清單渲染與直接打勾互動
+    // 攜帶物品清單渲染
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItemsEl = document.getElementById('view-checklist-items');
     const checkProgressEl = document.getElementById('view-checklist-progress');
@@ -808,7 +854,7 @@ function openViewModal(eventId) {
         checkContainer.classList.add('hidden');
     }
 
-    // 單選匿名投票顯示邏輯
+    // 匿名投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -853,7 +899,7 @@ function openViewModal(eventId) {
         pollContainer.classList.remove('hidden');
     } else { pollContainer.classList.add('hidden'); }
 
-    // 🌟 分帳與權重結算邏輯
+    // 分帳與權重結算邏輯
     const expenseContainer = document.getElementById('view-expense-container');
     const totalExp = getTotalExpense(evt);
     if (evt.isExpense && totalExp > 0) {
@@ -863,7 +909,6 @@ function openViewModal(eventId) {
             const totalWeight = evt.sharers.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
             const perUnit = totalWeight > 0 ? (totalExp / totalWeight) : 0;
 
-            // 計算每個人的淨收支 (墊付 - 應分攤)
             const paidMap = {};
             evt.payers.forEach(p => { paidMap[p.name] = (paidMap[p.name] || 0) + (parseFloat(p.amount) || 0); });
 
@@ -905,6 +950,7 @@ function openViewModal(eventId) {
         document.getElementById('map-btn-container').classList.remove('hidden');
     } else document.getElementById('map-btn-container').classList.add('hidden');
     
+    document.getElementById('view-modal').classList.add('hidden'); // 避免衝突
     document.getElementById('view-modal').classList.remove('hidden');
 }
 
@@ -917,10 +963,9 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     const authorInput = document.getElementById('event-author').value.trim();
     if (authorInput !== '' && authorInput !== '政府行事曆') {
         const isAuthorExist = familyMembers.some(m => m.name === authorInput);
-        if (!isAuthorExist) return alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在「管理成員」新增。`);
+        if (!isAuthorExist) return alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在側邊欄「管理成員」新增。`);
     }
 
-    // 驗證裝備與任務認領人
     const isChecklist = checklistCheckbox.checked;
     let checklistData = [];
     if (isChecklist) {
@@ -941,7 +986,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         if (checkError) return;
     }
 
-    // 驗證墊付人與分攤人
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
     let sharersList = [];

@@ -31,11 +31,15 @@
             <i class="fas fa-cog text-warm-300 text-sm opacity-50"></i>
         </div>
         
-        <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100">
+        <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2">
             <div class="relative">
                 <i class="fas fa-search absolute left-3.5 top-3 text-gray-400 text-sm"></i>
                 <input type="text" id="search-input" placeholder="搜尋行程、地點或成員..." class="w-full pl-10 pr-4 py-2 bg-white border border-warm-200 rounded-xl text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all shadow-sm">
             </div>
+            <!-- 🌟 新增：開啟回憶相簿按鈕 -->
+            <button id="btn-open-gallery" class="w-full py-2.5 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
+            </button>
         </div>
 
         <div class="p-4 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
@@ -55,7 +59,7 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.0</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.1</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
@@ -90,7 +94,20 @@
         </div>
     </main>
     
-    <!-- 後台管理 Modal (含 JSON 備份與還原) -->
+    <!-- 🌟 新增：家庭回憶相簿牆 Modal -->
+    <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
+        <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 class="text-xl font-extrabold text-warm-800 flex items-center gap-2"><i class="fas fa-photo-film text-warm-500"></i> 家庭回憶相簿牆</h3>
+                <button id="btn-close-gallery" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="gallery-grid-container" class="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 bg-gray-50">
+                <!-- 動態載入照片 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 後台管理 Modal -->
     <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="admin-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
@@ -169,7 +186,7 @@
                 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-image text-warm-500"></i> 貼上相片網址 (可選)</label>
-                    <input type="url" id="event-photo-url" placeholder="例如 Imgur 圖片連結..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
+                    <input type="url" id="event-photo-url" placeholder="例如 Google 雲端轉直鏈..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
                     <div id="photo-preview" class="mt-2 hidden relative">
                         <img src="" class="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm">
                         <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur rounded-full text-rose-500 flex items-center justify-center hover:bg-white transition-colors shadow-sm"><i class="fas fa-trash-alt"></i></button>
@@ -205,7 +222,7 @@
                     <textarea id="event-desc" rows="2" placeholder="例如：注意事項、集合時間..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
                 </div>
 
-                <!-- 🌟 新增：攜帶物品與任務認領清單 -->
+                <!-- 攜帶物品與任務認領清單 -->
                 <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-emerald-900 flex items-center gap-1.5 cursor-pointer">
@@ -237,7 +254,7 @@
                     </div>
                 </div>
 
-                <!-- 🌟 升級：記帳與權重分帳區塊 -->
+                <!-- 記帳與權重分帳區塊 -->
                 <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
@@ -326,7 +343,7 @@
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
 
-                    <!-- 🌟 新增：攜帶物品與任務認領顯示區塊 -->
+                    <!-- 攜帶物品與任務認領顯示區塊 -->
                     <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
                         <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
                             <span><i class="fas fa-clipboard-check text-sm mr-1"></i> 裝備與任務認領清單</span>
@@ -335,7 +352,7 @@
                         <div id="view-checklist-items" class="space-y-1.5 text-xs"></div>
                     </div>
                     
-                    <!-- 單選匿名投票顯示區塊 -->
+                    <!-- 匿名投票顯示區塊 -->
                     <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 space-y-3 hidden">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-indigo-800 border-b border-indigo-100 pb-2">
                             <i class="fas fa-poll text-lg"></i> 匿名活動意願表決 (單選)
@@ -383,7 +400,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=4.0 強制清除快取) -->
-    <script type="module" src="./app.js?v=4.0"></script>
+    <!-- 載入主程式模組 (升級為 v=4.1 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.1"></script>
 </body>
 </html>
