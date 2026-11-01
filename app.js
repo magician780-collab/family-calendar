@@ -400,7 +400,7 @@ function openViewModal(id) {
         const allVotedMembersArr = Array.from(allVotedMembersSet);
 
         if (allVotedMembersArr.length > 0) {
-            votedMembersBanner.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投過票的成員：<strong>${allVotedMembersArr.join(', ')}</strong>`;
+            votedMembersBanner.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>`;
         } else {
             votedMembersBanner.innerHTML = `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
         }
@@ -415,18 +415,17 @@ function openViewModal(id) {
 
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
-            row.className = 'bg-white p-2.5 rounded-xl border flex flex-col gap-1 shadow-sm';
-            const hasVoted = voter && opt.voters.includes(voter);
+            row.className = 'bg-white p-2.5 rounded-xl border flex flex-col gap-1.5 shadow-sm';
             const isWinner = maxVotes > 0 && opt.voters.length === maxVotes;
 
-            // 🌟 核心修改：只顯示選項名稱、最高票皇冠、按鈕狀態與總票數，絕對不印出誰投了哪一項！
+            // 🌟 核心修改：統一按鈕文字為「投一票」，絕不顯示「✓ 已投這項」，徹底保密個別選項歸屬！
             row.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-gray-800 flex items-center gap-1.5">
                         ${opt.title} ${isWinner ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-extrabold">👑 最高票</span>' : ''}
                     </span>
-                    <button class="px-3 py-1 rounded-lg text-xs font-bold transition-all ${hasVoted ? 'bg-indigo-500 text-white shadow' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}">
-                        ${hasVoted ? '✓ 已投這項' : '投一票'} (${opt.voters.length} 票)
+                    <button class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm">
+                        投一票 (${opt.voters.length} 票)
                     </button>
                 </div>
             `;
@@ -435,13 +434,13 @@ function openViewModal(id) {
                 if (!voter) return alert('請先在上方選擇您是哪位成員！');
                 let updated = evt.pollOptions.map(o => ({ title: o.title, voters: [...o.voters] }));
                 updated.forEach(o => o.voters = o.voters.filter(n => n !== voter)); // 單選：先從其他選項移除
-                if (!hasVoted) updated[idx].voters.push(voter); // 若沒投過此項則加入
+                updated[idx].voters.push(voter); // 加入當前選項
                 await updateDoc(doc(eventsRef, evt.id), { pollOptions: updated });
             });
             pollOptionsEl.appendChild(row);
         });
 
-        // 🌟 總結報告與一鍵拍板定案（拍板時才總結誰勝出，投票過程中依然保密個別選項歸屬）
+        // 🌟 總結報告與一鍵拍板定案
         finalizeBtn.onclick = async () => {
             const winnerOpt = evt.pollOptions.reduce((prev, curr) => (curr.voters.length > prev.voters.length) ? curr : prev);
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
