@@ -88,7 +88,6 @@ onSnapshot(membersRef, (snapshot) => {
     renderMemberManageList();
 });
 
-// 🌟 讓投票人選單與成員資料庫保持同步
 function renderMemberSelects() {
     const datalist = document.getElementById('member-list');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -193,6 +192,34 @@ document.getElementById('btn-remove-photo').addEventListener('click', () => {
     photoPreview.classList.add('hidden');
 });
 
+/* ================== 🌟 攜帶物品與任務認領系統 ================== */
+const checklistCheckbox = document.getElementById('event-is-checklist');
+const checklistFields = document.getElementById('checklist-fields');
+const checklistContainer = document.getElementById('checklist-items-container');
+
+checklistCheckbox.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        checklistFields.classList.remove('hidden');
+        if (checklistContainer.children.length === 0) addChecklistRow('', '', false);
+    } else {
+        checklistFields.classList.add('hidden');
+    }
+});
+
+function addChecklistRow(text = '', assignee = '', done = false) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 checklist-row';
+    row.dataset.done = done ? 'true' : 'false';
+    row.innerHTML = `
+        <input type="text" placeholder="物品或任務 (例: 冰桶、麻將席)" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border border-emerald-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-400" required>
+        <input type="text" list="member-list" placeholder="認領人(可選)" value="${assignee}" class="checklist-assignee w-28 px-2.5 py-1.5 bg-white border border-emerald-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-400">
+        <button type="button" class="btn-remove-check text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('.btn-remove-check').addEventListener('click', () => row.remove());
+    checklistContainer.appendChild(row);
+}
+document.getElementById('btn-add-checklist-item').addEventListener('click', () => { triggerHaptic(); addChecklistRow(); });
+
 /* ================== 投票表決系統 ================== */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
@@ -219,10 +246,11 @@ function addPollOptionRow(title = '') {
 }
 document.getElementById('btn-add-poll-option').addEventListener('click', () => { triggerHaptic(); addPollOptionRow(); });
 
-/* ================== 記帳與分帳 ================== */
+/* ================== 🌟 記帳與權重分帳系統 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
+const sharersContainer = document.getElementById('sharers-container');
 
 expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked) {
@@ -243,6 +271,23 @@ function addPayerRow(name = '', amount = '') {
     payersContainer.appendChild(row);
 }
 document.getElementById('btn-add-payer').addEventListener('click', () => { triggerHaptic(); addPayerRow(); });
+
+// 新增權重分攤人列
+function addSharerRow(name = '', weight = 1) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 sharer-row';
+    row.innerHTML = `
+        <input type="text" list="member-list" placeholder="分攤成員" value="${name}" class="sharer-name flex-1 px-3 py-1.5 bg-white border border-orange-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-400" required>
+        <div class="flex items-center bg-white border border-orange-200 rounded-xl px-2 py-1">
+            <input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none">
+            <span class="text-[10px] text-gray-400">份</span>
+        </div>
+        <button type="button" class="btn-remove-sharer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('.btn-remove-sharer').addEventListener('click', () => row.remove());
+    sharersContainer.appendChild(row);
+}
+document.getElementById('btn-add-sharer').addEventListener('click', () => { triggerHaptic(); addSharerRow('', 1); });
 
 /* ================== 行事曆核心 ================== */
 const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal'];
@@ -288,9 +333,10 @@ onSnapshot(eventsRef, (snapshot) => {
         const data = doc.data();
         events.push({ 
             id: doc.id, title: data.title, icon: data.icon || '', startDate: data.startDate || data.date, endDate: data.endDate || data.date, time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', 
-            isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4,
+            isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4, sharers: data.sharers || [],
             photoUrl: data.photoUrl || null,
-            isPoll: data.isPoll || false, pollOptions: data.pollOptions || []
+            isPoll: data.isPoll || false, pollOptions: data.pollOptions || [],
+            isChecklist: data.isChecklist || false, checklist: data.checklist || []
         });
     });
     renderApp();
@@ -307,6 +353,7 @@ function formatDateStr(date) {
 
 document.getElementById('search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
 
+/* ================== 後台管理：ICS 與 🌟 JSON 完整備份還原 ================== */
 document.getElementById('ics-file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -349,6 +396,67 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
     }
 });
 
+// 🌟 一鍵匯出 JSON 備份檔
+document.getElementById('btn-export-backup').addEventListener('click', () => {
+    triggerHaptic();
+    const backupData = {
+        version: '4.0',
+        exportedAt: new Date().toISOString(),
+        familyMembers: familyMembers.map(m => ({ name: m.name })),
+        familyEvents: events.map(({ id, ...rest }) => rest),
+        stickyNote: stickyNoteEl.value || ''
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `family_calendar_backup_${formatDateStr(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// 🌟 匯入 JSON 備份檔還原
+document.getElementById('json-restore-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (!data.familyEvents && !data.familyMembers) return alert('備份檔案格式不正確！');
+            
+            if (confirm(`確定要從備份檔還原嗎？\n將匯入 ${data.familyMembers?.length || 0} 位成員與 ${data.familyEvents?.length || 0} 筆行程。`)) {
+                // 還原成員 (過濾已存在的同名成員)
+                if (data.familyMembers) {
+                    for (let m of data.familyMembers) {
+                        if (m.name && !familyMembers.some(ext => ext.name === m.name)) {
+                            await addDoc(membersRef, { name: m.name });
+                        }
+                    }
+                }
+                // 還原行程
+                if (data.familyEvents) {
+                    for (let evt of data.familyEvents) {
+                        await addDoc(eventsRef, evt);
+                    }
+                }
+                // 還原便利貼
+                if (typeof data.stickyNote === 'string') {
+                    await setDoc(noteRef, { content: data.stickyNote }, { merge: true });
+                }
+                triggerHaptic();
+                alert('系統備份資料還原成功！');
+                document.getElementById('admin-modal').classList.add('hidden');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('讀取備份檔失敗，請確認檔案是否為有效的 JSON！');
+        }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+});
+
 function parseICS(icsText) {
     const parsedEvents = [];
     const lines = icsText.split(/\r\n|\n|\r/);
@@ -356,7 +464,7 @@ function parseICS(icsText) {
     for (let line of lines) {
         line = line.trim();
         if (line === 'BEGIN:VEVENT') {
-            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1, isPoll: false, pollOptions: [] };
+            currentEvent = { title: '', icon: '', startDate: '', endDate: '', author: '政府行事曆', description: '', isNav: false, color: 'bg-rose-400', isExpense: false, payers: [], expenseSplits: 1, sharers: [], isPoll: false, pollOptions: [], isChecklist: false, checklist: [] };
         } else if (line === 'END:VEVENT' && currentEvent) {
             if (currentEvent.title && currentEvent.startDate) {
                 if (!currentEvent.endDate) currentEvent.endDate = currentEvent.startDate;
@@ -446,10 +554,11 @@ function createDayCell(dayNum, dateStr, isToday = false) {
         const expenseBadge = evt.isExpense && totalExp > 0 ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
         const photoBadge = evt.photoUrl ? ` <i class="fas fa-image text-[9px] opacity-90"></i>` : '';
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px] opacity-90"></i>` : '';
+        const checkBadge = evt.isChecklist && evt.checklist && evt.checklist.length > 0 ? ` <i class="fas fa-clipboard-check text-[9px] opacity-90"></i>` : '';
 
         const evtEl = document.createElement('div');
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
-        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}${photoBadge}${pollBadge}</span>${authorTagHtml}`;
+        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}${photoBadge}${pollBadge}${checkBadge}</span>${authorTagHtml}`;
         evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
         eventsContainer.appendChild(evtEl);
     });
@@ -479,7 +588,8 @@ function openDayModal(dateStr, setGlobal = true) {
             const totalExp = getTotalExpense(evt);
             const expenseText = evt.isExpense && totalExp > 0 ? ` <span class="text-amber-600 font-bold">($${totalExp})</span>` : '';
             const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
-            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}${pollIcon}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
+            const checkIcon = evt.isChecklist ? ` <i class="fas fa-clipboard-check text-emerald-500"></i>` : '';
+            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}${pollIcon}${checkIcon}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
             listContainer.appendChild(item);
         });
     }
@@ -488,11 +598,15 @@ function openDayModal(dateStr, setGlobal = true) {
 
 function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); selectedDateForModal = null; }
 
+/* ================== 🌟 即將到來 (含倒數計時標籤) ================== */
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const emptyState = document.getElementById('no-upcoming');
     container.innerHTML = '';
-    const todayStr = formatDateStr(new Date());
+    const todayObj = new Date();
+    todayObj.setHours(0, 0, 0, 0);
+    const todayStr = formatDateStr(todayObj);
+
     const upcoming = events.filter(e => e.endDate >= todayStr && (!searchQuery || e.title.toLowerCase().includes(searchQuery) || e.author.toLowerCase().includes(searchQuery) || e.description.toLowerCase().includes(searchQuery))).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
     if (upcoming.length === 0) emptyState.classList.remove('hidden');
@@ -500,12 +614,44 @@ function renderUpcoming() {
         emptyState.classList.add('hidden');
         upcoming.forEach(evt => {
             const el = document.createElement('div');
-            el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 group';
+            el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-3.5 group';
             el.addEventListener('click', () => { triggerHaptic(); openViewModal(evt.id); });
-            const d = new Date(evt.startDate);
+            
+            const [sY, sM, sD] = evt.startDate.split('-').map(Number);
+            const startObj = new Date(sY, sM - 1, sD);
+            const diffDays = Math.round((startObj - todayObj) / (1000 * 60 * 60 * 24));
+            
+            // 計算倒數計時標籤
+            let countdownHtml = '';
+            if (diffDays <= 0) {
+                countdownHtml = `<span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-extrabold shadow-sm animate-pulse shrink-0">🎉 今天</span>`;
+            } else if (diffDays === 1) {
+                countdownHtml = `<span class="px-2 py-0.5 bg-orange-500 text-white rounded-full text-[10px] font-bold shadow-sm shrink-0">🔥 明天</span>`;
+            } else if (diffDays <= 7) {
+                countdownHtml = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold shrink-0">⏳ 倒數 ${diffDays} 天</span>`;
+            } else {
+                countdownHtml = `<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold shrink-0">還有 ${diffDays} 天</span>`;
+            }
+
             const totalExp = getTotalExpense(evt);
             const expenseBadge = evt.isExpense && totalExp > 0 ? ` <span class="text-xs text-amber-600 font-bold">($${totalExp})</span>` : '';
-            el.innerHTML = `<div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform"><span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span><span class="text-lg font-bold leading-none">${d.getDate()}</span></div><div class="flex-1 min-w-0"><h4 class="font-bold text-gray-800 break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}</h4><div class="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap"><span><i class="far fa-calendar-alt"></i> ${evt.startDate === evt.endDate ? evt.startDate : evt.startDate + ' ~ ' + evt.endDate}</span>${evt.author && evt.author !== '政府行事曆' ? `<span><i class="far fa-user"></i> ${evt.author}</span>` : ''}</div></div><div class="text-gray-300 group-hover:text-warm-400 transition-colors pr-2"><i class="fas fa-chevron-right text-sm"></i></div>`;
+            
+            el.innerHTML = `
+                <div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <span class="text-xs font-medium opacity-90">${sM}月</span>
+                    <span class="text-lg font-bold leading-none">${sD}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-1">
+                        <h4 class="font-bold text-gray-800 truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}</h4>
+                        ${countdownHtml}
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                        <span><i class="far fa-calendar-alt"></i> ${evt.startDate === evt.endDate ? evt.startDate : evt.startDate + ' ~ ' + evt.endDate}</span>
+                        ${evt.author && evt.author !== '政府行事曆' ? `<span><i class="far fa-user"></i> ${evt.author}</span>` : ''}
+                    </div>
+                </div>
+            `;
             container.appendChild(el);
         });
     }
@@ -527,8 +673,11 @@ function openModal(eventId = null, defaultDate = null) {
     document.getElementById('event-form').reset();
     expenseFields.classList.add('hidden');
     payersContainer.innerHTML = '';
+    sharersContainer.innerHTML = '';
     pollFields.classList.add('hidden');
     pollOptionsContainer.innerHTML = '';
+    checklistFields.classList.add('hidden');
+    checklistContainer.innerHTML = '';
     
     photoUrlInput.value = '';
     previewImg.src = '';
@@ -556,6 +705,12 @@ function openModal(eventId = null, defaultDate = null) {
                 photoPreview.classList.remove('hidden');
             }
 
+            if (evt.isChecklist && evt.checklist && evt.checklist.length > 0) {
+                checklistCheckbox.checked = true;
+                checklistFields.classList.remove('hidden');
+                evt.checklist.forEach(item => addChecklistRow(item.text, item.assignee || '', item.done || false));
+            } else { checklistCheckbox.checked = false; }
+
             if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
                 pollCheckbox.checked = true;
                 pollFields.classList.remove('hidden');
@@ -567,6 +722,9 @@ function openModal(eventId = null, defaultDate = null) {
                 expenseFields.classList.remove('hidden');
                 evt.payers.forEach(p => addPayerRow(p.name, p.amount));
                 document.getElementById('expense-splits').value = evt.expenseSplits || 4;
+                if (evt.sharers && evt.sharers.length > 0) {
+                    evt.sharers.forEach(s => addSharerRow(s.name, s.weight));
+                }
             } else { expenseCheckbox.checked = false; }
         }
     } else {
@@ -574,6 +732,7 @@ function openModal(eventId = null, defaultDate = null) {
         document.getElementById('btn-delete').classList.add('hidden');
         expenseCheckbox.checked = false;
         pollCheckbox.checked = false;
+        checklistCheckbox.checked = false;
         document.getElementById('event-author').value = '';
         document.getElementById('event-start-date').value = defaultDate || formatDateStr(new Date());
         document.getElementById('event-end-date').value = defaultDate || formatDateStr(new Date());
@@ -583,46 +742,10 @@ function openModal(eventId = null, defaultDate = null) {
 }
 
 function copyEventToModal(eventId) {
-    document.getElementById('event-form').reset();
-    expenseFields.classList.add('hidden');
-    payersContainer.innerHTML = '';
-    pollFields.classList.add('hidden');
-    pollOptionsContainer.innerHTML = '';
-    
-    photoUrlInput.value = '';
-    previewImg.src = '';
-    photoPreview.classList.add('hidden');
-
+    openModal(eventId);
     currentEditingId = null;
     document.getElementById('modal-title').innerText = '複製並新增活動';
     document.getElementById('btn-delete').classList.add('hidden');
-    
-    const evt = events.find(e => e.id === eventId);
-    if (evt) {
-        document.getElementById('event-title').value = evt.title;
-        document.getElementById('event-icon').value = evt.icon || '';
-        document.getElementById('event-start-date').value = evt.startDate;
-        document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
-        document.getElementById('event-time').value = evt.time || '';
-        document.getElementById('event-author').value = evt.author === '政府行事曆' ? '' : (evt.author || '');
-        document.getElementById('event-desc').value = evt.description || '';
-        document.getElementById('event-is-nav').checked = evt.isNav || false;
-        document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
-
-        if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
-            pollCheckbox.checked = true;
-            pollFields.classList.remove('hidden');
-            evt.pollOptions.forEach(opt => addPollOptionRow(opt.title));
-        }
-
-        if (evt.isExpense && evt.payers && evt.payers.length > 0) {
-            expenseCheckbox.checked = true;
-            expenseFields.classList.remove('hidden');
-            evt.payers.forEach(p => addPayerRow(p.name, p.amount));
-            document.getElementById('expense-splits').value = evt.expenseSplits || 4;
-        }
-    }
-    document.getElementById('event-modal').classList.remove('hidden');
 }
 
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); currentEditingId = null; }
@@ -652,22 +775,52 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 🌟 匿名單選投票顯示邏輯
+    // 🌟 攜帶物品與任務認領清單渲染與直接打勾互動
+    const checkContainer = document.getElementById('view-checklist-container');
+    const checkItemsEl = document.getElementById('view-checklist-items');
+    const checkProgressEl = document.getElementById('view-checklist-progress');
+    if (evt.isChecklist && evt.checklist && evt.checklist.length > 0) {
+        checkItemsEl.innerHTML = '';
+        const doneCount = evt.checklist.filter(i => i.done).length;
+        checkProgressEl.innerText = `已完成 ${doneCount}/${evt.checklist.length}`;
+
+        evt.checklist.forEach((item, idx) => {
+            const row = document.createElement('div');
+            row.className = `p-2 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all ${item.done ? 'bg-emerald-100/50 border-emerald-200 text-gray-400 line-through' : 'bg-white border-emerald-100 text-gray-700 shadow-sm'}`;
+            row.innerHTML = `
+                <div class="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" ${item.done ? 'checked' : ''} class="w-4 h-4 text-emerald-500 rounded pointer-events-none shrink-0">
+                    <span class="font-bold truncate">${item.text}</span>
+                </div>
+                ${item.assignee ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-bold shrink-0"><i class="far fa-user mr-0.5"></i>${item.assignee}</span>` : ''}
+            `;
+            row.addEventListener('click', async () => {
+                triggerHaptic();
+                let updatedList = evt.checklist.map(c => ({...c}));
+                updatedList[idx].done = !updatedList[idx].done;
+                try { await updateDoc(doc(eventsRef, evt.id), { checklist: updatedList }); }
+                catch(e) { console.error("Checklist update failed", e); }
+            });
+            checkItemsEl.appendChild(row);
+        });
+        checkContainer.classList.remove('hidden');
+    } else {
+        checkContainer.classList.add('hidden');
+    }
+
+    // 單選匿名投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
-        
-        // 抓取目前下拉選單選中的名字
         const currentVoter = voterSelect ? voterSelect.value : '';
 
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
             row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
             
-            // 檢查目前選中的成員是否有投這個選項
             const hasVoted = currentVoter ? (opt.voters && opt.voters.includes(currentVoter)) : false;
             const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
             
@@ -682,50 +835,68 @@ function openViewModal(eventId) {
             
             row.querySelector('.btn-vote').addEventListener('click', async () => {
                 triggerHaptic();
-                
                 const voterName = document.getElementById('poll-voter-select').value;
                 if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
                 
-                // 複製原陣列，避免直接污染前端暫存資料
                 let updatedOptions = evt.pollOptions.map(o => ({...o, voters: [...(o.voters || [])]}));
                 const isCurrentlyVoted = updatedOptions[idx].voters.includes(voterName);
                 
-                // 單選核心邏輯：強制把這個 voterName 從「所有選項」的票匭中拔除
-                updatedOptions.forEach(o => {
-                    o.voters = o.voters.filter(name => name !== voterName);
-                });
-                
-                // 如果原本沒投給這個選項，就把票加上去 (如果原本就有投，上面已經拔除了，就等於收回選票)
-                if (!isCurrentlyVoted) {
-                    updatedOptions[idx].voters.push(voterName);
-                }
+                updatedOptions.forEach(o => { o.voters = o.voters.filter(name => name !== voterName); });
+                if (!isCurrentlyVoted) updatedOptions[idx].voters.push(voterName);
                 
                 try { await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); } 
                 catch(e) { console.error("Vote failed", e); }
             });
             pollOptionsEl.appendChild(row);
         });
-        
-        // 當切換投票人時，重新渲染一次模態框以更新按鈕顏色
-        if (voterSelect) {
-            voterSelect.onchange = () => {
-                openViewModal(eventId);
-            };
-        }
-
+        if (voterSelect) voterSelect.onchange = () => openViewModal(eventId);
         pollContainer.classList.remove('hidden');
     } else { pollContainer.classList.add('hidden'); }
 
+    // 🌟 分帳與權重結算邏輯
     const expenseContainer = document.getElementById('view-expense-container');
     const totalExp = getTotalExpense(evt);
     if (evt.isExpense && totalExp > 0) {
-        const splits = evt.expenseSplits || 4;
-        document.getElementById('view-expense-details').innerHTML = `
-            <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${splits} 人均分，每人應付 $${Math.round((totalExp / splits) * 10) / 10}）</div>
-            <div class="pt-1 border-t border-amber-200 text-[11px] text-amber-800">
-                <strong>代墊明細：</strong><br>${evt.payers.map(p => `• ${p.name} 墊付：$${p.amount}`).join('<br>')}
-            </div>
-        `;
+        const payersHtml = evt.payers.map(p => `• ${p.name} 先墊：$${p.amount}`).join('<br>');
+        
+        if (evt.sharers && evt.sharers.length > 0) {
+            const totalWeight = evt.sharers.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+            const perUnit = totalWeight > 0 ? (totalExp / totalWeight) : 0;
+
+            // 計算每個人的淨收支 (墊付 - 應分攤)
+            const paidMap = {};
+            evt.payers.forEach(p => { paidMap[p.name] = (paidMap[p.name] || 0) + (parseFloat(p.amount) || 0); });
+
+            const sharersHtml = evt.sharers.map(s => {
+                const shouldPay = Math.round(perUnit * s.weight);
+                const alreadyPaid = paidMap[s.name] || 0;
+                const diff = alreadyPaid - shouldPay;
+                let statusBadge = '';
+                if (diff > 0) statusBadge = `<span class="text-emerald-700 font-bold">(應收回 $${diff})</span>`;
+                else if (diff < 0) statusBadge = `<span class="text-rose-600 font-bold">(需補繳 $${Math.abs(diff)})</span>`;
+                else statusBadge = `<span class="text-gray-400">(已結清)</span>`;
+
+                return `• ${s.name} (${s.weight}份)：應分攤 $${shouldPay} ${statusBadge}`;
+            }).join('<br>');
+
+            document.getElementById('view-expense-details').innerHTML = `
+                <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${totalWeight} 份，每份 $${Math.round(perUnit)}）</div>
+                <div class="pt-1.5 border-t border-amber-200 text-[11px] text-amber-800">
+                    <strong>先墊明細：</strong><br>${payersHtml}
+                </div>
+                <div class="pt-1.5 border-t border-amber-200 text-[11px] text-amber-900">
+                    <strong>各成員權重分攤與結算：</strong><br>${sharersHtml}
+                </div>
+            `;
+        } else {
+            const splits = evt.expenseSplits || 4;
+            document.getElementById('view-expense-details').innerHTML = `
+                <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${splits} 人均分，每人應付 $${Math.round((totalExp / splits) * 10) / 10}）</div>
+                <div class="pt-1 border-t border-amber-200 text-[11px] text-amber-800">
+                    <strong>代墊明細：</strong><br>${payersHtml}
+                </div>
+            `;
+        }
         expenseContainer.classList.remove('hidden');
     } else expenseContainer.classList.add('hidden');
 
@@ -749,8 +920,31 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         if (!isAuthorExist) return alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在「管理成員」新增。`);
     }
 
+    // 驗證裝備與任務認領人
+    const isChecklist = checklistCheckbox.checked;
+    let checklistData = [];
+    if (isChecklist) {
+        let checkError = false;
+        document.querySelectorAll('.checklist-row').forEach(row => {
+            const text = row.querySelector('.checklist-text').value.trim();
+            const assignee = row.querySelector('.checklist-assignee').value.trim();
+            const done = row.dataset.done === 'true';
+            if (text) {
+                if (assignee && !familyMembers.some(m => m.name === assignee)) {
+                    alert(`【任務認領人驗證失敗】\n「${assignee}」不在成員名冊內！`);
+                    checkError = true;
+                } else {
+                    checklistData.push({ text, assignee, done });
+                }
+            }
+        });
+        if (checkError) return;
+    }
+
+    // 驗證墊付人與分攤人
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
+    let sharersList = [];
     if (isExpense) {
         let payerError = false;
         document.querySelectorAll('.payer-row').forEach(row => {
@@ -763,7 +957,20 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
                 } else { payersList.push({ name, amount }); }
             }
         });
-        if (payerError) return; 
+        if (payerError) return;
+
+        let sharerError = false;
+        document.querySelectorAll('.sharer-row').forEach(row => {
+            const name = row.querySelector('.sharer-name').value.trim();
+            const weight = parseFloat(row.querySelector('.sharer-weight').value) || 0;
+            if (name && weight > 0) {
+                if (!familyMembers.some(m => m.name === name)) {
+                    alert(`【分攤成員驗證失敗】\n「${name}」不在名冊內！`);
+                    sharerError = true;
+                } else { sharersList.push({ name, weight }); }
+            }
+        });
+        if (sharerError) return;
     }
 
     const isPoll = pollCheckbox.checked;
@@ -803,8 +1010,11 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
             isExpense: isExpense && payersList.length > 0,
             payers: payersList,
             expenseSplits: isExpense ? parseInt(document.getElementById('expense-splits').value) || 4 : 4,
+            sharers: isExpense ? sharersList : [],
             isPoll: isPoll && pollOptionsList.length > 0,
             pollOptions: pollOptionsList,
+            isChecklist: isChecklist && checklistData.length > 0,
+            checklist: checklistData,
             photoUrl: finalPhotoUrl
         };
         

@@ -55,7 +55,7 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v3.8</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.0</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
@@ -90,22 +90,32 @@
         </div>
     </main>
     
-    <!-- 後台管理 Modal -->
+    <!-- 後台管理 Modal (含 JSON 備份與還原) -->
     <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="admin-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 class="text-lg font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-tools text-warm-500"></i> 行事曆後台管理</h3>
                 <button id="btn-close-admin" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <div class="p-6 space-y-4">
-                <p class="text-xs text-gray-500">這裡是用於管理政府行事曆資料的後台工具。</p>
-                <label class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+            <div class="p-6 space-y-3">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">政府假日管理</p>
+                <label class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
                     <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
                     <input type="file" id="ics-file-input" accept=".ics" class="hidden">
                 </label>
-                <button id="btn-clear-gov" class="w-full py-3 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
-                    <i class="fas fa-trash-alt"></i> 一鍵清空重複項目
+                <button id="btn-clear-gov" class="w-full py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> 一鍵清空重複假日
                 </button>
+
+                <hr class="border-warm-100 my-2">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">系統安全備份與還原</p>
+                <button id="btn-export-backup" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-download"></i> 下載完整備份 (.json)
+                </button>
+                <label class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fas fa-upload"></i> 匯入備份檔還原 (.json)
+                    <input type="file" id="json-restore-input" accept=".json" class="hidden">
+                </label>
             </div>
         </div>
     </div>
@@ -192,14 +202,30 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">詳細備註</label>
-                    <textarea id="event-desc" rows="2" placeholder="例如：裝備清單、注意事項..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
+                    <textarea id="event-desc" rows="2" placeholder="例如：注意事項、集合時間..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
+                </div>
+
+                <!-- 🌟 新增：攜帶物品與任務認領清單 -->
+                <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-bold text-emerald-900 flex items-center gap-1.5 cursor-pointer">
+                            <i class="fas fa-clipboard-check text-emerald-600"></i> 啟用攜帶物品 / 任務認領清單
+                        </label>
+                        <input type="checkbox" id="event-is-checklist" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400 cursor-pointer">
+                    </div>
+                    <div id="checklist-fields" class="hidden space-y-2 pt-1">
+                        <div id="checklist-items-container" class="space-y-2"></div>
+                        <button type="button" id="btn-add-checklist-item" class="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                            <i class="fas fa-plus"></i> 新增物品或任務
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- 投票表決區塊 -->
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
-                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票
+                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票 (匿名單選)
                         </label>
                         <input type="checkbox" id="event-is-poll" class="w-4 h-4 text-indigo-500 rounded focus:ring-indigo-400 cursor-pointer">
                     </div>
@@ -211,25 +237,32 @@
                     </div>
                 </div>
 
-                <!-- 記帳與分帳區塊 -->
+                <!-- 🌟 升級：記帳與權重分帳區塊 -->
                 <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
-                            <i class="fas fa-receipt text-amber-600"></i> 啟用多人多筆代墊記帳
+                            <i class="fas fa-receipt text-amber-600"></i> 啟用代墊記帳與權重分帳
                         </label>
                         <input type="checkbox" id="event-is-expense" class="w-4 h-4 text-warm-500 rounded focus:ring-warm-400 cursor-pointer">
                     </div>
                     <div id="expense-fields" class="hidden space-y-3 pt-1">
                         <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">誰先出錢了？（可新增多筆代墊紀錄）</label>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">1. 誰先出錢了？（代墊紀錄）</label>
                             <div id="payers-container" class="space-y-2"></div>
                             <button type="button" id="btn-add-payer" class="mt-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
                                 <i class="fas fa-plus"></i> 新增一筆代墊人
                             </button>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">平均分攤總人數 (例如：4人均分)</label>
-                            <input type="number" id="expense-splits" value="4" min="1" max="20" class="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-400">
+                        <div class="pt-2 border-t border-amber-200/60">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">2. 分攤方式（可設定各家庭/成員份數）</label>
+                            <div id="sharers-container" class="space-y-2 mb-2"></div>
+                            <button type="button" id="btn-add-sharer" class="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                                <i class="fas fa-user-friends"></i> 新增分攤成員與份數 (例: A家庭 3份)
+                            </button>
+                            <div id="simple-split-box" class="mt-2 flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+                                <span class="text-xs text-gray-500">若不指定成員份數，預設均分總人數：</span>
+                                <input type="number" id="expense-splits" value="4" min="1" max="50" class="w-16 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-center font-bold outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -292,13 +325,21 @@
                         <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0 mt-0.5"><i class="far fa-file-alt"></i></div>
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
+
+                    <!-- 🌟 新增：攜帶物品與任務認領顯示區塊 -->
+                    <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
+                        <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
+                            <span><i class="fas fa-clipboard-check text-sm mr-1"></i> 裝備與任務認領清單</span>
+                            <span id="view-checklist-progress" class="text-[10px] bg-emerald-200/70 px-2 py-0.5 rounded-full">0/0</span>
+                        </div>
+                        <div id="view-checklist-items" class="space-y-1.5 text-xs"></div>
+                    </div>
                     
-                    <!-- 🌟 單選匿名投票顯示區塊 -->
+                    <!-- 單選匿名投票顯示區塊 -->
                     <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 space-y-3 hidden">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-indigo-800 border-b border-indigo-100 pb-2">
                             <i class="fas fa-poll text-lg"></i> 匿名活動意願表決 (單選)
                         </div>
-                        <!-- 加入選擇投票人的下拉選單 -->
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-xs text-indigo-700 font-bold">目前投票人：</span>
                             <select id="poll-voter-select" class="flex-1 member-select px-2 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs outline-none focus:ring-2 focus:ring-indigo-400"></select>
@@ -306,8 +347,9 @@
                         <div id="view-poll-options" class="space-y-2 text-sm"></div>
                     </div>
 
+                    <!-- 分帳與權重結算顯示區塊 -->
                     <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
-                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 多筆代墊與分帳結算</div>
+                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 代墊與分帳結算</div>
                         <div id="view-expense-details" class="text-xs space-y-1.5"></div>
                     </div>
                 </div>
@@ -341,7 +383,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=3.8 強制清除快取) -->
-    <script type="module" src="./app.js?v=3.8"></script>
+    <!-- 載入主程式模組 (升級為 v=4.0 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.0"></script>
 </body>
 </html>
