@@ -13,13 +13,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🌟 啟動 Firestore 離線持續性支援 (Offline Persistence)
 enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code == 'failed-precondition') {
-        console.warn('多個分頁同時開啟，離線持續性僅能在一個分頁生效。');
-    } else if (err.code == 'unimplemented') {
-        console.warn('此瀏覽器不支援離線持續性功能。');
-    }
+    console.log("離線持續性啟用狀態:", err.code);
 });
 
 const eventsRef = collection(db, 'familyEvents');
@@ -294,7 +289,7 @@ function addSharerRow(name = '', weight = 1) {
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => { triggerHaptic(); addSharerRow('', 1); });
 
-/* ================== 行事曆核心與農曆重複轉換 ================== */
+/* ================== 行事曆核心與資料讀取 ================== */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((doc) => {
@@ -302,7 +297,6 @@ onSnapshot(eventsRef, (snapshot) => {
         let actualStartDate = data.startDate;
         let actualEndDate = data.endDate || data.startDate;
 
-        // 🌟 每年農曆生日/節日自動重複推算邏輯
         if (data.isLunarRecurring && data.lunarMonth && data.lunarDay) {
             const currentYear = currentDate.getFullYear();
             try {
@@ -357,11 +351,6 @@ function renderCalendar() {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         grid.appendChild(createDayCell(i, dateStr, dateStr === todayStr));
     }
-}
-
-function getTotalExpense(evt) {
-    if (!evt.payers || evt.payers.length === 0) return 0;
-    return evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 }
 
 function createDayCell(dayNum, dateStr, isToday = false) {
@@ -467,6 +456,11 @@ document.getElementById('btn-copy-from-view').addEventListener('click', () => { 
 
 function openModal(eventId = null, defaultDate = null) {
     document.getElementById('event-form').reset();
+    photoUrlInput.value = '';
+    previewImg.src = '';
+    photoPreview.classList.add('hidden');
+    document.getElementById('event-file-url').value = '';
+
     currentEditingId = eventId;
     if (eventId) {
         document.getElementById('modal-title').innerText = '編輯活動';
@@ -479,6 +473,16 @@ function openModal(eventId = null, defaultDate = null) {
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
+
+            // 🌟 確保編輯時照片與檔案網址正確回填
+            if (evt.photoUrl) {
+                photoUrlInput.value = evt.photoUrl;
+                previewImg.src = evt.photoUrl;
+                photoPreview.classList.remove('hidden');
+            }
+            if (evt.fileUrl) {
+                document.getElementById('event-file-url').value = evt.fileUrl;
+            }
         }
     } else {
         document.getElementById('modal-title').innerText = '新增活動';
@@ -487,6 +491,7 @@ function openModal(eventId = null, defaultDate = null) {
     }
     document.getElementById('event-modal').classList.remove('hidden');
 }
+
 function copyEventToModal(eventId) { openModal(eventId); currentEditingId = null; document.getElementById('modal-title').innerText = '複製並新增活動'; document.getElementById('btn-delete').classList.add('hidden'); }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); currentEditingId = null; }
 
@@ -498,6 +503,28 @@ function openViewModal(eventId) {
     document.getElementById('view-title').innerText = (evt.icon ? evt.icon + ' ' : '') + evt.title;
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author || '未署名'}`;
+
+    // 🌟 確保詳細檢視視窗正確讀取照片與附件
+    const viewPhotoContainer = document.getElementById('view-photo-container');
+    const viewPhoto = document.getElementById('view-photo');
+    if (evt.photoUrl && evt.photoUrl.trim() !== '') {
+        viewPhoto.src = evt.photoUrl;
+        viewPhotoContainer.classList.remove('hidden');
+    } else {
+        viewPhotoContainer.classList.add('hidden');
+        viewPhoto.src = '';
+    }
+
+    const viewFileContainer = document.getElementById('view-file-container');
+    const viewFileLink = document.getElementById('view-file-link');
+    if (evt.fileUrl && evt.fileUrl.trim() !== '') {
+        viewFileLink.href = evt.fileUrl;
+        viewFileContainer.classList.remove('hidden');
+    } else {
+        viewFileContainer.classList.add('hidden');
+        viewFileLink.href = '#';
+    }
+
     document.getElementById('view-modal').classList.remove('hidden');
 }
 function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); currentViewingId = null; }
@@ -527,10 +554,11 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         lunarMonth: lunarMonth,
         lunarDay: lunarDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
-        color: document.querySelector('input[name="event-color"]:checked').value
+        color: document.querySelector('input[name="event-color"]:checked').value,
+        photoUrl: photoUrlInput.value.trim(),      // 🌟 確保儲存照片網址
+        fileUrl: document.getElementById('event-file-url').value.trim() // 🌟 確保儲存檔案網址
     };
 
-    // 🌟 樂觀更新 (Optimistic UI)：立即在本地端渲染，背景非同步寫入 Firestore
     if (currentEditingId) {
         const index = events.findIndex(e => e.id === currentEditingId);
         if (index !== -1) events[index] = { ...events[index], ...eventData };
