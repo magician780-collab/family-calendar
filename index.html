@@ -46,7 +46,6 @@
                 <p class="text-sm">沒有符合的行程喔！</p>
             </div>
             
-            <!-- 家庭共用便利貼 -->
             <div class="mt-6 flex-1 flex flex-col bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm min-h-[120px]">
                 <div class="flex justify-between items-center mb-2 shrink-0">
                     <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5"><i class="fas fa-sticky-note text-amber-500"></i> 家庭便利貼</h3>
@@ -56,7 +55,7 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v3.7</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v3.8</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
@@ -200,7 +199,7 @@
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
-                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票 (匿名單選)
+                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票
                         </label>
                         <input type="checkbox" id="event-is-poll" class="w-4 h-4 text-indigo-500 rounded focus:ring-indigo-400 cursor-pointer">
                     </div>
@@ -294,10 +293,15 @@
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
                     
-                    <!-- 匿名投票表決顯示區塊 -->
+                    <!-- 🌟 單選匿名投票顯示區塊 -->
                     <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 space-y-3 hidden">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-indigo-800 border-b border-indigo-100 pb-2">
-                            <i class="fas fa-poll text-lg"></i> 匿名單選表決 (每人限投一票)
+                            <i class="fas fa-poll text-lg"></i> 匿名活動意願表決 (單選)
+                        </div>
+                        <!-- 加入選擇投票人的下拉選單 -->
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs text-indigo-700 font-bold">目前投票人：</span>
+                            <select id="poll-voter-select" class="flex-1 member-select px-2 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs outline-none focus:ring-2 focus:ring-indigo-400"></select>
                         </div>
                         <div id="view-poll-options" class="space-y-2 text-sm"></div>
                     </div>
@@ -337,7 +341,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=3.7 強制清除快取) -->
-    <script type="module" src="./app.js?v=3.7"></script>
+    <!-- 載入主程式模組 (升級為 v=3.8 強制清除快取) -->
+    <script type="module" src="./app.js?v=3.8"></script>
 </body>
 </html>

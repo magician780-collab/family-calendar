@@ -16,13 +16,6 @@ const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
 const noteRef = doc(db, 'familyNotes', 'mainNote'); 
 
-// 🌟 自動產生裝置專屬的匿名投票 ID (儲存在手機本機中防作弊)
-let deviceId = localStorage.getItem('family_app_device_id');
-if (!deviceId) {
-    deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + Date.now();
-    localStorage.setItem('family_app_device_id', deviceId);
-}
-
 let currentDate = new Date();
 let events = [];
 let familyMembers = [];
@@ -95,15 +88,35 @@ onSnapshot(membersRef, (snapshot) => {
     renderMemberManageList();
 });
 
+// 🌟 讓投票人選單與成員資料庫保持同步
 function renderMemberSelects() {
     const datalist = document.getElementById('member-list');
-    if (datalist) {
-        datalist.innerHTML = '';
-        familyMembers.forEach(m => {
+    const voterSelect = document.getElementById('poll-voter-select');
+    
+    if (datalist) datalist.innerHTML = '';
+    
+    let currentVoter = '';
+    if (voterSelect) {
+        currentVoter = voterSelect.value;
+        voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
+    }
+
+    familyMembers.forEach(m => {
+        if (datalist) {
             const opt = document.createElement('option');
             opt.value = m.name;
             datalist.appendChild(opt);
-        });
+        }
+        if (voterSelect) {
+            const vOpt = document.createElement('option');
+            vOpt.value = m.name;
+            vOpt.textContent = m.name;
+            voterSelect.appendChild(vOpt);
+        }
+    });
+
+    if (voterSelect && familyMembers.some(m => m.name === currentVoter)) {
+        voterSelect.value = currentVoter;
     }
 }
 
@@ -180,7 +193,7 @@ document.getElementById('btn-remove-photo').addEventListener('click', () => {
     photoPreview.classList.add('hidden');
 });
 
-/* ================== 匿名投票表決系統 ================== */
+/* ================== 投票表決系統 ================== */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
@@ -639,16 +652,23 @@ function openViewModal(eventId) {
     if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
     else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
-    // 🌟 單選匿名投票顯示邏輯
+    // 🌟 匿名單選投票顯示邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
+    const voterSelect = document.getElementById('poll-voter-select');
+
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
+        
+        // 抓取目前下拉選單選中的名字
+        const currentVoter = voterSelect ? voterSelect.value : '';
+
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
             row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
             
-            const hasVoted = opt.voters && opt.voters.includes(deviceId);
+            // 檢查目前選中的成員是否有投這個選項
+            const hasVoted = currentVoter ? (opt.voters && opt.voters.includes(currentVoter)) : false;
             const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
             
             row.innerHTML = `
@@ -663,18 +683,21 @@ function openViewModal(eventId) {
             row.querySelector('.btn-vote').addEventListener('click', async () => {
                 triggerHaptic();
                 
+                const voterName = document.getElementById('poll-voter-select').value;
+                if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
+                
                 // 複製原陣列，避免直接污染前端暫存資料
                 let updatedOptions = evt.pollOptions.map(o => ({...o, voters: [...(o.voters || [])]}));
-                const isCurrentlyVoted = updatedOptions[idx].voters.includes(deviceId);
+                const isCurrentlyVoted = updatedOptions[idx].voters.includes(voterName);
                 
-                // 🌟 單選核心邏輯：先強制把這個 deviceId 從「所有選項」中拔除
+                // 單選核心邏輯：強制把這個 voterName 從「所有選項」的票匭中拔除
                 updatedOptions.forEach(o => {
-                    o.voters = o.voters.filter(id => id !== deviceId);
+                    o.voters = o.voters.filter(name => name !== voterName);
                 });
                 
-                // 🌟 如果原本沒投給這個選項，就把票加上去 (如果原本就有投，上面已經拔除，就等於取消投票)
+                // 如果原本沒投給這個選項，就把票加上去 (如果原本就有投，上面已經拔除了，就等於收回選票)
                 if (!isCurrentlyVoted) {
-                    updatedOptions[idx].voters.push(deviceId);
+                    updatedOptions[idx].voters.push(voterName);
                 }
                 
                 try { await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); } 
@@ -682,6 +705,14 @@ function openViewModal(eventId) {
             });
             pollOptionsEl.appendChild(row);
         });
+        
+        // 當切換投票人時，重新渲染一次模態框以更新按鈕顏色
+        if (voterSelect) {
+            voterSelect.onchange = () => {
+                openViewModal(eventId);
+            };
+        }
+
         pollContainer.classList.remove('hidden');
     } else { pollContainer.classList.add('hidden'); }
 
