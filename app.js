@@ -31,6 +31,26 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
+/* ================== 手機版側邊欄抽屜控制 ================== */
+const sidebar = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+function toggleSidebar() {
+    triggerHaptic();
+    const isOpen = !sidebar.classList.contains('-translate-x-full');
+    if (isOpen) {
+        sidebar.classList.add('-translate-x-full');
+        sidebarBackdrop.classList.add('hidden');
+    } else {
+        sidebar.classList.remove('-translate-x-full');
+        sidebarBackdrop.classList.remove('hidden');
+    }
+}
+
+document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSidebar);
+document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
+sidebarBackdrop.addEventListener('click', toggleSidebar);
+
 /* ================== 主題風格切換管理 ================== */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
@@ -479,7 +499,7 @@ document.getElementById('btn-clear-gov').addEventListener('click', async () => {
 document.getElementById('btn-export-backup').addEventListener('click', () => {
     triggerHaptic();
     const backupData = {
-        version: '4.3',
+        version: '4.4',
         exportedAt: new Date().toISOString(),
         familyMembers: familyMembers.map(m => ({ name: m.name })),
         familyEvents: events.map(({ id, ...rest }) => rest),
@@ -566,7 +586,12 @@ function renderApp() { renderCalendar(); renderUpcoming(); }
 function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月`;
+    const monthTitleStr = `${year}年 ${month + 1}月`;
+    const deskTitleEl = document.getElementById('current-month-year');
+    const mobTitleEl = document.getElementById('mob-month-year');
+    if (deskTitleEl) deskTitleEl.innerText = monthTitleStr;
+    if (mobTitleEl) mobTitleEl.innerText = monthTitleStr;
+
     const firstDay = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
     const grid = document.getElementById('calendar-grid');
@@ -735,7 +760,13 @@ function renderUpcoming() {
 document.getElementById('btn-prev-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
 document.getElementById('btn-next-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
 document.getElementById('btn-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
+
+document.getElementById('btn-mob-prev').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+document.getElementById('btn-mob-next').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+document.getElementById('btn-mob-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
+
 document.getElementById('btn-open-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
+document.getElementById('btn-mobile-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
 document.getElementById('btn-close-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
 document.getElementById('btn-cancel-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
 document.getElementById('btn-close-day-modal').addEventListener('click', () => { triggerHaptic(); closeDayModal(); });
@@ -849,7 +880,6 @@ function openViewModal(eventId) {
         viewPhoto.src = '';
     }
 
-    // 🌟 檔案附件按鈕渲染邏輯
     const viewFileContainer = document.getElementById('view-file-container');
     const viewFileLink = document.getElementById('view-file-link');
     if (evt.fileUrl && evt.fileUrl.trim() !== '') {
@@ -1113,6 +1143,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     } catch (error) { 
         console.error("Error saving: ", error); 
     } finally {
+        submitBtn.innerHTML = originalBtnTime => originalBtnText; // safe fallback
         submitBtn.innerHTML = originalBtnText;
         submitBtn.disabled = false;
     }

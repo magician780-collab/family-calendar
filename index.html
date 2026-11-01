@@ -41,15 +41,31 @@
     </script>
     <link rel="stylesheet" href="./style.css">
 </head>
-<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden theme-warm" id="app-body">
-    <!-- 側邊欄 -->
-    <aside class="w-full md:w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-[4px_0_24px_rgba(249,115,22,0.05)] z-10 order-2 md:order-1 h-2/5 md:h-full transition-all">
+<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden theme-warm relative" id="app-body">
+    
+    <!-- 🌟 手機版頂部導覽列 (Mobile Header) -->
+    <header class="md:hidden bg-white border-b border-warm-200 px-4 py-3 flex items-center justify-between z-20 shrink-0 shadow-sm">
+        <button id="btn-toggle-sidebar" class="w-10 h-10 bg-warm-100 text-warm-700 rounded-xl flex items-center justify-center font-bold transition-all active:scale-95 shadow-sm">
+            <i class="fas fa-bars text-lg"></i>
+        </button>
+        <h1 class="text-lg font-extrabold text-warm-800 flex items-center gap-1.5"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
+        <button id="btn-mobile-add" class="w-10 h-10 bg-warm-500 text-white rounded-xl flex items-center justify-center font-bold transition-all active:scale-95 shadow-md shadow-warm-500/30">
+            <i class="fas fa-plus"></i>
+        </button>
+    </header>
+
+    <!-- 側邊欄 (手機版平時收合為抽屜，桌機版固定在左側) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-2xl md:shadow-[4px_0_24px_rgba(249,115,22,0.05)] transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out md:static h-full">
         <div id="admin-trigger" class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between cursor-pointer select-none" title="連續點擊3下開啟後台">
-            <h1 class="text-2xl font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
-            <i class="fas fa-cog text-warm-300 text-sm opacity-50"></i>
+            <h1 class="text-2xl font-bold text-warm-800 hidden md:flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
+            <h1 class="text-lg font-bold text-warm-800 md:hidden flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 選單與即將到來</h1>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-cog text-warm-300 text-sm opacity-50"></i>
+                <button id="btn-close-sidebar" class="md:hidden w-8 h-8 rounded-full bg-warm-100 text-warm-700 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
         </div>
         
-        <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2">
+        <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2 shrink-0">
             <!-- 主題風格切換選單 -->
             <div class="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-warm-200 shadow-sm">
                 <span class="text-xs font-bold text-warm-800 flex items-center gap-1.5"><i class="fas fa-palette text-warm-500"></i> 主題風格</span>
@@ -72,15 +88,15 @@
         </div>
 
         <div class="p-4 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
-            <h2 class="text-sm font-bold text-warm-600 uppercase tracking-wider mb-4 px-2 shrink-0">即將到來</h2>
-            <div id="upcoming-events" class="space-y-3 shrink-0"></div>
+            <h2 class="text-sm font-bold text-warm-600 uppercase tracking-wider mb-3 px-1 shrink-0">即將到來</h2>
+            <div id="upcoming-events" class="space-y-2.5 shrink-0"></div>
             <div id="no-upcoming" class="hidden text-center py-6 text-gray-400 shrink-0">
                 <i class="far fa-calendar-check text-3xl mb-2 opacity-50"></i>
                 <p class="text-sm">沒有符合的行程喔！</p>
             </div>
             
-            <div class="mt-6 flex-1 flex flex-col bg-amber-50 rounded-2xl border border-amber-200 p-4 shadow-sm min-h-[120px]">
-                <div class="flex justify-between items-center mb-2 shrink-0">
+            <div class="mt-4 flex-1 flex flex-col bg-amber-50 rounded-2xl border border-amber-200 p-3.5 shadow-sm min-h-[110px]">
+                <div class="flex justify-between items-center mb-1.5 shrink-0">
                     <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5"><i class="fas fa-sticky-note text-amber-500"></i> 家庭便利貼</h3>
                     <span id="note-status" class="text-[10px] font-bold text-amber-600 opacity-0 transition-opacity duration-300">已同步</span>
                 </div>
@@ -88,19 +104,22 @@
             </div>
 
             <!-- 確認快取更新用的版本號 -->
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.3</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.4</div>
         </div>
 
-        <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
+        <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
             <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> 新增活動
             </button>
         </div>
     </aside>
 
+    <!-- 側邊欄遮罩 (手機版開啟抽屜時顯示) -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 hidden md:hidden"></div>
+
     <!-- 滿版主區域 -->
-    <main class="flex-1 flex flex-col h-3/5 md:h-full order-1 md:order-2 bg-[#fdfbf9] overflow-hidden">
-        <header class="px-4 py-3 md:px-8 md:py-4 flex items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100 shrink-0">
+    <main class="flex-1 flex flex-col h-full bg-[#fdfbf9] overflow-hidden">
+        <header class="hidden md:flex px-4 py-3 md:px-8 md:py-4 items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100 shrink-0">
             <div class="flex items-center gap-2 md:gap-4">
                 <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-left"></i></button>
                 <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-32 md:w-48 text-center"></h2>
@@ -108,6 +127,14 @@
             </div>
             <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
         </header>
+
+        <!-- 手機版專用精簡月份導航列 -->
+        <div class="md:hidden px-4 py-2 bg-white border-b border-warm-100 flex items-center justify-between shrink-0">
+            <button id="btn-mob-prev" class="w-8 h-8 rounded-full bg-warm-50 text-warm-600 flex items-center justify-center"><i class="fas fa-chevron-left text-sm"></i></button>
+            <h2 id="mob-month-year" class="text-base font-extrabold text-warm-900"></h2>
+            <button id="btn-mob-next" class="w-8 h-8 rounded-full bg-warm-50 text-warm-600 flex items-center justify-center"><i class="fas fa-chevron-right text-sm"></i></button>
+            <button id="btn-mob-today" class="px-3 py-1 bg-warm-100 text-warm-700 rounded-lg font-bold text-xs">今天</button>
+        </div>
         
         <div id="calendar-swipe-container" class="flex-1 flex flex-col p-2 md:p-4 select-none overflow-hidden">
             <div class="grid grid-cols-7 gap-1 mb-1 shrink-0">
@@ -220,7 +247,6 @@
                     </div>
                 </div>
 
-                <!-- 🌟 新增：行程檔案附件夾 (PDF, 雲端文件等) -->
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-paperclip text-blue-500"></i> 相關檔案/文件附件網址 (可選)</label>
                     <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF / 訂位截圖網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
@@ -356,7 +382,6 @@
                         <img id="view-photo" src="" class="w-full object-cover max-h-64">
                     </div>
 
-                    <!-- 🌟 檔案附件按鈕顯示區塊 -->
                     <div id="view-file-container" class="hidden mb-2">
                         <a id="view-file-link" href="#" target="_blank" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm">
                             <i class="fas fa-paperclip text-blue-500"></i> 開啟相關檔案與附件文件
@@ -434,7 +459,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (升級為 v=4.3 強制清除快取) -->
-    <script type="module" src="./app.js?v=4.3"></script>
+    <!-- 載入主程式模組 (升級為 v=4.4 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.4"></script>
 </body>
 </html>
