@@ -141,10 +141,32 @@ function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
     row.innerHTML = `
-        <input type="text" list="member-list" placeholder="輸入墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
+        <select class="payer-name member-select w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
+            <option value="" disabled selected>請選擇...</option>
+        </select>
         <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
     `;
+    
+    // 動態載入目前資料庫中的成員選項
+    const newSelect = row.querySelector('.member-select');
+    familyMembers.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = m.name;
+        newSelect.appendChild(opt);
+    });
+    
+    if (name) {
+        if (!familyMembers.some(m => m.name === name)) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = `${name} (已刪除)`;
+            newSelect.appendChild(opt);
+        }
+        newSelect.value = name;
+    }
+
     row.querySelector('.btn-remove-payer').addEventListener('click', () => {
         row.remove();
     });
@@ -593,6 +615,15 @@ function closeViewModal() { document.getElementById('view-modal').classList.add(
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
+
+    // 🌟 新增：驗證建立者是否在管理成員名冊內
+    const authorInput = document.getElementById('event-author').value.trim();
+    const isMemberExist = familyMembers.some(m => m.name === authorInput);
+    if (!isMemberExist && authorInput !== '' && authorInput !== '政府行事曆') {
+        alert(`提醒：「${authorInput}」目前不在家族成員名冊內！\n請從下拉選單中挑選，或先點擊上方「管理成員」將其加入名冊後再建立活動。`);
+        return; // 阻斷表單送出
+    }
+
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
     if (isExpense) {
@@ -609,7 +640,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         startDate: document.getElementById('event-start-date').value,
         endDate: document.getElementById('event-end-date').value < document.getElementById('event-start-date').value ? document.getElementById('event-start-date').value : (document.getElementById('event-end-date').value || document.getElementById('event-start-date').value),
         time: document.getElementById('event-time').value,
-        author: document.getElementById('event-author').value.trim(),
+        author: authorInput,
         description: document.getElementById('event-desc').value.trim(),
         isNav: document.getElementById('event-is-nav').checked,
         color: document.querySelector('input[name="event-color"]:checked').value,
