@@ -289,7 +289,7 @@ function addSharerRow(name = '', weight = 1) {
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => { triggerHaptic(); addSharerRow('', 1); });
 
-/* ================== 行事曆核心與資料讀取 ================== */
+/* ================== 行事曆核心與投票資料讀取 ================== */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((doc) => {
@@ -312,7 +312,8 @@ onSnapshot(eventsRef, (snapshot) => {
             time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', 
             isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4, sharers: data.sharers || [],
             photoUrl: data.photoUrl || null, fileUrl: data.fileUrl || null,
-            isPoll: data.isPoll || false, pollOptions: data.pollOptions || [],
+            isPoll: data.isPoll || false, 
+            pollOptions: (data.pollOptions || []).map(opt => ({ title: opt.title, voters: opt.voters || [] })), // 🌟 確保投票人陣列正確載入
             isChecklist: data.isChecklist || false, checklist: data.checklist || []
         });
     });
@@ -385,9 +386,10 @@ function createDayCell(dayNum, dateStr, isToday = false) {
     dayEvents.forEach(evt => {
         const matchSearch = !searchQuery || evt.title.toLowerCase().includes(searchQuery) || evt.author.toLowerCase().includes(searchQuery);
         const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
+        const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px] opacity-90"></i>` : '';
         const evtEl = document.createElement('div');
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer truncate ${opacityClass}`;
-        evtEl.innerHTML = `${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
+        evtEl.innerHTML = `${evt.icon ? evt.icon+' ' : ''}${evt.title}${pollBadge}`;
         evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
         eventsContainer.appendChild(evtEl);
     });
@@ -409,7 +411,8 @@ function openDayModal(dateStr, setGlobal = true) {
             const item = document.createElement('div');
             item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 cursor-pointer flex items-center justify-between';
             item.addEventListener('click', () => { triggerHaptic(); closeDayModal(); openViewModal(evt.id); });
-            item.innerHTML = `<div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full ${evt.color}"></div><h4 class="font-bold text-gray-800 text-sm">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
+            const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
+            item.innerHTML = `<div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full ${evt.color}"></div><h4 class="font-bold text-gray-800 text-sm">${evt.icon ? evt.icon+' ' : ''}${evt.title}${pollIcon}</h4></div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
             listContainer.appendChild(item);
         });
     }
@@ -460,6 +463,9 @@ function openModal(eventId = null, defaultDate = null) {
     previewImg.src = '';
     photoPreview.classList.add('hidden');
     document.getElementById('event-file-url').value = '';
+    pollCheckbox.checked = false;
+    pollFields.classList.add('hidden');
+    pollOptionsContainer.innerHTML = '';
 
     currentEditingId = eventId;
     if (eventId) {
@@ -474,7 +480,6 @@ function openModal(eventId = null, defaultDate = null) {
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
 
-            // 🌟 確保編輯時照片與檔案網址正確回填
             if (evt.photoUrl) {
                 photoUrlInput.value = evt.photoUrl;
                 previewImg.src = evt.photoUrl;
@@ -482,6 +487,13 @@ function openModal(eventId = null, defaultDate = null) {
             }
             if (evt.fileUrl) {
                 document.getElementById('event-file-url').value = evt.fileUrl;
+            }
+
+            // 🌟 確保編輯時投票選項正確回填
+            if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+                pollCheckbox.checked = true;
+                pollFields.classList.remove('hidden');
+                evt.pollOptions.forEach(opt => addPollOptionRow(opt.title));
             }
         }
     } else {
@@ -504,7 +516,6 @@ function openViewModal(eventId) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author || '未署名'}`;
 
-    // 🌟 確保詳細檢視視窗正確讀取照片與附件
     const viewPhotoContainer = document.getElementById('view-photo-container');
     const viewPhoto = document.getElementById('view-photo');
     if (evt.photoUrl && evt.photoUrl.trim() !== '') {
@@ -525,8 +536,59 @@ function openViewModal(eventId) {
         viewFileLink.href = '#';
     }
 
+    // 🌟 完整的匿名投票介面與互動邏輯
+    const pollContainer = document.getElementById('view-poll-container');
+    const pollOptionsEl = document.getElementById('view-poll-options');
+    const voterSelect = document.getElementById('poll-voter-select');
+
+    if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+        pollOptionsEl.innerHTML = '';
+        const currentVoter = voterSelect ? voterSelect.value : '';
+
+        evt.pollOptions.forEach((opt, idx) => {
+            const row = document.createElement('div');
+            row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
+            
+            const hasVoted = currentVoter ? (opt.voters && opt.voters.includes(currentVoter)) : false;
+            const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
+            
+            row.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-gray-700 text-sm">${opt.title}</span>
+                    <button class="btn-vote ${btnClass} px-4 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5">
+                        <i class="fas fa-thumbs-up"></i> 投一票 (${opt.voters ? opt.voters.length : 0})
+                    </button>
+                </div>
+                ${opt.voters && opt.voters.length > 0 ? `<div class="text-[10px] text-gray-400">已投：${opt.voters.join(', ')}</div>` : ''}
+            `;
+            
+            row.querySelector('.btn-vote').addEventListener('click', async () => {
+                triggerHaptic();
+                const voterName = document.getElementById('poll-voter-select').value;
+                if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
+                
+                let updatedOptions = evt.pollOptions.map(o => ({ title: o.title, voters: [...(o.voters || [])] }));
+                const isCurrentlyVoted = updatedOptions[idx].voters.includes(voterName);
+                
+                // 單選邏輯：先從所有選項中移除該投票人，若原本沒投則加入當前選項
+                updatedOptions.forEach(o => { o.voters = o.voters.filter(name => name !== voterName); });
+                if (!isCurrentlyVoted) updatedOptions[idx].voters.push(voterName);
+                
+                try { 
+                    await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); 
+                } catch(e) { console.error("Vote failed", e); }
+            });
+            pollOptionsEl.appendChild(row);
+        });
+        if (voterSelect) voterSelect.onchange = () => openViewModal(eventId);
+        pollContainer.classList.remove('hidden');
+    } else { 
+        pollContainer.classList.add('hidden'); 
+    }
+
     document.getElementById('view-modal').classList.remove('hidden');
 }
+
 function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); currentViewingId = null; }
 
 document.getElementById('event-form').addEventListener('submit', async (e) => {
@@ -545,6 +607,22 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         lunarDay = lunar.getDay();
     }
 
+    const isPoll = pollCheckbox.checked;
+    let pollOptionsList = [];
+    if (isPoll) {
+        const existingEvt = events.find(ev => ev.id === currentEditingId);
+        document.querySelectorAll('.poll-row').forEach((row, idx) => {
+            const title = row.querySelector('.poll-option-title').value.trim();
+            if (title) {
+                let voters = [];
+                if (existingEvt && existingEvt.pollOptions && existingEvt.pollOptions[idx] && existingEvt.pollOptions[idx].title === title) {
+                    voters = existingEvt.pollOptions[idx].voters;
+                }
+                pollOptionsList.push({ title, voters });
+            }
+        });
+    }
+
     const eventData = {
         title: document.getElementById('event-title').value.trim(),
         icon: document.getElementById('event-icon').value,
@@ -555,8 +633,10 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         lunarDay: lunarDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
-        photoUrl: photoUrlInput.value.trim(),      // 🌟 確保儲存照片網址
-        fileUrl: document.getElementById('event-file-url').value.trim() // 🌟 確保儲存檔案網址
+        photoUrl: photoUrlInput.value.trim(),
+        fileUrl: document.getElementById('event-file-url').value.trim(),
+        isPoll: isPoll && pollOptionsList.length > 0,
+        pollOptions: pollOptionsList
     };
 
     if (currentEditingId) {
