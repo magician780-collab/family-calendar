@@ -53,6 +53,38 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     });
 });
 
+/* ================== 手機版：左右滑動切換月份手勢監聽 ================== */
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeContainer = document.getElementById('calendar-swipe-container');
+
+if (swipeContainer) {
+    swipeContainer.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    swipeContainer.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipeGesture();
+    }, { passive: true });
+}
+
+function handleSwipeGesture() {
+    const swipeThreshold = 50; // 左右滑動的最小距離門檻
+    if (touchEndX < touchStartX - swipeThreshold) {
+        // 向左滑動 -> 下個月
+        triggerHaptic();
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    }
+    if (touchEndX > touchStartX + swipeThreshold) {
+        // 向右滑動 -> 上個月
+        triggerHaptic();
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    }
+}
+
 /* 主題風格 */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
