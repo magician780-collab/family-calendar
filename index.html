@@ -90,7 +90,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v6.4</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v6.5</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -163,14 +163,24 @@
                         <option value="🛒">🛒 購物</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-image text-warm-500"></i> 貼上相片網址 (可選)</label>
-                    <input type="url" id="event-photo-url" placeholder="例如 Google 雲端轉直鏈..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
-                    <div id="photo-preview" class="mt-2 hidden relative">
-                        <img src="" class="w-full h-32 object-cover rounded-xl border">
-                        <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 rounded-full text-rose-500 flex items-center justify-center"><i class="fas fa-trash-alt"></i></button>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 相片網址 -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-image text-warm-500"></i> 相片網址 (可選)</label>
+                        <input type="url" id="event-photo-url" placeholder="Google Drive 等圖檔連結..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                        <div id="photo-preview" class="mt-2 hidden relative">
+                            <img src="" class="w-full h-24 object-cover rounded-xl border">
+                            <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 rounded-full text-rose-500 flex items-center justify-center"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    <!-- 影片網址 -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-video text-purple-500"></i> 影片網址 (可選)</label>
+                        <input type="url" id="event-video-url" placeholder="支援 YouTube 或 Drive 連結..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
                     </div>
                 </div>
+
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-paperclip text-blue-500"></i> 相關檔案/文件附件網址 (可選)</label>
                     <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF 網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
@@ -212,7 +222,6 @@
                             <label class="block text-sm font-bold text-gray-700">建立者 <span class="text-rose-500">*</span></label>
                             <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold"><i class="fas fa-users-cog"></i> 管理成員</button>
                         </div>
-                        <!-- 👑 改用嚴格的 select 下拉選單 -->
                         <select id="event-author" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
                             <option value="">請選擇建立者...</option>
                         </select>
@@ -320,14 +329,23 @@
         </div>
     </div>
 
-    <!-- View Modal -->
+    <!-- View Modal (加入影片播放器區塊) -->
     <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="view-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative modal-content flex flex-col max-h-[90vh]" onclick="event.stopPropagation()">
             <div id="view-modal-header" class="h-16 w-full shrink-0"></div>
             <button id="btn-close-view" class="absolute top-4 right-4 w-8 h-8 bg-white/30 rounded-full flex items-center justify-center text-white"><i class="fas fa-times"></i></button>
             <div class="p-6 overflow-y-auto flex-1 space-y-3">
                 <h3 id="view-title" class="text-2xl font-extrabold text-gray-800"></h3>
+                
+                <!-- 照片 -->
                 <div id="view-photo-container" class="hidden mb-2"><img id="view-photo" class="w-full object-cover max-h-48 rounded-xl"></div>
+                
+                <!-- 影片播放器 (智慧內嵌) -->
+                <div id="view-video-container" class="hidden mb-2">
+                    <iframe id="view-video-iframe" class="w-full aspect-video rounded-xl shadow-sm hidden" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    <video id="view-video-element" class="w-full aspect-video rounded-xl bg-black shadow-sm hidden" controls playsinline></video>
+                </div>
+
                 <div id="view-file-container" class="hidden mb-2"><a id="view-file-link" href="#" target="_blank" class="w-full py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><i class="fas fa-paperclip"></i> 開啟附件檔案</a></div>
                 
                 <div id="view-map-container" class="hidden mb-2">
@@ -375,7 +393,7 @@
         </div>
     </div>
 
-    <!-- Member Modal (管理成員與備份/匯入後台) -->
+    <!-- Member Modal -->
     <div id="member-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] modal-content" onclick="event.stopPropagation()">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center">
@@ -425,6 +443,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=6.4"></script>
+    <script type="module" src="./app.js?v=6.5"></script>
 </body>
 </html>

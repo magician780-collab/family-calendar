@@ -31,6 +31,14 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
+// 🛑 核心防呆：關閉視窗時停止所有影片播放
+function stopViewVideo() {
+    const vIframe = document.getElementById('view-video-iframe');
+    const vVideo = document.getElementById('view-video-element');
+    if (vIframe) vIframe.src = ''; 
+    if (vVideo) { vVideo.pause(); vVideo.src = ''; }
+}
+
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
 function toggleSidebar() {
@@ -43,23 +51,25 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ⚙️ 點擊設定按鈕開啟管理與備份後台 */
 document.getElementById('btn-open-admin').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-/* 通用：點擊背景自動關閉 Modal */
+/* 通用：點擊背景自動關閉 Modal (加入自動停止影片) */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
         triggerHaptic();
         backdrop.classList.add('hidden');
         if (backdrop.id === 'day-modal') selectedDateForModal = null;
-        if (backdrop.id === 'view-modal') currentViewingId = null;
+        if (backdrop.id === 'view-modal') {
+            currentViewingId = null;
+            stopViewVideo(); // 停止影片
+        }
     });
 });
 
-/* 手機版：左右滑動切換月份手勢監聽 */
+/* 手機版：左右滑動切換月份 */
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
@@ -94,7 +104,7 @@ const searchInputEl = document.getElementById('search-input');
 if (searchInputEl) {
     searchInputEl.addEventListener('input', (e) => {
         searchQuery = e.target.value.trim().toLowerCase();
-        renderApp(); // 觸發重新渲染，動態過濾行事曆與即將到來
+        renderApp();
     });
 }
 
@@ -176,7 +186,7 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* 📅 2026 政府行事曆與國定假日一鍵匯入 */
+/* 📅 2026 政府行事曆與國定假日 */
 document.getElementById('btn-import-gov-holidays').addEventListener('click', async () => {
     if (!confirm('確定要一鍵匯入 2026 年政府行事曆與國定假日嗎？')) return;
     triggerHaptic();
@@ -203,7 +213,7 @@ document.getElementById('btn-import-gov-holidays').addEventListener('click', asy
     }
 });
 
-/* 💾 JSON 備份與還原功能 */
+/* 💾 JSON 備份與還原 */
 document.getElementById('btn-export-json').addEventListener('click', () => {
     triggerHaptic();
     const backupData = {
@@ -266,7 +276,6 @@ function renderGalleryGrid() {
         container.appendChild(item);
     });
 }
-
 
 /* ================= 下拉選單處理 ================= */
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
@@ -432,6 +441,7 @@ onSnapshot(eventsRef, (snapshot) => {
             author: data.author || '家族成員',
             color: data.color || 'bg-rose-400',
             photoUrl: data.photoUrl || null,
+            videoUrl: data.videoUrl || null,   // 🎥 讀取影片網址
             fileUrl: data.fileUrl || null,
             location: data.location || '',
             mapUrl: data.mapUrl || '',
@@ -479,7 +489,6 @@ function createDayCell(dayNum, dateStr, isToday) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
     
-    // 🔍 加入過濾邏輯
     const dayEvents = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
@@ -524,7 +533,6 @@ function openDayModal(dateStr, setGlobal = true) {
     const list = document.getElementById('day-modal-list');
     list.innerHTML = '';
     
-    // 🔍 加入過濾邏輯
     const dayEvts = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
@@ -560,7 +568,6 @@ function renderUpcoming() {
     todayObj.setHours(0, 0, 0, 0);
     const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
     
-    // 🔍 加入過濾邏輯
     const upcoming = events.filter(e => {
         if (e.endDate < todayStr) return false;
         if (!searchQuery) return true;
@@ -615,12 +622,23 @@ document.getElementById('btn-mobile-add').addEventListener('click', () => openMo
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
 document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
-document.getElementById('btn-close-view').addEventListener('click', () => document.getElementById('view-modal').classList.add('hidden'));
-document.getElementById('btn-edit-from-view').addEventListener('click', () => { const id = currentViewingId; document.getElementById('view-modal').classList.add('hidden'); openModal(id); });
+
+/* 🛑 在這兩個地方呼叫關閉視窗與停止影片的邏輯 */
+document.getElementById('btn-close-view').addEventListener('click', () => { 
+    document.getElementById('view-modal').classList.add('hidden');
+    stopViewVideo(); 
+});
+document.getElementById('btn-edit-from-view').addEventListener('click', () => { 
+    const id = currentViewingId; 
+    document.getElementById('view-modal').classList.add('hidden'); 
+    stopViewVideo();
+    openModal(id); 
+});
 
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
+    document.getElementById('event-video-url').value = ''; // 🎥 清空影片網址
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
     document.getElementById('event-location').value = '';
@@ -660,6 +678,7 @@ function openModal(id = null) {
                 document.querySelector('#photo-preview img').src = evt.photoUrl;
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
+            if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl; // 🎥 載入影片網址
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
             if (evt.location) document.getElementById('event-location').value = evt.location;
             if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
@@ -700,8 +719,49 @@ function openViewModal(id) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author}`;
 
+    // 處理相片
     const pBox = document.getElementById('view-photo-container');
     if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = evt.photoUrl; } else pBox.classList.add('hidden');
+
+    // 🎥 處理影片播放 (支援 YouTube / Drive / 網址直連 MP4)
+    const vBox = document.getElementById('view-video-container');
+    const vIframe = document.getElementById('view-video-iframe');
+    const vElement = document.getElementById('view-video-element');
+    
+    if (evt.videoUrl) {
+        let url = evt.videoUrl.trim();
+        vIframe.classList.add('hidden');
+        vElement.classList.add('hidden');
+        
+        if (url.includes('youtube.com/watch?v=')) {
+            let vId = new URL(url).searchParams.get('v');
+            vIframe.src = `https://www.youtube.com/embed/${vId}`;
+            vIframe.classList.remove('hidden');
+        } else if (url.includes('youtu.be/')) {
+            let vId = url.split('youtu.be/')[1].split('?')[0];
+            vIframe.src = `https://www.youtube.com/embed/${vId}`;
+            vIframe.classList.remove('hidden');
+        } else if (url.includes('drive.google.com/file/d/')) {
+            // Google Drive 雲端影片轉換為內嵌播放模式
+            let match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                vIframe.src = `https://drive.google.com/file/d/${match[1]}/preview`;
+                vIframe.classList.remove('hidden');
+            } else {
+                vIframe.src = url;
+                vIframe.classList.remove('hidden');
+            }
+        } else {
+            // 原生 mp4 直連影片
+            vElement.src = url;
+            vElement.classList.remove('hidden');
+        }
+        vBox.classList.remove('hidden');
+    } else {
+        vBox.classList.add('hidden');
+        vIframe.src = '';
+        vElement.src = '';
+    }
 
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
@@ -917,6 +977,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
+        videoUrl: document.getElementById('event-video-url').value.trim(), // 🎥 儲存影片網址
         fileUrl: document.getElementById('event-file-url').value.trim(),
         location: document.getElementById('event-location').value.trim(),
         mapUrl: document.getElementById('event-map-url').value.trim(),
