@@ -70,15 +70,13 @@ if (swipeContainer) {
 }
 
 function handleSwipeGesture() {
-    const swipeThreshold = 50; // 左右滑動的最小距離門檻
+    const swipeThreshold = 50; 
     if (touchEndX < touchStartX - swipeThreshold) {
-        // 向左滑動 -> 下個月
         triggerHaptic();
         currentDate.setMonth(currentDate.getMonth() + 1);
         renderCalendar();
     }
     if (touchEndX > touchStartX + swipeThreshold) {
-        // 向右滑動 -> 上個月
         triggerHaptic();
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
@@ -285,6 +283,8 @@ onSnapshot(eventsRef, (snapshot) => {
             color: data.color || 'bg-rose-400',
             photoUrl: data.photoUrl || null,
             fileUrl: data.fileUrl || null,
+            location: data.location || '',
+            mapUrl: data.mapUrl || '',
             isChecklist: data.isChecklist || false,
             checklist: data.checklist || [],
             isPoll: data.isPoll || false,
@@ -439,6 +439,8 @@ function openModal(id = null) {
     document.getElementById('event-photo-url').value = '';
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
+    document.getElementById('event-location').value = '';
+    document.getElementById('event-map-url').value = '';
     checklistCheckbox.checked = false;
     checklistFields.classList.add('hidden');
     checklistContainer.innerHTML = '';
@@ -469,6 +471,8 @@ function openModal(id = null) {
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
+            if (evt.location) document.getElementById('event-location').value = evt.location;
+            if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
             if (evt.isChecklist && evt.checklist) {
                 checklistCheckbox.checked = true;
                 checklistFields.classList.remove('hidden');
@@ -510,6 +514,18 @@ function openViewModal(id) {
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
 
+    // 🗺️ 檢視導航按鈕顯示
+    const mMapBox = document.getElementById('view-map-container');
+    const mMapLink = document.getElementById('view-map-link');
+    const mLocText = document.getElementById('view-location-text');
+    if (evt.mapUrl || evt.location) {
+        mLocText.innerText = evt.location || '點擊開啟地圖導航';
+        mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
+        mMapBox.classList.remove('hidden');
+    } else {
+        mMapBox.classList.add('hidden');
+    }
+
     // 裝備清單檢視與勾選
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItems = document.getElementById('view-checklist-items');
@@ -541,7 +557,7 @@ function openViewModal(id) {
         checkContainer.classList.add('hidden');
     }
 
-    // 保密投票檢視 (隱藏個人投票狀態，按鈕全為統一「投一票」)
+    // 保密投票檢視
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -699,6 +715,8 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
         fileUrl: document.getElementById('event-file-url').value.trim(),
+        location: document.getElementById('event-location').value.trim(),
+        mapUrl: document.getElementById('event-map-url').value.trim(),
         isChecklist: checklistCheckbox.checked && checklistArr.length > 0,
         checklist: checklistArr,
         isPoll: pollCheckbox.checked && pollOpts.length > 0,
