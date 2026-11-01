@@ -141,32 +141,10 @@ function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
     row.innerHTML = `
-        <select class="payer-name member-select w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
-            <option value="" disabled selected>請選擇...</option>
-        </select>
+        <input type="text" list="member-list" placeholder="輸入墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
     `;
-    
-    // 動態載入目前資料庫中的成員選項
-    const newSelect = row.querySelector('.member-select');
-    familyMembers.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.textContent = m.name;
-        newSelect.appendChild(opt);
-    });
-    
-    if (name) {
-        if (!familyMembers.some(m => m.name === name)) {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = `${name} (已刪除)`;
-            newSelect.appendChild(opt);
-        }
-        newSelect.value = name;
-    }
-
     row.querySelector('.btn-remove-payer').addEventListener('click', () => {
         row.remove();
     });
@@ -616,22 +594,37 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
 
-    // 🌟 新增：驗證建立者是否在管理成員名冊內
+    // 🌟 核心防呆：檢查「建立者」是否在名冊內
     const authorInput = document.getElementById('event-author').value.trim();
-    const isMemberExist = familyMembers.some(m => m.name === authorInput);
-    if (!isMemberExist && authorInput !== '' && authorInput !== '政府行事曆') {
-        alert(`提醒：「${authorInput}」目前不在家族成員名冊內！\n請從下拉選單中挑選，或先點擊上方「管理成員」將其加入名冊後再建立活動。`);
-        return; // 阻斷表單送出
+    if (authorInput !== '' && authorInput !== '政府行事曆') {
+        const isAuthorExist = familyMembers.some(m => m.name === authorInput);
+        if (!isAuthorExist) {
+            alert(`【建立者驗證失敗】\n「${authorInput}」不在名冊內！請從選單挑選，或先在「管理成員」中新增。`);
+            return; 
+        }
     }
 
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
+    
+    // 🌟 核心防呆：檢查「墊付人」是否在名冊內
     if (isExpense) {
+        let payerError = false;
         document.querySelectorAll('.payer-row').forEach(row => {
             const name = row.querySelector('.payer-name').value.trim();
             const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            if (name && amount > 0) payersList.push({ name, amount });
+            
+            if (name || amount > 0) {
+                const isPayerExist = familyMembers.some(m => m.name === name);
+                if (!isPayerExist) {
+                    alert(`【墊付人驗證失敗】\n「${name}」不在名冊內！請從選單挑選，或先在「管理成員」中新增。`);
+                    payerError = true;
+                } else {
+                    payersList.push({ name, amount });
+                }
+            }
         });
+        if (payerError) return; 
     }
 
     const eventData = {

@@ -16,7 +16,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- 引入農曆計算專用套件 (Lunar Calendar Library) -->
+    <!-- 引入農曆計算專用套件 -->
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
 
     <script>
@@ -49,16 +49,18 @@
             </div>
         </div>
 
-        <div class="p-4 flex-1 overflow-y-auto hide-scrollbar">
+        <div class="p-4 flex-1 overflow-y-auto hide-scrollbar relative">
             <h2 class="text-sm font-bold text-warm-600 uppercase tracking-wider mb-4 px-2">即將到來</h2>
             <div id="upcoming-events" class="space-y-3"></div>
             <div id="no-upcoming" class="hidden text-center py-8 text-gray-400">
                 <i class="far fa-calendar-check text-4xl mb-2 opacity-50"></i>
                 <p class="text-sm">沒有找到符合的行程喔！</p>
             </div>
+            <!-- 確認快取更新用的版本號 -->
+            <div class="absolute bottom-2 right-4 text-[10px] text-gray-300 font-bold select-none">v3.1</div>
         </div>
 
-        <div class="p-4 border-t border-warm-100 bg-white space-y-2">
+        <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0">
             <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> 新增活動
             </button>
@@ -90,6 +92,9 @@
         </div>
     </main>
 
+    <!-- Modal 區塊 (保持不變，省略以節省版面) -->
+    <!-- (這裡的 HTML 包含原先的 admin-modal, day-modal, event-modal, view-modal, member-modal) -->
+    
     <!-- 隱藏後台管理 Modal -->
     <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="admin-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
@@ -260,7 +265,6 @@
                         <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0 mt-0.5"><i class="far fa-file-alt"></i></div>
                         <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
                     </div>
-                    <!-- 檢視視窗中的多筆分帳結算清單 -->
                     <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
                         <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 多筆代墊與分帳結算</div>
                         <div id="view-expense-details" class="text-xs space-y-1.5"></div>
@@ -298,7 +302,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 (更改為 v=3 強制清除快取) -->
-    <script type="module" src="./app.js?v=3"></script>
+    <!-- 載入主程式模組 (已更新 v=3.1 強制破解快取) -->
+    <script type="module" src="./app.js?v=3.1"></script>
 </body>
 </html>
