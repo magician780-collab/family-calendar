@@ -12,10 +12,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-enableIndexedDbPersistence(db).catch((err) => {
-    console.log("離線持續性啟用狀態:", err.code);
-});
+enableIndexedDbPersistence(db).catch(() => {});
 
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
@@ -34,287 +31,156 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
-/* ================== 手機版側邊欄抽屜控制 ================== */
 const sidebar = document.getElementById('sidebar');
 const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-
 function toggleSidebar() {
     triggerHaptic();
     const isOpen = !sidebar.classList.contains('-translate-x-full');
-    if (isOpen) {
-        sidebar.classList.add('-translate-x-full');
-        sidebarBackdrop.classList.add('hidden');
-    } else {
-        sidebar.classList.remove('-translate-x-full');
-        sidebarBackdrop.classList.remove('hidden');
-    }
+    sidebar.classList.toggle('-translate-x-full', isOpen);
+    sidebarBackdrop.classList.toggle('hidden', isOpen);
 }
-
 document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSidebar);
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ================== 主題風格切換管理 ================== */
+/* 主題風格 */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
     purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
     dark: { 50: '#18181b', 100: '#27272a', 200: '#3f3f46', 300: '#52525b', 400: '#71717a', 500: '#a1a1aa', 600: '#d4d4d8', 700: '#e4e4e7', 800: '#f4f4f5', 900: '#fafafa' }
 };
-
-function setTheme(themeName) {
-    const palette = themePalettes[themeName] || themePalettes.warm;
+function setTheme(name) {
+    const palette = themePalettes[name] || themePalettes.warm;
     const root = document.documentElement;
-    Object.keys(palette).forEach(key => {
-        root.style.setProperty(`--color-${key}`, palette[key]);
-    });
-    localStorage.setItem('family_app_theme', themeName);
-    const selectEl = document.getElementById('theme-select');
-    if (selectEl) selectEl.value = themeName;
+    Object.keys(palette).forEach(k => root.style.setProperty(`--color-${k}`, palette[k]));
+    localStorage.setItem('family_app_theme', name);
+    const sel = document.getElementById('theme-select');
+    if (sel) sel.value = name;
 }
+setTheme(localStorage.getItem('family_app_theme') || 'warm');
+document.getElementById('theme-select').addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 
-const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
-setTheme(savedTheme);
-
-document.getElementById('theme-select').addEventListener('change', (e) => {
-    triggerHaptic();
-    setTheme(e.target.value);
-});
-
-/* ================== 天氣 API (台南市) ================== */
+/* 天氣 API */
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
         const data = await res.json();
-        const weatherMoji = {
-            0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-            45: '🌫️', 48: '🌫️', 51: '🌧️', 53: '🌧️', 55: '🌧️',
-            61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '❄️', 73: '❄️', 75: '❄️', 95: '⛈️'
-        };
+        const m = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 51: '🌧️', 61: '🌧️', 95: '⛈️' };
         if (data && data.daily) {
-            data.daily.time.forEach((dateStr, index) => {
-                const code = data.daily.weathercode[index];
-                const maxTemp = Math.round(data.daily.temperature_2m_max[index]);
-                weatherData[dateStr] = `${weatherMoji[code] || '☁️'} ${maxTemp}°`;
-            });
+            data.daily.time.forEach((d, i) => { weatherData[d] = `${m[data.daily.weathercode[i]] || '☁️'} ${Math.round(data.daily.temperature_2m_max[i])}°`; });
         }
-    } catch (e) { console.log("氣象載入失敗:", e); }
+    } catch (e) {}
 }
 fetchWeather().then(() => renderCalendar());
 
-/* ================== 家庭共用便利貼 ================== */
+/* 便利貼 */
 const stickyNoteEl = document.getElementById('family-sticky-note');
 const noteStatusEl = document.getElementById('note-status');
 let noteTimeout = null;
-
 onSnapshot(noteRef, (docSnap) => {
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (document.activeElement !== stickyNoteEl) stickyNoteEl.value = data.content || '';
-    }
+    if (docSnap.exists() && document.activeElement !== stickyNoteEl) stickyNoteEl.value = docSnap.data().content || '';
 });
-
 stickyNoteEl.addEventListener('input', () => {
     noteStatusEl.textContent = '儲存中...';
     noteStatusEl.classList.remove('opacity-0');
     if (noteTimeout) clearTimeout(noteTimeout);
     noteTimeout = setTimeout(async () => {
-        try {
-            await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
-            noteStatusEl.textContent = '已同步';
-            setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
-        } catch (e) { noteStatusEl.textContent = '儲存失敗'; }
-    }, 1000); 
+        await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
+        noteStatusEl.textContent = '已同步';
+        setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
+    }, 1000);
 });
 
-/* ================== 成員管理系統 ================== */
+/* 成員管理 */
 onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
-    snapshot.forEach((doc) => {
-        familyMembers.push({ id: doc.id, name: doc.data().name });
-    });
+    snapshot.forEach(doc => familyMembers.push({ id: doc.id, name: doc.data().name }));
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberSelects();
     renderMemberManageList();
 });
-
 function renderMemberSelects() {
     const datalist = document.getElementById('member-list');
     const voterSelect = document.getElementById('poll-voter-select');
     if (datalist) datalist.innerHTML = '';
-    let currentVoter = voterSelect ? voterSelect.value : '';
-    if (voterSelect) voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
-
+    let curVoter = voterSelect ? voterSelect.value : '';
+    if (voterSelect) voterSelect.innerHTML = '<option value="" disabled selected>請選擇成員...</option>';
     familyMembers.forEach(m => {
-        if (datalist) {
-            const opt = document.createElement('option');
-            opt.value = m.name;
-            datalist.appendChild(opt);
-        }
-        if (voterSelect) {
-            const vOpt = document.createElement('option');
-            vOpt.value = m.name;
-            vOpt.textContent = m.name;
-            voterSelect.appendChild(vOpt);
-        }
+        if (datalist) { const opt = document.createElement('option'); opt.value = m.name; datalist.appendChild(opt); }
+        if (voterSelect) { const vOpt = document.createElement('option'); vOpt.value = m.name; vOpt.textContent = m.name; voterSelect.appendChild(vOpt); }
     });
-    if (voterSelect && familyMembers.some(m => m.name === currentVoter)) voterSelect.value = currentVoter;
+    if (voterSelect && familyMembers.some(m => m.name === curVoter)) voterSelect.value = curVoter;
 }
-
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
-    if(!container) return;
-    container.innerHTML = '';
-    if(familyMembers.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">目前尚未建立任何成員</p>';
-        return;
-    }
+    if (!container) return;
+    container.innerHTML = familyMembers.length === 0 ? '<p class="text-center text-gray-400 text-sm py-4">尚無成員</p>' : '';
     familyMembers.forEach(m => {
         const item = document.createElement('div');
-        item.className = 'flex justify-between items-center bg-white p-3 rounded-xl border border-warm-100 shadow-sm';
-        item.innerHTML = `<span class="font-bold text-gray-700 text-sm">${m.name}</span><button class="btn-delete-member text-rose-400 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg"><i class="fas fa-trash-alt"></i></button>`;
-        item.querySelector('.btn-delete-member').addEventListener('click', async () => {
-            triggerHaptic();
-            if (confirm(`確定要刪除成員「${m.name}」嗎？`)) await deleteDoc(doc(db, 'familyMembers', m.id));
-        });
+        item.className = 'flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm';
+        item.innerHTML = `<span>${m.name}</span><button class="text-rose-400 px-2 py-1"><i class="fas fa-trash-alt"></i></button>`;
+        item.querySelector('button').addEventListener('click', async () => { if (confirm(`刪除 ${m.name}？`)) await deleteDoc(doc(db, 'familyMembers', m.id)); });
         container.appendChild(item);
     });
 }
-
 document.getElementById('btn-add-member').addEventListener('click', async () => {
-    triggerHaptic();
     const input = document.getElementById('new-member-name');
-    const name = input.value.trim();
-    if (name) {
-        if(familyMembers.some(m => m.name === name)) return alert('這個成員已經存在囉！');
-        await addDoc(membersRef, { name: name });
+    if (input.value.trim() && !familyMembers.some(m => m.name === input.value.trim())) {
+        await addDoc(membersRef, { name: input.value.trim() });
         input.value = '';
     }
 });
-document.getElementById('btn-manage-members').addEventListener('click', () => { triggerHaptic(); document.getElementById('member-modal').classList.remove('hidden'); });
-document.getElementById('btn-close-member-modal').addEventListener('click', () => { triggerHaptic(); document.getElementById('member-modal').classList.add('hidden'); });
+document.getElementById('btn-manage-members').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
+document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* ================== 相片牆與附件預覽 ================== */
-const photoUrlInput = document.getElementById('event-photo-url');
-const photoPreview = document.getElementById('photo-preview');
-const previewImg = photoPreview.querySelector('img');
-
-photoUrlInput.addEventListener('input', (e) => {
-    const url = e.target.value.trim();
-    if (url) { previewImg.src = url; photoPreview.classList.remove('hidden'); }
-    else { previewImg.src = ''; photoPreview.classList.add('hidden'); }
-});
-document.getElementById('btn-remove-photo').addEventListener('click', () => {
-    triggerHaptic();
-    photoUrlInput.value = ''; previewImg.src = ''; photoPreview.classList.add('hidden');
-});
-
-const galleryModal = document.getElementById('gallery-modal');
-document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
-document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
-
-function renderGalleryGrid() {
-    const container = document.getElementById('gallery-grid-container');
-    container.innerHTML = '';
-    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    if (photoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-400"><i class="far fa-images text-4xl mb-3 opacity-50"></i><p class="text-sm">目前還沒有任何相片記錄喔！</p></div>`;
-        return;
-    }
-    photoEvents.forEach(evt => {
-        const item = document.createElement('div');
-        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
-        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${evt.photoUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
-        item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
-        container.appendChild(item);
-    });
-}
-
-/* ================== 任務、投票與分帳區塊邏輯 ================== */
-const checklistCheckbox = document.getElementById('event-is-checklist');
-const checklistFields = document.getElementById('checklist-fields');
-const checklistContainer = document.getElementById('checklist-items-container');
-checklistCheckbox.addEventListener('change', (e) => {
-    if (e.target.checked) { checklistFields.classList.remove('hidden'); if (checklistContainer.children.length === 0) addChecklistRow(); }
-    else checklistFields.classList.add('hidden');
-});
-function addChecklistRow(text = '', assignee = '', done = false) {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 checklist-row';
-    row.dataset.done = done ? 'true' : 'false';
-    row.innerHTML = `<input type="text" placeholder="任務/物品" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="text" list="member-list" placeholder="認領人" value="${assignee}" class="checklist-assignee w-28 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none"><button type="button" class="btn-remove-check text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('.btn-remove-check').addEventListener('click', () => row.remove());
-    checklistContainer.appendChild(row);
-}
-document.getElementById('btn-add-checklist-item').addEventListener('click', () => { triggerHaptic(); addChecklistRow(); });
-
+/* 投票選項動態新增 */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
 pollCheckbox.addEventListener('change', (e) => {
-    if (e.target.checked) { pollFields.classList.remove('hidden'); if (pollOptionsContainer.children.length === 0) addPollOptionRow(); }
-    else pollFields.classList.add('hidden');
+    pollFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
 });
 function addPollOptionRow(title = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 poll-row';
-    row.innerHTML = `<input type="text" placeholder="選項標題" value="${title}" class="poll-option-title flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="btn-remove-poll text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('.btn-remove-poll').addEventListener('click', () => row.remove());
+    row.innerHTML = `<input type="text" placeholder="選項標題" value="${title}" class="poll-option-title flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
     pollOptionsContainer.appendChild(row);
 }
-document.getElementById('btn-add-poll-option').addEventListener('click', () => { triggerHaptic(); addPollOptionRow(); });
+document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
 
-const expenseCheckbox = document.getElementById('event-is-expense');
-const expenseFields = document.getElementById('expense-fields');
-const payersContainer = document.getElementById('payers-container');
-const sharersContainer = document.getElementById('sharers-container');
-expenseCheckbox.addEventListener('change', (e) => {
-    if (e.target.checked) { expenseFields.classList.remove('hidden'); if (payersContainer.children.length === 0) addPayerRow(); }
-    else expenseFields.classList.add('hidden');
-});
-function addPayerRow(name = '', amount = '') {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 payer-row';
-    row.innerHTML = `<input type="text" list="member-list" placeholder="墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="btn-remove-payer text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('.btn-remove-payer').addEventListener('click', () => row.remove());
-    payersContainer.appendChild(row);
-}
-document.getElementById('btn-add-payer').addEventListener('click', () => { triggerHaptic(); addPayerRow(); });
-function addSharerRow(name = '', weight = 1) {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 sharer-row';
-    row.innerHTML = `<input type="text" list="member-list" placeholder="分攤成員" value="${name}" class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><div class="flex items-center bg-white border rounded-xl px-2 py-1"><input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none"><span class="text-[10px]">份</span></div><button type="button" class="btn-remove-sharer text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('.btn-remove-sharer').addEventListener('click', () => row.remove());
-    sharersContainer.appendChild(row);
-}
-document.getElementById('btn-add-sharer').addEventListener('click', () => { triggerHaptic(); addSharerRow('', 1); });
-
-/* ================== 行事曆核心與投票資料讀取 ================== */
+/* 核心事件聆聽 */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
-    snapshot.forEach((doc) => {
-        const data = doc.data();
-        let actualStartDate = data.startDate;
-        let actualEndDate = data.endDate || data.startDate;
-
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        let sDate = data.startDate;
+        let eDate = data.endDate || data.startDate;
         if (data.isLunarRecurring && data.lunarMonth && data.lunarDay) {
-            const currentYear = currentDate.getFullYear();
             try {
-                const solarObj = Lunar.fromYmd(currentYear, data.lunarMonth, data.lunarDay).getSolar();
-                actualStartDate = `${solarObj.getYear()}-${String(solarObj.getMonth()).padStart(2, '0')}-${String(solarObj.getDay()).padStart(2, '0')}`;
-                actualEndDate = actualStartDate;
+                const solar = Lunar.fromYmd(currentDate.getFullYear(), data.lunarMonth, data.lunarDay).getSolar();
+                sDate = `${solar.getYear()}-${String(solar.getMonth()).padStart(2, '0')}-${String(solar.getDay()).padStart(2, '0')}`;
+                eDate = sDate;
             } catch(e) {}
         }
-
-        events.push({ 
-            id: doc.id, title: data.title, icon: data.icon || '', startDate: actualStartDate, endDate: actualEndDate, 
-            originalStart: data.startDate, isLunarRecurring: data.isLunarRecurring || false, lunarMonth: data.lunarMonth || null, lunarDay: data.lunarDay || null,
-            time: data.time || '', author: data.author || '', description: data.description || '', isNav: data.isNav || false, color: data.color || 'bg-rose-400', 
-            isExpense: data.isExpense || false, payers: data.payers || [], expenseSplits: data.expenseSplits || 4, sharers: data.sharers || [],
-            photoUrl: data.photoUrl || null, fileUrl: data.fileUrl || null,
-            isPoll: data.isPoll || false, 
-            pollOptions: (data.pollOptions || []).map(opt => ({ title: opt.title, voters: opt.voters || [] })), // 🌟 確保投票人陣列正確載入
-            isChecklist: data.isChecklist || false, checklist: data.checklist || []
+        events.push({
+            id: docSnap.id,
+            title: data.title || '未命名活動',
+            icon: data.icon || '',
+            startDate: sDate,
+            endDate: eDate,
+            originalStart: data.startDate,
+            isLunarRecurring: data.isLunarRecurring || false,
+            lunarMonth: data.lunarMonth || null,
+            lunarDay: data.lunarDay || null,
+            author: data.author || '家族成員',
+            color: data.color || 'bg-rose-400',
+            photoUrl: data.photoUrl || null,
+            fileUrl: data.fileUrl || null,
+            isPoll: data.isPoll || false,
+            pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] }))
         });
     });
     renderApp();
@@ -322,338 +188,252 @@ onSnapshot(eventsRef, (snapshot) => {
     if (currentViewingId) openViewModal(currentViewingId);
 });
 
-function formatDateStr(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-document.getElementById('search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
-
 function renderApp() { renderCalendar(); renderUpcoming(); }
 
 function renderCalendar() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const monthTitleStr = `${year}年 ${month + 1}月`;
-    if (document.getElementById('current-month-year')) document.getElementById('current-month-year').innerText = monthTitleStr;
-    if (document.getElementById('mob-month-year')) document.getElementById('mob-month-year').innerText = monthTitleStr;
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth();
+    const tStr = `${y}年 ${m + 1}月`;
+    if (document.getElementById('current-month-year')) document.getElementById('current-month-year').innerText = tStr;
+    if (document.getElementById('mob-month-year')) document.getElementById('mob-month-year').innerText = tStr;
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(y, m, 1).getDay();
+    const totalDays = new Date(y, m + 1, 0).getDate();
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = '';
-    const todayStr = formatDateStr(new Date());
-    
+    const todayStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+
     for (let i = 0; i < firstDay; i++) {
-        const emptyCell = document.createElement('div');
-        emptyCell.className = 'border border-warm-100 rounded-xl bg-[#fdfbf9]/50 opacity-30';
-        grid.appendChild(emptyCell);
+        const empty = document.createElement('div');
+        empty.className = 'border border-warm-100 rounded-xl bg-warm-50/30 opacity-30';
+        grid.appendChild(empty);
     }
     for (let i = 1; i <= totalDays; i++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-        grid.appendChild(createDayCell(i, dateStr, dateStr === todayStr));
+        const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        grid.appendChild(createDayCell(i, dStr, dStr === todayStr));
     }
 }
 
-function createDayCell(dayNum, dateStr, isToday = false) {
-    const dateObj = new Date(dateStr);
-    const dayOfWeek = dateObj.getDay();
-    let lunarStr = '';
-    try {
-        const lunar = Solar.fromDate(dateObj).getLunar();
-        lunarStr = lunar.getFestivals()[0] || lunar.getDayInChinese();
-        if (lunar.getDay() === 1) lunarStr = lunar.getMonthInChinese() + '月';
-    } catch (err) {}
-
-    const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
-    const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('上班') || e.title.includes('補班')));
-    const isRedDay = ((dayOfWeek === 0 || dayOfWeek === 6) && !isMakeUpWorkDay) || allEventsForCheck.some(e => e.author === '政府行事曆');
-    const dayEvents = allEventsForCheck.sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
-
-    let cellBgClass = isToday ? 'bg-warm-50 border-warm-300 ring-2 ring-warm-400' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
-
+function createDayCell(dayNum, dateStr, isToday) {
     const cell = document.createElement('div');
-    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden relative`;
-    cell.addEventListener('click', () => { triggerHaptic(); openDayModal(dateStr); });
+    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 bg-white cursor-pointer relative ${isToday ? 'bg-warm-50 ring-2 ring-warm-400' : ''}`;
+    cell.addEventListener('click', () => openDayModal(dateStr));
     
-    let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
-    const weatherInfo = weatherData[dateStr] ? `<span class="text-[8px] text-blue-500 font-bold bg-blue-50 px-1 rounded-full">${weatherData[dateStr]}</span>` : '';
+    cell.innerHTML = `<div class="flex justify-between items-center px-0.5"><span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-warm-500 text-white' : 'text-gray-600'}">${dayNum}</span><span class="text-[9px] text-blue-500">${weatherData[dateStr] || ''}</span></div>`;
     
-    cell.innerHTML = `<div class="flex justify-between items-center px-0.5 shrink-0"><div class="flex items-center gap-1"><span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>${weatherInfo}</div><span class="text-[9px] md:text-[10px] text-gray-400">${lunarStr}</span></div>`;
-    
-    const eventsContainer = document.createElement('div');
-    eventsContainer.className = 'flex flex-col gap-0.5 overflow-y-auto hide-scrollbar flex-1';
-    
-    dayEvents.forEach(evt => {
-        const matchSearch = !searchQuery || evt.title.toLowerCase().includes(searchQuery) || evt.author.toLowerCase().includes(searchQuery);
-        const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
-        const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px] opacity-90"></i>` : '';
-        const evtEl = document.createElement('div');
-        evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer truncate ${opacityClass}`;
-        evtEl.innerHTML = `${evt.icon ? evt.icon+' ' : ''}${evt.title}${pollBadge}`;
-        evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
-        eventsContainer.appendChild(evtEl);
+    const container = document.createElement('div');
+    container.className = 'flex flex-col gap-0.5 overflow-y-auto flex-1 hide-scrollbar';
+    events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).forEach(evt => {
+        const el = document.createElement('div');
+        el.className = `${evt.color} text-white text-[9px] font-bold px-1 py-0.5 rounded truncate`;
+        el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}`;
+        el.addEventListener('click', (ev) => { ev.stopPropagation(); openViewModal(evt.id); });
+        container.appendChild(el);
     });
-    cell.appendChild(eventsContainer);
+    cell.appendChild(container);
     return cell;
 }
 
 function openDayModal(dateStr, setGlobal = true) {
     if (setGlobal) selectedDateForModal = dateStr;
-    document.getElementById('day-modal-title').innerText = `${dateStr} 當日行程`;
-    const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
-    const listContainer = document.getElementById('day-modal-list');
-    listContainer.innerHTML = '';
-    
-    if (dayEvents.length === 0) {
-        listContainer.innerHTML = `<div class="text-center py-6 text-gray-400"><p class="text-sm">這一天沒有安排行程喔！</p></div>`;
+    document.getElementById('day-modal-title').innerText = `${dateStr} 行程`;
+    const list = document.getElementById('day-modal-list');
+    list.innerHTML = '';
+    const dayEvts = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+    if (dayEvts.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">這一天沒有行程</p>';
     } else {
-        dayEvents.forEach(evt => {
+        dayEvts.forEach(evt => {
             const item = document.createElement('div');
-            item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 cursor-pointer flex items-center justify-between';
-            item.addEventListener('click', () => { triggerHaptic(); closeDayModal(); openViewModal(evt.id); });
-            const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
-            item.innerHTML = `<div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full ${evt.color}"></div><h4 class="font-bold text-gray-800 text-sm">${evt.icon ? evt.icon+' ' : ''}${evt.title}${pollIcon}</h4></div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
-            listContainer.appendChild(item);
+            item.className = 'p-3 rounded-xl border bg-warm-50/50 cursor-pointer flex justify-between items-center';
+            item.innerHTML = `<div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full ${evt.color}"></div><span class="font-bold text-sm">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</span></div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
+            item.addEventListener('click', () => { closeDayModal(); openViewModal(evt.id); });
+            list.appendChild(item);
         });
     }
     document.getElementById('day-modal').classList.remove('hidden');
 }
-function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); selectedDateForModal = null; }
+function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); }
 
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
-    const emptyState = document.getElementById('no-upcoming');
+    const empty = document.getElementById('no-upcoming');
     container.innerHTML = '';
-    const todayStr = formatDateStr(new Date());
+    const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
     const upcoming = events.filter(e => e.endDate >= todayStr).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
-    if (upcoming.length === 0) emptyState.classList.remove('hidden');
-    else {
-        emptyState.classList.add('hidden');
-        upcoming.forEach(evt => {
-            const el = document.createElement('div');
-            el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm cursor-pointer flex items-center gap-3';
-            el.addEventListener('click', () => { triggerHaptic(); openViewModal(evt.id); });
-            const [sY, sM, sD] = evt.startDate.split('-').map(Number);
-            el.innerHTML = `<div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0"><span class="text-xs">${sM}月</span><span class="text-lg font-bold">${sD}</span></div><div class="flex-1 truncate"><h4 class="font-bold text-gray-800 truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4><span class="text-xs text-gray-400">${evt.startDate}</span></div>`;
-            container.appendChild(el);
-        });
-    }
+    empty.classList.toggle('hidden', upcoming.length > 0);
+    upcoming.forEach(evt => {
+        const el = document.createElement('div');
+        el.className = 'bg-white p-3 rounded-xl border shadow-sm cursor-pointer flex items-center gap-3';
+        el.addEventListener('click', () => openViewModal(evt.id));
+        const [y, m, d] = evt.startDate.split('-');
+        el.innerHTML = `<div class="${evt.color} text-white rounded-xl w-10 h-10 flex flex-col items-center justify-center shrink-0"><span class="text-[10px]">${m}月</span><span class="text-sm font-bold">${d}</span></div><div class="flex-1 truncate"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4></div>`;
+        container.appendChild(el);
+    });
 }
 
-document.getElementById('btn-prev-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-document.getElementById('btn-next-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-document.getElementById('btn-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
-document.getElementById('btn-mob-prev').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-document.getElementById('btn-mob-next').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-document.getElementById('btn-mob-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
+/* 導覽與 Modal 開關 */
+document.getElementById('btn-prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+document.getElementById('btn-next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+document.getElementById('btn-today').addEventListener('click', () => { currentDate = new Date(); renderCalendar(); });
+document.getElementById('btn-mob-prev').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+document.getElementById('btn-mob-next').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+document.getElementById('btn-mob-today').addEventListener('click', () => { currentDate = new Date(); renderCalendar(); });
 
-document.getElementById('btn-open-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
-document.getElementById('btn-mobile-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
-document.getElementById('btn-close-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
-document.getElementById('btn-cancel-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
-document.getElementById('btn-close-day-modal').addEventListener('click', () => { triggerHaptic(); closeDayModal(); });
-document.getElementById('btn-close-view').addEventListener('click', () => { triggerHaptic(); closeViewModal(); });
-document.getElementById('btn-edit-from-view').addEventListener('click', () => { triggerHaptic(); const id = currentViewingId; closeViewModal(); setTimeout(() => openModal(id), 100); });
-document.getElementById('btn-copy-from-view').addEventListener('click', () => { triggerHaptic(); const id = currentViewingId; closeViewModal(); setTimeout(() => copyEventToModal(id), 100); });
+document.getElementById('btn-open-add').addEventListener('click', () => openModal());
+document.getElementById('btn-mobile-add').addEventListener('click', () => openModal());
+document.getElementById('btn-close-modal').addEventListener('click', () => closeModal());
+document.getElementById('btn-cancel-modal').addEventListener('click', () => closeModal());
+document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
+document.getElementById('btn-close-view').addEventListener('click', () => document.getElementById('view-modal').classList.add('hidden'));
+document.getElementById('btn-edit-from-view').addEventListener('click', () => { const id = currentViewingId; document.getElementById('view-modal').classList.add('hidden'); openModal(id); });
 
-function openModal(eventId = null, defaultDate = null) {
+function openModal(id = null) {
     document.getElementById('event-form').reset();
-    photoUrlInput.value = '';
-    previewImg.src = '';
-    photoPreview.classList.add('hidden');
+    document.getElementById('event-photo-url').value = '';
+    document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
     pollCheckbox.checked = false;
     pollFields.classList.add('hidden');
     pollOptionsContainer.innerHTML = '';
 
-    currentEditingId = eventId;
-    if (eventId) {
+    currentEditingId = id;
+    if (id) {
         document.getElementById('modal-title').innerText = '編輯活動';
         document.getElementById('btn-delete').classList.remove('hidden');
-        const evt = events.find(e => e.id === eventId);
+        const evt = events.find(e => e.id === id);
         if (evt) {
-            document.getElementById('event-title').value = evt.title;
+            document.getElementById('event-title').value = evt.title || '';
             document.getElementById('event-icon').value = evt.icon || '';
             document.getElementById('event-start-date').value = evt.originalStart || evt.startDate;
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
+            document.getElementById('event-author').value = evt.author || '';
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
-
             if (evt.photoUrl) {
-                photoUrlInput.value = evt.photoUrl;
-                previewImg.src = evt.photoUrl;
-                photoPreview.classList.remove('hidden');
+                document.getElementById('event-photo-url').value = evt.photoUrl;
+                document.querySelector('#photo-preview img').src = evt.photoUrl;
+                document.getElementById('photo-preview').classList.remove('hidden');
             }
-            if (evt.fileUrl) {
-                document.getElementById('event-file-url').value = evt.fileUrl;
-            }
-
-            // 🌟 確保編輯時投票選項正確回填
-            if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
+            if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
+            if (evt.isPoll && evt.pollOptions) {
                 pollCheckbox.checked = true;
                 pollFields.classList.remove('hidden');
-                evt.pollOptions.forEach(opt => addPollOptionRow(opt.title));
+                evt.pollOptions.forEach(o => addPollOptionRow(o.title));
             }
         }
     } else {
         document.getElementById('modal-title').innerText = '新增活動';
         document.getElementById('btn-delete').classList.add('hidden');
-        document.getElementById('event-start-date').value = defaultDate || formatDateStr(new Date());
+        document.getElementById('event-start-date').value = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
     }
     document.getElementById('event-modal').classList.remove('hidden');
 }
+function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-function copyEventToModal(eventId) { openModal(eventId); currentEditingId = null; document.getElementById('modal-title').innerText = '複製並新增活動'; document.getElementById('btn-delete').classList.add('hidden'); }
-function closeModal() { document.getElementById('event-modal').classList.add('hidden'); currentEditingId = null; }
-
-function openViewModal(eventId) {
-    const evt = events.find(e => e.id === eventId);
-    if(!evt) return;
-    currentViewingId = eventId;
+function openViewModal(id) {
+    const evt = events.find(e => e.id === id);
+    if (!evt) return;
+    currentViewingId = id;
     document.getElementById('view-modal-header').className = `h-20 w-full ${evt.color}`;
     document.getElementById('view-title').innerText = (evt.icon ? evt.icon + ' ' : '') + evt.title;
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
-    document.getElementById('view-author').innerText = `建立者：${evt.author || '未署名'}`;
+    document.getElementById('view-author').innerText = `建立者：${evt.author}`;
 
-    const viewPhotoContainer = document.getElementById('view-photo-container');
-    const viewPhoto = document.getElementById('view-photo');
-    if (evt.photoUrl && evt.photoUrl.trim() !== '') {
-        viewPhoto.src = evt.photoUrl;
-        viewPhotoContainer.classList.remove('hidden');
-    } else {
-        viewPhotoContainer.classList.add('hidden');
-        viewPhoto.src = '';
-    }
+    const pBox = document.getElementById('view-photo-container');
+    if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = evt.photoUrl; } else pBox.classList.add('hidden');
 
-    const viewFileContainer = document.getElementById('view-file-container');
-    const viewFileLink = document.getElementById('view-file-link');
-    if (evt.fileUrl && evt.fileUrl.trim() !== '') {
-        viewFileLink.href = evt.fileUrl;
-        viewFileContainer.classList.remove('hidden');
-    } else {
-        viewFileContainer.classList.add('hidden');
-        viewFileLink.href = '#';
-    }
+    const fBox = document.getElementById('view-file-container');
+    if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
 
-    // 🌟 完整的匿名投票介面與互動邏輯
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
-        const currentVoter = voterSelect ? voterSelect.value : '';
-
+        const voter = voterSelect ? voterSelect.value : '';
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
-            row.className = 'bg-white p-3 rounded-xl border border-indigo-100 flex flex-col gap-1.5 shadow-sm';
+            row.className = 'bg-white p-2 rounded-xl border flex flex-col gap-1';
+            const hasVoted = voter && opt.voters.includes(voter);
+            row.innerHTML = `<div class="flex justify-between items-center"><span class="font-bold">${opt.title}</span><button class="px-3 py-1 rounded-lg text-xs font-bold ${hasVoted ? 'bg-indigo-500 text-white' : 'bg-indigo-50 text-indigo-600'}">投一票 (${opt.voters.length})</button></div>${opt.voters.length > 0 ? `<div class="text-[9px] text-gray-400">已投: ${opt.voters.join(', ')}</div>` : ''}`;
             
-            const hasVoted = currentVoter ? (opt.voters && opt.voters.includes(currentVoter)) : false;
-            const btnClass = hasVoted ? 'bg-indigo-500 text-white shadow-md' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600';
-            
-            row.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <span class="font-bold text-gray-700 text-sm">${opt.title}</span>
-                    <button class="btn-vote ${btnClass} px-4 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5">
-                        <i class="fas fa-thumbs-up"></i> 投一票 (${opt.voters ? opt.voters.length : 0})
-                    </button>
-                </div>
-                ${opt.voters && opt.voters.length > 0 ? `<div class="text-[10px] text-gray-400">已投：${opt.voters.join(', ')}</div>` : ''}
-            `;
-            
-            row.querySelector('.btn-vote').addEventListener('click', async () => {
-                triggerHaptic();
-                const voterName = document.getElementById('poll-voter-select').value;
-                if (!voterName) return alert('請先在上方選擇「目前投票人」是哪位成員喔！');
-                
-                let updatedOptions = evt.pollOptions.map(o => ({ title: o.title, voters: [...(o.voters || [])] }));
-                const isCurrentlyVoted = updatedOptions[idx].voters.includes(voterName);
-                
-                // 單選邏輯：先從所有選項中移除該投票人，若原本沒投則加入當前選項
-                updatedOptions.forEach(o => { o.voters = o.voters.filter(name => name !== voterName); });
-                if (!isCurrentlyVoted) updatedOptions[idx].voters.push(voterName);
-                
-                try { 
-                    await updateDoc(doc(eventsRef, evt.id), { pollOptions: updatedOptions }); 
-                } catch(e) { console.error("Vote failed", e); }
+            row.querySelector('button').addEventListener('click', async () => {
+                if (!voter) return alert('請先選擇目前投票人！');
+                let updated = evt.pollOptions.map(o => ({ title: o.title, voters: [...o.voters] }));
+                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter));
+                if (!hasVoted) updated[idx].voters.push(voter);
+                await updateDoc(doc(eventsRef, evt.id), { pollOptions: updated });
             });
             pollOptionsEl.appendChild(row);
         });
-        if (voterSelect) voterSelect.onchange = () => openViewModal(eventId);
+        if (voterSelect) voterSelect.onchange = () => openViewModal(id);
         pollContainer.classList.remove('hidden');
-    } else { 
-        pollContainer.classList.add('hidden'); 
-    }
+    } else pollContainer.classList.add('hidden');
 
     document.getElementById('view-modal').classList.remove('hidden');
 }
 
-function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); currentViewingId = null; }
-
+/* 儲存表單 */
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
 
-    const isLunarRecurring = document.getElementById('event-is-lunar-recurring').checked;
-    let lunarMonth = null, lunarDay = null;
-    const startDateVal = document.getElementById('event-start-date').value;
+    const titleVal = document.getElementById('event-title').value.trim();
+    if (!titleVal) return alert('請輸入活動名稱！');
 
-    if (isLunarRecurring && startDateVal) {
-        const [y, m, d] = startDateVal.split('-').map(Number);
-        const solar = Solar.fromYmd(y, m, d);
-        const lunar = solar.getLunar();
-        lunarMonth = lunar.getMonth();
-        lunarDay = lunar.getDay();
+    const isRecurring = document.getElementById('event-is-lunar-recurring').checked;
+    let lMonth = null, lDay = null;
+    const startVal = document.getElementById('event-start-date').value;
+
+    if (isRecurring && startVal) {
+        const [y, m, d] = startVal.split('-').map(Number);
+        const lunar = Solar.fromYmd(y, m, d).getLunar();
+        lMonth = lunar.getMonth();
+        lDay = lunar.getDay();
     }
 
     const isPoll = pollCheckbox.checked;
-    let pollOptionsList = [];
+    let pollOpts = [];
     if (isPoll) {
-        const existingEvt = events.find(ev => ev.id === currentEditingId);
+        const existing = events.find(ev => ev.id === currentEditingId);
         document.querySelectorAll('.poll-row').forEach((row, idx) => {
-            const title = row.querySelector('.poll-option-title').value.trim();
-            if (title) {
-                let voters = [];
-                if (existingEvt && existingEvt.pollOptions && existingEvt.pollOptions[idx] && existingEvt.pollOptions[idx].title === title) {
-                    voters = existingEvt.pollOptions[idx].voters;
-                }
-                pollOptionsList.push({ title, voters });
+            const t = row.querySelector('.poll-option-title').value.trim();
+            if (t) {
+                let voters = (existing && existing.pollOptions && existing.pollOptions[idx] && existing.pollOptions[idx].title === t) ? existing.pollOptions[idx].voters : [];
+                pollOpts.push({ title: t, voters: voters });
             }
         });
     }
 
     const eventData = {
-        title: document.getElementById('event-title').value.trim(),
+        title: titleVal,
         icon: document.getElementById('event-icon').value,
-        startDate: startDateVal,
-        endDate: document.getElementById('event-end-date').value || startDateVal,
-        isLunarRecurring: isLunarRecurring,
-        lunarMonth: lunarMonth,
-        lunarDay: lunarDay,
+        startDate: startVal,
+        endDate: document.getElementById('event-end-date').value || startVal,
+        isLunarRecurring: isRecurring,
+        lunarMonth: lMonth,
+        lunarDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
-        photoUrl: photoUrlInput.value.trim(),
+        photoUrl: document.getElementById('event-photo-url').value.trim(),
         fileUrl: document.getElementById('event-file-url').value.trim(),
-        isPoll: isPoll && pollOptionsList.length > 0,
-        pollOptions: pollOptionsList
+        isPoll: isPoll && pollOpts.length > 0,
+        pollOptions: pollOpts
     };
 
     if (currentEditingId) {
-        const index = events.findIndex(e => e.id === currentEditingId);
-        if (index !== -1) events[index] = { ...events[index], ...eventData };
         await updateDoc(doc(eventsRef, currentEditingId), eventData);
     } else {
         await addDoc(eventsRef, eventData);
     }
-    renderApp();
     closeModal();
 });
 
 document.getElementById('btn-delete').addEventListener('click', async () => {
-    if (!currentEditingId) return;
-    triggerHaptic();
-    if (confirm('確定要刪除此活動嗎？')) {
+    if (currentEditingId && confirm('確定要刪除嗎？')) {
         await deleteDoc(doc(eventsRef, currentEditingId));
         closeModal();
     }
