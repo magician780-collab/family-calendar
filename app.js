@@ -43,7 +43,13 @@ document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSi
 document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
 sidebarBackdrop.addEventListener('click', toggleSidebar);
 
-/* ================== 通用：點擊背景自動關閉 Modal (iOS 優化版) ================== */
+/* 設定按鈕開啟管理與備份後台 */
+document.getElementById('btn-open-admin').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+
+/* 通用：點擊背景自動關閉 Modal */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
         triggerHaptic();
@@ -53,7 +59,7 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     });
 });
 
-/* ================== 手機版：左右滑動切換月份手勢監聽 ================== */
+/* 手機版：左右滑動切換月份手勢監聽 */
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
@@ -137,21 +143,9 @@ onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
     snapshot.forEach(doc => familyMembers.push({ id: doc.id, name: doc.data().name }));
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
-    renderMemberSelects();
     renderMemberManageList();
 });
-function renderMemberSelects() {
-    const datalist = document.getElementById('member-list');
-    const voterSelect = document.getElementById('poll-voter-select');
-    if (datalist) datalist.innerHTML = '';
-    let curVoter = voterSelect ? voterSelect.value : '';
-    if (voterSelect) voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
-    familyMembers.forEach(m => {
-        if (datalist) { const opt = document.createElement('option'); opt.value = m.name; datalist.appendChild(opt); }
-        if (voterSelect) { const vOpt = document.createElement('option'); vOpt.value = m.name; vOpt.textContent = m.name; voterSelect.appendChild(vOpt); }
-    });
-    if (voterSelect && familyMembers.some(m => m.name === curVoter)) voterSelect.value = curVoter;
-}
+
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if (!container) return;
@@ -171,10 +165,78 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
         input.value = '';
     }
 });
-document.getElementById('btn-manage-members').addEventListener('click', () => document.getElementById('member-modal').classList.remove('hidden'));
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* 📸 相片牆開啟與渲染 */
+/* 📅 2026 政府行事曆與國定假日一鍵匯入 */
+document.getElementById('btn-import-gov-holidays').addEventListener('click', async () => {
+    if (!confirm('確定要一鍵匯入 2026 年政府行事曆與國定假日嗎？')) return;
+    triggerHaptic();
+
+    const govHolidays = [
+        { title: '元旦', startDate: '2026-01-01', endDate: '2026-01-01', icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+        { title: '農曆除夕', startDate: '2026-02-16', endDate: '2026-02-16', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+        { title: '春節', startDate: '2026-02-17', endDate: '2026-02-21', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+        { title: '和平紀念日', startDate: '2026-02-28', endDate: '2026-02-28', icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+        { title: '兒童節/民族掃墓節', startDate: '2026-04-04', endDate: '2026-04-05', icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+        { title: '勞動節', startDate: '2026-05-01', endDate: '2026-05-01', icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+        { title: '端午節', startDate: '2026-06-19', endDate: '2026-06-19', icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+        { title: '中秋節', startDate: '2026-09-25', endDate: '2026-09-25', icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+        { title: '國慶日', startDate: '2026-10-10', endDate: '2026-10-10', icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+    ];
+
+    try {
+        for (const h of govHolidays) {
+            await addDoc(eventsRef, h);
+        }
+        alert('🎉 2026 政府行事曆與國定假日已成功匯入！');
+    } catch (err) {
+        alert('匯入失敗，請檢查網路連線。');
+    }
+});
+
+/* 💾 JSON 備份與還原功能 */
+document.getElementById('btn-export-json').addEventListener('click', () => {
+    triggerHaptic();
+    const backupData = {
+        exportDate: new Date().toISOString(),
+        events: events
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `family_calendar_backup_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+});
+
+document.getElementById('input-import-json').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const json = JSON.parse(event.target.result);
+            if (json.events && Array.isArray(json.events)) {
+                if (confirm(`確定要還原 ${json.events.length} 筆行程資料嗎？這將會匯入至您的行事曆中。`)) {
+                    for (const ev of json.events) {
+                        delete ev.id; 
+                        await addDoc(eventsRef, ev);
+                    }
+                    alert('🎉 資料還原與匯入成功！');
+                    document.getElementById('member-modal').classList.add('hidden');
+                }
+            } else {
+                alert('檔案格式錯誤，找不到有效的行程資料。');
+            }
+        } catch (err) {
+            alert('解析 JSON 檔案失敗，請確認檔案格式。');
+        }
+    };
+    reader.readAsText(file);
+});
+
+/* 相片牆 */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
@@ -196,7 +258,53 @@ function renderGalleryGrid() {
     });
 }
 
-/* 動態輸入欄位 */
+
+/* ================= 👑 核心優化：建立原生的下拉選單，並在已選清單中將名單自動去重（不可再選） ================= */
+
+// 取得全部成員下拉選單的通用 HTML 結構
+function getMemberOptions(selected = '', defaultText = '請選擇...') {
+    let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
+    familyMembers.forEach(m => {
+        html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`;
+    });
+    return html;
+}
+
+// CheckList 專用的下拉（允許留空為未認領）
+function getChecklistMemberOptions(selected = '') {
+    let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
+    familyMembers.forEach(m => {
+        html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`;
+    });
+    return html;
+}
+
+// 即時動態排除已選過的成員（防呆機制）
+function updateUniqueSelects(containerId, selectClass) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const selects = Array.from(container.querySelectorAll(selectClass));
+    // 找出當前在該區塊中所有已被選取的名字
+    const selectedValues = selects.map(s => s.value).filter(v => v !== '');
+
+    selects.forEach(select => {
+        const currentValue = select.value;
+        Array.from(select.options).forEach(option => {
+            if (option.value === '') return; // 略過佔位符提示
+            
+            // 如果這個選項在其他列被選過了，就禁用它，不准重複選
+            if (selectedValues.includes(option.value) && option.value !== currentValue) {
+                option.disabled = true;
+                option.textContent = `${option.value} (已選)`;
+            } else {
+                option.disabled = false;
+                option.textContent = option.value;
+            }
+        });
+    });
+}
+
+/* 裝備/任務清單 */
 const checklistCheckbox = document.getElementById('event-is-checklist');
 const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
@@ -208,12 +316,19 @@ function addChecklistRow(text = '', assignee = '', done = false) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 checklist-row';
     row.dataset.done = done ? 'true' : 'false';
-    row.innerHTML = `<input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="text" list="member-list" placeholder="認領人" value="${assignee}" class="checklist-assignee w-28 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none"><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.innerHTML = `
+        <input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <select class="checklist-assignee w-24 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer">
+            ${getChecklistMemberOptions(assignee)}
+        </select>
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
     row.querySelector('button').addEventListener('click', () => row.remove());
     checklistContainer.appendChild(row);
 }
 document.getElementById('btn-add-checklist-item').addEventListener('click', () => addChecklistRow());
 
+/* 投票功能 */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
@@ -230,6 +345,7 @@ function addPollOptionRow(title = '') {
 }
 document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
 
+/* 代墊記帳與分帳 */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
@@ -238,22 +354,54 @@ expenseCheckbox.addEventListener('change', (e) => {
     expenseFields.classList.toggle('hidden', !e.target.checked);
     if (e.target.checked && payersContainer.children.length === 0) { addPayerRow(); addSharerRow(); }
 });
+
 function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
-    row.innerHTML = `<input type="text" list="member-list" placeholder="墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('button').addEventListener('click', () => row.remove());
+    row.innerHTML = `
+        <select class="payer-name w-1/3 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>
+            ${getMemberOptions(name, '代墊人...')}
+        </select>
+        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('button').addEventListener('click', () => { 
+        row.remove(); 
+        updateUniqueSelects('payers-container', '.payer-name'); 
+    });
+    row.querySelector('.payer-name').addEventListener('change', () => {
+        updateUniqueSelects('payers-container', '.payer-name');
+    });
     payersContainer.appendChild(row);
+    updateUniqueSelects('payers-container', '.payer-name');
 }
 document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow());
+
 function addSharerRow(name = '', weight = 1) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 sharer-row';
-    row.innerHTML = `<input type="text" list="member-list" placeholder="分攤成員" value="${name}" class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><div class="flex items-center bg-white border rounded-xl px-2 py-1"><input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none"><span class="text-[10px]">份</span></div><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('button').addEventListener('click', () => row.remove());
+    row.innerHTML = `
+        <select class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>
+            ${getMemberOptions(name, '分攤對象...')}
+        </select>
+        <div class="flex items-center bg-white border rounded-xl px-2 py-1">
+            <input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none">
+            <span class="text-[10px]">份</span>
+        </div>
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('button').addEventListener('click', () => { 
+        row.remove(); 
+        updateUniqueSelects('sharers-container', '.sharer-name'); 
+    });
+    row.querySelector('.sharer-name').addEventListener('change', () => {
+        updateUniqueSelects('sharers-container', '.sharer-name');
+    });
     sharersContainer.appendChild(row);
+    updateUniqueSelects('sharers-container', '.sharer-name');
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
+
 
 /* 核心事件聆聽 */
 onSnapshot(eventsRef, (snapshot) => {
@@ -434,6 +582,7 @@ document.getElementById('btn-close-day-modal').addEventListener('click', closeDa
 document.getElementById('btn-close-view').addEventListener('click', () => document.getElementById('view-modal').classList.add('hidden'));
 document.getElementById('btn-edit-from-view').addEventListener('click', () => { const id = currentViewingId; document.getElementById('view-modal').classList.add('hidden'); openModal(id); });
 
+
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
@@ -441,28 +590,35 @@ function openModal(id = null) {
     document.getElementById('event-file-url').value = '';
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
+    
     checklistCheckbox.checked = false;
     checklistFields.classList.add('hidden');
     checklistContainer.innerHTML = '';
+    
     pollCheckbox.checked = false;
     pollFields.classList.add('hidden');
     pollOptionsContainer.innerHTML = '';
+    
     expenseCheckbox.checked = false;
     expenseFields.classList.add('hidden');
     payersContainer.innerHTML = '';
     sharersContainer.innerHTML = '';
 
     currentEditingId = id;
+    
+    // 動態載入建立者的原生 Select 列表
+    const authorSelect = document.getElementById('event-author');
+
     if (id) {
         document.getElementById('modal-title').innerText = '編輯活動';
         document.getElementById('btn-delete').classList.remove('hidden');
         const evt = events.find(e => e.id === id);
         if (evt) {
+            authorSelect.innerHTML = getMemberOptions(evt.author, '請選擇建立者...');
             document.getElementById('event-title').value = evt.title || '';
             document.getElementById('event-icon').value = evt.icon || '';
             document.getElementById('event-start-date').value = evt.originalStart || evt.startDate;
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
-            document.getElementById('event-author').value = evt.author || '';
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
             if (evt.photoUrl) {
@@ -473,6 +629,7 @@ function openModal(id = null) {
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
             if (evt.location) document.getElementById('event-location').value = evt.location;
             if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
+            
             if (evt.isChecklist && evt.checklist) {
                 checklistCheckbox.checked = true;
                 checklistFields.classList.remove('hidden');
@@ -494,6 +651,7 @@ function openModal(id = null) {
         document.getElementById('modal-title').innerText = '新增活動';
         document.getElementById('btn-delete').classList.add('hidden');
         document.getElementById('event-start-date').value = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+        authorSelect.innerHTML = getMemberOptions('', '請選擇建立者...');
     }
     document.getElementById('event-modal').classList.remove('hidden');
 }
@@ -514,7 +672,6 @@ function openViewModal(id) {
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
 
-    // 🗺️ 檢視導航按鈕顯示
     const mMapBox = document.getElementById('view-map-container');
     const mMapLink = document.getElementById('view-map-link');
     const mLocText = document.getElementById('view-location-text');
@@ -526,7 +683,6 @@ function openViewModal(id) {
         mMapBox.classList.add('hidden');
     }
 
-    // 裝備清單檢視與勾選
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItems = document.getElementById('view-checklist-items');
     const checkProgress = document.getElementById('view-checklist-progress');
@@ -557,7 +713,6 @@ function openViewModal(id) {
         checkContainer.classList.add('hidden');
     }
 
-    // 保密投票檢視
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
     const voterSelect = document.getElementById('poll-voter-select');
@@ -566,11 +721,27 @@ function openViewModal(id) {
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
-        const voter = voterSelect ? voterSelect.value : '';
-
+        
         let allVotedMembersSet = new Set();
         evt.pollOptions.forEach(opt => opt.voters.forEach(name => allVotedMembersSet.add(name)));
         const allVotedMembersArr = Array.from(allVotedMembersSet);
+
+        // 建立投票者下拉選單，過濾已經投過票的人！
+        voterSelect.innerHTML = '<option value="" disabled selected>請選擇您是哪位成員...</option>';
+        familyMembers.forEach(m => {
+            const hasVoted = allVotedMembersArr.includes(m.name);
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            if (hasVoted) {
+                opt.disabled = true;
+                opt.textContent = `${m.name} (已投票，不可再選)`;
+            } else {
+                opt.textContent = m.name;
+            }
+            voterSelect.appendChild(opt);
+        });
+
+        const voter = voterSelect.value;
 
         votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? 
             `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : 
@@ -596,10 +767,11 @@ function openViewModal(id) {
             `;
             
             row.querySelector('button').addEventListener('click', async () => {
-                if (!voter) return alert('請先在上方選擇您是哪位成員！');
+                const currentVoter = voterSelect.value;
+                if (!currentVoter) return alert('請先在上方選擇您是哪位成員！');
                 let updated = evt.pollOptions.map(o => ({ title: o.title, voters: [...o.voters] }));
-                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter));
-                updated[idx].voters.push(voter);
+                updated.forEach(o => o.voters = o.voters.filter(n => n !== currentVoter));
+                updated[idx].voters.push(currentVoter);
                 await updateDoc(doc(eventsRef, evt.id), { pollOptions: updated });
             });
             pollOptionsEl.appendChild(row);
@@ -616,13 +788,14 @@ function openViewModal(id) {
             }
         };
 
-        if (voterSelect) voterSelect.onchange = () => openViewModal(id);
+        if (voterSelect) voterSelect.onchange = () => {
+            // 當選擇了成員，不需要重新整理 Modal，只要記錄目前選擇的身份即可
+        };
         pollContainer.classList.remove('hidden');
     } else {
         pollContainer.classList.add('hidden');
     }
 
-    // 代墊分帳檢視
     const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
     if (evt.isExpense && evt.payers && evt.payers.length > 0) {
