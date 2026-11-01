@@ -175,9 +175,8 @@
                             <label class="block text-sm font-bold text-gray-700">建立者 <span class="text-rose-500">*</span></label>
                             <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold transition-colors"><i class="fas fa-users-cog"></i> 管理成員</button>
                         </div>
-                        <select id="event-author" class="member-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm" required>
-                            <!-- 透過 JS 從資料庫動態載入 -->
-                        </select>
+                        <input type="text" id="event-author" list="member-list" required placeholder="輸入建立者名稱..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                        <datalist id="member-list"></datalist>
                     </div>
                 </div>
                 <div>
@@ -299,7 +298,7 @@
         </div>
     </div>
 
-    <!-- 載入主程式模組 -->
-    <script type="module" src="./app.js"></script>
+    <!-- 載入主程式模組 (加上 ?v=2 避免快取) -->
+    <script type="module" src="./app.js?v=2"></script>
 </body>
 </html>

@@ -31,45 +31,29 @@ function triggerHaptic() {
     }
 }
 
-/* ================== 成員管理系統 (Member Management) ================== */
+/* ================== 成員管理系統 ================== */
 onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
     snapshot.forEach((doc) => {
         familyMembers.push({ id: doc.id, name: doc.data().name });
     });
-    // 依名字拼音排序
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberSelects();
     renderMemberManageList();
 });
 
-// 同步更新畫面上所有的下拉成員選單 (包含建立者與所有動態產生的墊付人)
 function renderMemberSelects() {
-    const selects = document.querySelectorAll('.member-select');
-    selects.forEach(select => {
-        const currentValue = select.value;
-        select.innerHTML = '<option value="" disabled selected>請選擇成員...</option>';
+    const datalist = document.getElementById('member-list');
+    if (datalist) {
+        datalist.innerHTML = '';
         familyMembers.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.name;
-            opt.textContent = m.name;
-            select.appendChild(opt);
+            datalist.appendChild(opt);
         });
-        
-        // 若之前選的值依然存在，或屬於歷史遺留資料，則將其保留顯示
-        if (familyMembers.some(m => m.name === currentValue)) {
-            select.value = currentValue;
-        } else if (currentValue && currentValue !== '政府行事曆') {
-            const opt = document.createElement('option');
-            opt.value = currentValue;
-            opt.textContent = `${currentValue} (已刪除)`;
-            select.appendChild(opt);
-            select.value = currentValue;
-        }
-    });
+    }
 }
 
-// 渲染成員管理視窗的列表
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if(!container) return;
@@ -91,7 +75,6 @@ function renderMemberManageList() {
             </div>
         `;
         
-        // 編輯成員名稱
         item.querySelector('.btn-edit-member').addEventListener('click', async () => {
             triggerHaptic();
             const newName = prompt('請輸入新的成員名稱：', m.name);
@@ -104,10 +87,9 @@ function renderMemberManageList() {
             }
         });
 
-        // 刪除成員
         item.querySelector('.btn-delete-member').addEventListener('click', async () => {
             triggerHaptic();
-            if (confirm(`確定要刪除成員「${m.name}」嗎？\n(注意：這不會影響過去已經建立的歷史行程，但未來的下拉選單中將無法再選取此成員)`)) {
+            if (confirm(`確定要刪除成員「${m.name}」嗎？\n(注意：這不會影響過去已經建立的歷史行程)`)) {
                 await deleteDoc(doc(db, 'familyMembers', m.id));
             }
         });
@@ -115,7 +97,6 @@ function renderMemberManageList() {
     });
 }
 
-// 新增成員按鈕
 document.getElementById('btn-add-member').addEventListener('click', async () => {
     triggerHaptic();
     const input = document.getElementById('new-member-name');
@@ -130,7 +111,6 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
     }
 });
 
-// 開啟/關閉成員管理 Modal
 document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
@@ -141,7 +121,7 @@ document.getElementById('btn-close-member-modal').addEventListener('click', () =
 });
 
 
-/* ================== 記帳與分帳區塊 ================== */
+/* ================== 記帳與分帳 ================== */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
@@ -161,32 +141,10 @@ function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
     row.innerHTML = `
-        <select class="payer-name member-select w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
-            <option value="" disabled selected>請選擇...</option>
-        </select>
+        <input type="text" list="member-list" placeholder="輸入墊付人" value="${name}" class="payer-name w-1/3 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400" required>
         <button type="button" class="btn-remove-payer text-rose-400 hover:text-rose-600 p-1 text-sm"><i class="fas fa-trash-alt"></i></button>
     `;
-    
-    // 動態載入目前資料庫中的成員選項
-    const newSelect = row.querySelector('.member-select');
-    familyMembers.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.textContent = m.name;
-        newSelect.appendChild(opt);
-    });
-    
-    if (name) {
-        if (!familyMembers.some(m => m.name === name)) {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = `${name} (已刪除)`;
-            newSelect.appendChild(opt);
-        }
-        newSelect.value = name;
-    }
-
     row.querySelector('.btn-remove-payer').addEventListener('click', () => {
         row.remove();
     });
@@ -199,7 +157,7 @@ document.getElementById('btn-add-payer').addEventListener('click', () => {
 });
 
 
-/* ================== 行事曆核心邏輯 ================== */
+/* ================== 行事曆核心 ================== */
 const modals = ['admin-modal', 'day-modal', 'event-modal', 'view-modal', 'member-modal'];
 modals.forEach(modalId => {
     const modalEl = document.getElementById(modalId);
@@ -297,27 +255,21 @@ document.getElementById('search-input').addEventListener('input', (e) => {
 document.getElementById('ics-file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async function(event) {
         const text = event.target.result;
         const eventsToImport = parseICS(text);
-
         if (eventsToImport.length === 0) {
-            alert('無法解析該 ICS 檔案，請確認格式是否正確！');
+            alert('無法解析該 ICS 檔案！');
             return;
         }
-
-        if (confirm(`成功解析出 ${eventsToImport.length} 筆政府行事曆資料，是否確認批次匯入？`)) {
+        if (confirm(`確認批次匯入 ${eventsToImport.length} 筆資料？`)) {
             try {
-                for (let evt of eventsToImport) {
-                    await addDoc(eventsRef, evt);
-                }
+                for (let evt of eventsToImport) await addDoc(eventsRef, evt);
                 triggerHaptic();
-                alert('政府行事曆批次匯入成功！');
+                alert('匯入成功！');
                 document.getElementById('admin-modal').classList.add('hidden');
             } catch (err) {
-                console.error("ICS Import Error:", err);
                 alert('匯入失敗，請稍後再試。');
             }
         }
@@ -328,39 +280,23 @@ document.getElementById('ics-file-input').addEventListener('change', async (e) =
 
 document.getElementById('btn-clear-gov').addEventListener('click', async () => {
     const govEvents = events.filter(e => e.author === '政府行事曆');
-    if (govEvents.length === 0) {
-        alert('目前沒有任何政府行事曆資料需要清理！');
-        return;
-    }
-
+    if (govEvents.length === 0) return alert('目前沒有任何政府行事曆資料！');
     const seen = new Set();
     const duplicatesToDelete = [];
-
     govEvents.forEach(evt => {
         const key = `${evt.title}_${evt.startDate}`;
-        if (seen.has(key)) {
-            duplicatesToDelete.push(evt);
-        } else {
-            seen.add(key);
-        }
+        if (seen.has(key)) duplicatesToDelete.push(evt);
+        else seen.add(key);
     });
-
-    if (duplicatesToDelete.length === 0) {
-        alert('檢查完畢！目前沒有發現重複的政府行事曆項目。');
-        return;
-    }
-
-    if (confirm(`檢測到共有 ${duplicatesToDelete.length} 筆重複的政府行事曆，是否確認一鍵清除重複、每項只留一個？`)) {
+    if (duplicatesToDelete.length === 0) return alert('沒有發現重複項目。');
+    if (confirm(`發現 ${duplicatesToDelete.length} 筆重複資料，確認清除？`)) {
         try {
-            for (let evt of duplicatesToDelete) {
-                await deleteDoc(doc(eventsRef, evt.id));
-            }
+            for (let evt of duplicatesToDelete) await deleteDoc(doc(eventsRef, evt.id));
             triggerHaptic();
-            alert('已成功清除重複的政府行事曆，每項都只保留一個！');
+            alert('清除成功！');
             document.getElementById('admin-modal').classList.add('hidden');
         } catch (err) {
-            console.error("Clear Duplicate Gov Events Error:", err);
-            alert('清理失敗，請稍後再試。');
+            alert('清理失敗。');
         }
     }
 });
@@ -369,7 +305,6 @@ function parseICS(icsText) {
     const parsedEvents = [];
     const lines = icsText.split(/\r\n|\n|\r/);
     let currentEvent = null;
-
     for (let line of lines) {
         line = line.trim();
         if (line === 'BEGIN:VEVENT') {
@@ -381,18 +316,11 @@ function parseICS(icsText) {
             }
             currentEvent = null;
         } else if (currentEvent) {
-            if (line.startsWith('SUMMARY:')) {
-                currentEvent.title = line.substring(8).trim();
-            } else if (line.startsWith('DTSTART')) {
-                const dateVal = line.split(':').pop().trim();
-                currentEvent.startDate = formatICSDate(dateVal);
-            } else if (line.startsWith('DTEND')) {
-                const dateVal = line.split(':').pop().trim();
-                let d = parseICSDateObj(dateVal);
-                if (d) {
-                    d.setDate(d.getDate() - 1);
-                    currentEvent.endDate = formatDateStr(d);
-                }
+            if (line.startsWith('SUMMARY:')) currentEvent.title = line.substring(8).trim();
+            else if (line.startsWith('DTSTART')) currentEvent.startDate = formatICSDate(line.split(':').pop().trim());
+            else if (line.startsWith('DTEND')) {
+                let d = parseICSDateObj(line.split(':').pop().trim());
+                if (d) { d.setDate(d.getDate() - 1); currentEvent.endDate = formatDateStr(d); }
             } else if (line.startsWith('DESCRIPTION:')) {
                 currentEvent.description = line.substring(12).trim();
             }
@@ -403,22 +331,11 @@ function parseICS(icsText) {
 }
 
 function formatICSDate(str) {
-    if (str.length >= 8) {
-        const y = str.substring(0, 4);
-        const m = str.substring(4, 6);
-        const d = str.substring(6, 8);
-        return `${y}-${m}-${d}`;
-    }
+    if (str.length >= 8) return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
     return str;
 }
-
 function parseICSDateObj(str) {
-    if (str.length >= 8) {
-        const y = parseInt(str.substring(0, 4));
-        const m = parseInt(str.substring(4, 6)) - 1;
-        const d = parseInt(str.substring(6, 8));
-        return new Date(y, m, d);
-    }
+    if (str.length >= 8) return new Date(parseInt(str.substring(0,4)), parseInt(str.substring(4,6))-1, parseInt(str.substring(6,8)));
     return null;
 }
 
@@ -428,12 +345,10 @@ function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     document.getElementById('current-month-year').innerText = `${year}年 ${month + 1}月`;
-    
     const firstDay = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = '';
-    
     const todayStr = formatDateStr(new Date());
     
     for (let i = 0; i < firstDay; i++) {
@@ -441,7 +356,6 @@ function renderCalendar() {
         emptyCell.className = 'border border-warm-100 rounded-xl bg-[#fdfbf9]/50 opacity-30';
         grid.appendChild(emptyCell);
     }
-
     for (let i = 1; i <= totalDays; i++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         grid.appendChild(createDayCell(i, dateStr, dateStr === todayStr));
@@ -456,79 +370,44 @@ function getTotalExpense(evt) {
 function createDayCell(dayNum, dateStr, isToday = false) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
-    
     let lunarStr = '';
     try {
-        const solar = Solar.fromDate(dateObj);
-        const lunar = solar.getLunar();
+        const lunar = Solar.fromDate(dateObj).getLunar();
         lunarStr = lunar.getFestivals()[0] || lunar.getDayInChinese();
-        if (lunar.getDay() === 1) {
-            lunarStr = lunar.getMonthInChinese() + '月';
-        }
-    } catch (err) {
-        lunarStr = '';
-    }
+        if (lunar.getDay() === 1) lunarStr = lunar.getMonthInChinese() + '月';
+    } catch (err) {}
 
     const allEventsForCheck = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
-    const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('補行上班') || e.title.includes('補班')));
-    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-    const isGovHoliday = allEventsForCheck.some(e => e.author === '政府行事曆');
-    
-    const isRedDay = (isWeekend && !isMakeUpWorkDay) || isGovHoliday;
+    const isMakeUpWorkDay = allEventsForCheck.some(e => e.author === '政府行事曆' && (e.title.includes('上班') || e.title.includes('補班')));
+    const isRedDay = ((dayOfWeek === 0 || dayOfWeek === 6) && !isMakeUpWorkDay) || allEventsForCheck.some(e => e.author === '政府行事曆');
     const dayEvents = allEventsForCheck.sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
 
-    let cellBgClass = 'bg-white';
-    if (isToday) {
-        cellBgClass = 'bg-warm-50 border-warm-300 ring-2 ring-warm-400';
-    } else if (isRedDay) {
-        cellBgClass = 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80';
-    } else {
-        cellBgClass = 'bg-white hover:border-warm-300 hover:shadow-sm';
-    }
+    let cellBgClass = isToday ? 'bg-warm-50 border-warm-300 ring-2 ring-warm-400' : (isRedDay ? 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/80' : 'bg-white hover:border-warm-300 hover:shadow-sm');
 
     const cell = document.createElement('div');
     cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 transition-all ${cellBgClass} cursor-pointer overflow-hidden`;
-    cell.addEventListener('click', () => {
-        triggerHaptic();
-        openDayModal(dateStr);
-    });
+    cell.addEventListener('click', () => { triggerHaptic(); openDayModal(dateStr); });
     
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
-
     const header = document.createElement('div');
     header.className = 'flex justify-between items-center px-0.5 shrink-0';
-    header.innerHTML = `
-        <span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span>
-        <span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>
-    `;
+    header.innerHTML = `<span class="text-xs md:text-sm font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span><span class="text-[9px] md:text-[10px] text-gray-400 font-medium">${lunarStr}</span>`;
     cell.appendChild(header);
 
     const eventsContainer = document.createElement('div');
     eventsContainer.className = 'flex flex-col gap-0.5 overflow-y-auto hide-scrollbar flex-1';
     
     dayEvents.forEach(evt => {
-        const matchSearch = !searchQuery || 
-            evt.title.toLowerCase().includes(searchQuery) || 
-            evt.author.toLowerCase().includes(searchQuery) || 
-            evt.description.toLowerCase().includes(searchQuery);
-
-        const evtEl = document.createElement('div');
+        const matchSearch = !searchQuery || evt.title.toLowerCase().includes(searchQuery) || evt.author.toLowerCase().includes(searchQuery) || evt.description.toLowerCase().includes(searchQuery);
         const opacityClass = (searchQuery && !matchSearch) ? 'opacity-25 grayscale' : '';
-        
         const authorTagHtml = (evt.author && evt.author !== '政府行事曆') ? `<span class="text-[7px] md:text-[8px] bg-black/20 px-1 rounded shrink-0 self-end md:self-auto">${evt.author}</span>` : '';
-        const iconDisplay = evt.icon ? `${evt.icon} ` : '';
         const totalExp = getTotalExpense(evt);
         const expenseBadge = evt.isExpense && totalExp > 0 ? ` <i class="fas fa-receipt text-[9px] opacity-90"></i>` : '';
 
+        const evtEl = document.createElement('div');
         evtEl.className = `${evt.color} text-white text-[9px] md:text-[11px] font-bold px-1 py-0.5 rounded shadow-sm cursor-pointer hover:brightness-110 active:scale-95 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-1 ${opacityClass}`;
-        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${iconDisplay}${evt.title}${expenseBadge}</span>${authorTagHtml}`;
-        
-        evtEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            triggerHaptic();
-            openViewModal(evt.id);
-        });
-
+        evtEl.innerHTML = `<span class="truncate w-full">${evt.time ? `<span class="opacity-75 font-normal text-[8px] mr-0.5">${evt.time}</span>` : ''}${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}</span>${authorTagHtml}`;
+        evtEl.addEventListener('click', (e) => { e.stopPropagation(); triggerHaptic(); openViewModal(evt.id); });
         eventsContainer.appendChild(evtEl);
     });
     
@@ -539,14 +418,8 @@ function createDayCell(dayNum, dateStr, isToday = false) {
 function openDayModal(dateStr, setGlobal = true) {
     if (setGlobal) selectedDateForModal = dateStr;
     const dParts = dateStr.split('-');
-    
     let lunarSubtitle = '';
-    try {
-        const solar = Solar.fromYmd(parseInt(dParts[0]), parseInt(dParts[1]), parseInt(dParts[2]));
-        const lunar = solar.getLunar();
-        lunarSubtitle = `（農曆 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}）`;
-    } catch(e) {}
-
+    try { lunarSubtitle = `（農曆 ${Solar.fromYmd(parseInt(dParts[0]), parseInt(dParts[1]), parseInt(dParts[2])).getLunar().getMonthInChinese()}月${Solar.fromYmd(parseInt(dParts[0]), parseInt(dParts[1]), parseInt(dParts[2])).getLunar().getDayInChinese()}）`; } catch(e) {}
     document.getElementById('day-modal-title').innerText = `${dParts[0]}年 ${parseInt(dParts[1])}月 ${parseInt(dParts[2])}日 ${lunarSubtitle}`;
     
     const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate).sort((a, b) => (a.time || '24:00').localeCompare(b.time || '24:00'));
@@ -554,96 +427,41 @@ function openDayModal(dateStr, setGlobal = true) {
     listContainer.innerHTML = '';
     
     if (dayEvents.length === 0) {
-        listContainer.innerHTML = `
-            <div class="text-center py-6 text-gray-400">
-                <i class="far fa-calendar-times text-3xl mb-2 opacity-50"></i>
-                <p class="text-sm">這一天沒有安排行程喔！</p>
-            </div>
-        `;
+        listContainer.innerHTML = `<div class="text-center py-6 text-gray-400"><i class="far fa-calendar-times text-3xl mb-2 opacity-50"></i><p class="text-sm">這一天沒有安排行程喔！</p></div>`;
     } else {
         dayEvents.forEach(evt => {
             const item = document.createElement('div');
             item.className = 'p-3 rounded-2xl border border-warm-100 bg-warm-50/50 hover:bg-warm-50 transition-all cursor-pointer flex items-center justify-between gap-3';
-            item.addEventListener('click', () => {
-                triggerHaptic();
-                closeDayModal();
-                openViewModal(evt.id);
-            });
-            
-            const displayAuthor = evt.author === '政府行事曆' ? '國定假日' : evt.author;
-            const iconDisplay = evt.icon ? `${evt.icon} ` : '';
+            item.addEventListener('click', () => { triggerHaptic(); closeDayModal(); openViewModal(evt.id); });
             const totalExp = getTotalExpense(evt);
             const expenseText = evt.isExpense && totalExp > 0 ? ` <span class="text-amber-600 font-bold">($${totalExp})</span>` : '';
-            item.innerHTML = `
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div>
-                    <div class="min-w-0">
-                        <h4 class="font-bold text-gray-800 text-sm break-words">${iconDisplay}${evt.title}${expenseText}</h4>
-                        <p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
-                            <span><i class="far fa-clock"></i> ${evt.time || '全天'}</span>
-                            <span><i class="far fa-user"></i> ${displayAuthor}</span>
-                        </p>
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
-            `;
+            item.innerHTML = `<div class="flex items-center gap-3 min-w-0"><div class="w-3 h-3 rounded-full ${evt.color} shrink-0"></div><div class="min-w-0"><h4 class="font-bold text-gray-800 text-sm break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseText}</h4><p class="text-xs text-gray-400 flex items-center gap-2 mt-0.5"><span><i class="far fa-clock"></i> ${evt.time || '全天'}</span><span><i class="far fa-user"></i> ${evt.author === '政府行事曆' ? '國定假日' : evt.author}</span></p></div></div><i class="fas fa-chevron-right text-gray-300 text-xs"></i>`;
             listContainer.appendChild(item);
         });
     }
     document.getElementById('day-modal').classList.remove('hidden');
 }
 
-function closeDayModal() {
-    document.getElementById('day-modal').classList.add('hidden');
-    selectedDateForModal = null;
-}
+function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); selectedDateForModal = null; }
 
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const emptyState = document.getElementById('no-upcoming');
     container.innerHTML = '';
-    
     const todayStr = formatDateStr(new Date());
-    const upcoming = events.filter(e => {
-        const matchDate = e.endDate >= todayStr;
-        const matchSearch = !searchQuery || 
-            e.title.toLowerCase().includes(searchQuery) || 
-            e.author.toLowerCase().includes(searchQuery) || 
-            e.description.toLowerCase().includes(searchQuery);
-        return matchDate && matchSearch;
-    }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
+    const upcoming = events.filter(e => e.endDate >= todayStr && (!searchQuery || e.title.toLowerCase().includes(searchQuery) || e.author.toLowerCase().includes(searchQuery) || e.description.toLowerCase().includes(searchQuery))).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
-    if (upcoming.length === 0) {
-        emptyState.classList.remove('hidden');
-    } else {
+    if (upcoming.length === 0) emptyState.classList.remove('hidden');
+    else {
         emptyState.classList.add('hidden');
         upcoming.forEach(evt => {
             const el = document.createElement('div');
             el.className = 'bg-white p-3 rounded-2xl border border-warm-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-4 group';
-            el.addEventListener('click', () => {
-                triggerHaptic();
-                openViewModal(evt.id);
-            });
-            
+            el.addEventListener('click', () => { triggerHaptic(); openViewModal(evt.id); });
             const d = new Date(evt.startDate);
-            const displayAuthor = evt.author === '政府行事曆' ? '' : evt.author;
-            const iconDisplay = evt.icon ? `${evt.icon} ` : '';
             const totalExp = getTotalExpense(evt);
             const expenseBadge = evt.isExpense && totalExp > 0 ? ` <span class="text-xs text-amber-600 font-bold">($${totalExp})</span>` : '';
-            el.innerHTML = `
-                <div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                    <span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span>
-                    <span class="text-lg font-bold leading-none">${d.getDate()}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <h4 class="font-bold text-gray-800 break-words">${iconDisplay}${evt.title}${expenseBadge}</h4>
-                    <div class="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
-                        <span><i class="far fa-calendar-alt"></i> ${evt.startDate === evt.endDate ? evt.startDate : evt.startDate + ' ~ ' + evt.endDate}</span>
-                        ${displayAuthor ? `<span><i class="far fa-user"></i> ${displayAuthor}</span>` : ''}
-                    </div>
-                </div>
-                <div class="text-gray-300 group-hover:text-warm-400 transition-colors pr-2"><i class="fas fa-chevron-right text-sm"></i></div>
-            `;
+            el.innerHTML = `<div class="${evt.color} text-white rounded-xl w-12 h-12 flex flex-col items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform"><span class="text-xs font-medium opacity-90">${d.getMonth() + 1}月</span><span class="text-lg font-bold leading-none">${d.getDate()}</span></div><div class="flex-1 min-w-0"><h4 class="font-bold text-gray-800 break-words">${evt.icon ? evt.icon+' ' : ''}${evt.title}${expenseBadge}</h4><div class="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap"><span><i class="far fa-calendar-alt"></i> ${evt.startDate === evt.endDate ? evt.startDate : evt.startDate + ' ~ ' + evt.endDate}</span>${evt.author && evt.author !== '政府行事曆' ? `<span><i class="far fa-user"></i> ${evt.author}</span>` : ''}</div></div><div class="text-gray-300 group-hover:text-warm-400 transition-colors pr-2"><i class="fas fa-chevron-right text-sm"></i></div>`;
             container.appendChild(el);
         });
     }
@@ -652,31 +470,14 @@ function renderUpcoming() {
 document.getElementById('btn-prev-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
 document.getElementById('btn-next-month').addEventListener('click', () => { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
 document.getElementById('btn-today').addEventListener('click', () => { triggerHaptic(); currentDate = new Date(); renderCalendar(); });
-
 document.getElementById('btn-open-add').addEventListener('click', () => { triggerHaptic(); openModal(); });
 document.getElementById('btn-close-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
 document.getElementById('btn-cancel-modal').addEventListener('click', () => { triggerHaptic(); closeModal(); });
 document.getElementById('btn-close-day-modal').addEventListener('click', () => { triggerHaptic(); closeDayModal(); });
-document.getElementById('btn-add-from-day').addEventListener('click', () => {
-    triggerHaptic();
-    const dateToPass = selectedDateForModal;
-    closeDayModal();
-    openModal(null, dateToPass);
-});
+document.getElementById('btn-add-from-day').addEventListener('click', () => { triggerHaptic(); const dateToPass = selectedDateForModal; closeDayModal(); openModal(null, dateToPass); });
 document.getElementById('btn-close-view').addEventListener('click', () => { triggerHaptic(); closeViewModal(); });
-document.getElementById('btn-edit-from-view').addEventListener('click', () => {
-    triggerHaptic();
-    const id = currentViewingId;
-    closeViewModal();
-    setTimeout(() => openModal(id), 100);
-});
-
-document.getElementById('btn-copy-from-view').addEventListener('click', () => {
-    triggerHaptic();
-    const id = currentViewingId;
-    closeViewModal();
-    setTimeout(() => copyEventToModal(id), 100);
-});
+document.getElementById('btn-edit-from-view').addEventListener('click', () => { triggerHaptic(); const id = currentViewingId; closeViewModal(); setTimeout(() => openModal(id), 100); });
+document.getElementById('btn-copy-from-view').addEventListener('click', () => { triggerHaptic(); const id = currentViewingId; closeViewModal(); setTimeout(() => copyEventToModal(id), 100); });
 
 function openModal(eventId = null, defaultDate = null) {
     document.getElementById('event-form').reset();
@@ -712,9 +513,8 @@ function openModal(eventId = null, defaultDate = null) {
         document.getElementById('btn-delete').classList.add('hidden');
         expenseCheckbox.checked = false;
         document.getElementById('event-author').value = '';
-        const dStr = defaultDate || formatDateStr(new Date());
-        document.getElementById('event-start-date').value = dStr;
-        document.getElementById('event-end-date').value = dStr;
+        document.getElementById('event-start-date').value = defaultDate || formatDateStr(new Date());
+        document.getElementById('event-end-date').value = defaultDate || formatDateStr(new Date());
         document.getElementById('event-is-nav').checked = false;
     }
     document.getElementById('event-modal').classList.remove('hidden');
@@ -750,102 +550,66 @@ function copyEventToModal(eventId) {
     document.getElementById('event-modal').classList.remove('hidden');
 }
 
-function closeModal() { 
-    document.getElementById('event-modal').classList.add('hidden'); 
-    currentEditingId = null; 
-}
+function closeModal() { document.getElementById('event-modal').classList.add('hidden'); currentEditingId = null; }
 
 function openViewModal(eventId) {
     const evt = events.find(e => e.id === eventId);
     if(!evt) return;
     currentViewingId = eventId;
     document.getElementById('view-modal-header').className = `h-20 w-full ${evt.color}`;
-    const iconDisplay = evt.icon ? `${evt.icon} ` : '';
-    document.getElementById('view-title').innerText = iconDisplay + evt.title;
+    document.getElementById('view-title').innerText = (evt.icon ? evt.icon + ' ' : '') + evt.title;
+    document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
+    document.getElementById('view-author').innerText = `建立者：${evt.author === '政府行事曆' ? '國定假日' : (evt.author || '未署名')}`;
     
-    const dateStr = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
-    document.getElementById('view-date').innerText = dateStr;
-    const displayAuthor = evt.author === '政府行事曆' ? '國定假日' : (evt.author || '未署名');
-    document.getElementById('view-author').innerText = `建立者：${displayAuthor}`;
+    if (evt.time) { document.getElementById('view-time').innerText = evt.time; document.getElementById('view-time-container').classList.remove('hidden'); } 
+    else { document.getElementById('view-time-container').classList.add('hidden'); }
     
-    const timeContainer = document.getElementById('view-time-container');
-    if (evt.time) {
-        document.getElementById('view-time').innerText = evt.time;
-        timeContainer.classList.remove('hidden');
-    } else { timeContainer.classList.add('hidden'); }
-    
-    const descContainer = document.getElementById('view-desc-container');
-    if (evt.description) {
-        document.getElementById('view-desc').innerText = evt.description;
-        descContainer.classList.remove('hidden');
-    } else { 
-        descContainer.classList.add('hidden');
-    }
+    if (evt.description) { document.getElementById('view-desc').innerText = evt.description; document.getElementById('view-desc-container').classList.remove('hidden'); } 
+    else { document.getElementById('view-desc-container').classList.add('hidden'); }
 
     const expenseContainer = document.getElementById('view-expense-container');
-    const expenseDetails = document.getElementById('view-expense-details');
     const totalExp = getTotalExpense(evt);
-
     if (evt.isExpense && totalExp > 0) {
         const splits = evt.expenseSplits || 4;
-        const perPerson = Math.round((totalExp / splits) * 10) / 10;
-        
-        let payersHtml = evt.payers.map(p => `• ${p.name} 墊付：$${p.amount}`).join('<br>');
-        
-        expenseDetails.innerHTML = `
-            <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${splits} 人均分，每人應付 $${perPerson}）</div>
+        document.getElementById('view-expense-details').innerHTML = `
+            <div>💰 <strong>總花費：$${totalExp} 元</strong>（共 ${splits} 人均分，每人應付 $${Math.round((totalExp / splits) * 10) / 10}）</div>
             <div class="pt-1 border-t border-amber-200 text-[11px] text-amber-800">
-                <strong>代墊明細：</strong><br>${payersHtml}
+                <strong>代墊明細：</strong><br>${evt.payers.map(p => `• ${p.name} 墊付：$${p.amount}`).join('<br>')}
             </div>
         `;
         expenseContainer.classList.remove('hidden');
-    } else {
-        expenseContainer.classList.add('hidden');
-    }
+    } else expenseContainer.classList.add('hidden');
 
-    const mapBtnContainer = document.getElementById('map-btn-container');
     if (evt.description && evt.isNav) {
-        const encodedQuery = encodeURIComponent(evt.description);
-        document.getElementById('map-nav-link').href = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
-        mapBtnContainer.classList.remove('hidden');
-    } else {
-        mapBtnContainer.classList.add('hidden');
-    }
+        document.getElementById('map-nav-link').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.description)}`;
+        document.getElementById('map-btn-container').classList.remove('hidden');
+    } else document.getElementById('map-btn-container').classList.add('hidden');
     
     document.getElementById('view-modal').classList.remove('hidden');
 }
 
-function closeViewModal() { 
-    document.getElementById('view-modal').classList.add('hidden'); 
-    currentViewingId = null; 
-}
+function closeViewModal() { document.getElementById('view-modal').classList.add('hidden'); currentViewingId = null; }
 
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
-    const startDate = document.getElementById('event-start-date').value;
-    const endDate = document.getElementById('event-end-date').value || startDate;
-    
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
     if (isExpense) {
-        const rows = payersContainer.querySelectorAll('.payer-row');
-        rows.forEach(row => {
-            const name = row.querySelector('.payer-name').value;
+        document.querySelectorAll('.payer-row').forEach(row => {
+            const name = row.querySelector('.payer-name').value.trim();
             const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            if (name && amount > 0) {
-                payersList.push({ name, amount });
-            }
+            if (name && amount > 0) payersList.push({ name, amount });
         });
     }
 
     const eventData = {
         title: document.getElementById('event-title').value.trim(),
         icon: document.getElementById('event-icon').value,
-        startDate: startDate,
-        endDate: endDate < startDate ? startDate : endDate,
+        startDate: document.getElementById('event-start-date').value,
+        endDate: document.getElementById('event-end-date').value < document.getElementById('event-start-date').value ? document.getElementById('event-start-date').value : (document.getElementById('event-end-date').value || document.getElementById('event-start-date').value),
         time: document.getElementById('event-time').value,
-        author: document.getElementById('event-author').value,
+        author: document.getElementById('event-author').value.trim(),
         description: document.getElementById('event-desc').value.trim(),
         isNav: document.getElementById('event-is-nav').checked,
         color: document.querySelector('input[name="event-color"]:checked').value,
@@ -855,15 +619,10 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     };
     
     try {
-        if (currentEditingId) {
-            await updateDoc(doc(eventsRef, currentEditingId), eventData);
-        } else {
-            await addDoc(eventsRef, eventData);
-        }
+        if (currentEditingId) await updateDoc(doc(eventsRef, currentEditingId), eventData);
+        else await addDoc(eventsRef, eventData);
         closeModal();
-    } catch (error) {
-        console.error("Error saving document: ", error);
-    }
+    } catch (error) { console.error("Error saving: ", error); }
 });
 
 document.getElementById('btn-delete').addEventListener('click', async () => {
@@ -872,9 +631,7 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     try {
         await deleteDoc(doc(eventsRef, currentEditingId));
         closeModal();
-    } catch (error) {
-        console.error("Error removing document: ", error);
-    }
+    } catch (error) { console.error("Error deleting: ", error); }
 });
 
 renderApp();
