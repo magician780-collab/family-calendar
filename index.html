@@ -23,9 +23,16 @@
                     fontFamily: { sans: ['Nunito', 'sans-serif'] }, 
                     colors: { 
                         warm: { 
-                            50: 'var(--color-50)', 100: 'var(--color-100)', 200: 'var(--color-200)', 
-                            300: 'var(--color-300)', 400: 'var(--color-400)', 500: 'var(--color-500)', 
-                            600: 'var(--color-600)', 700: 'var(--color-700)', 800: 'var(--color-800)', 900: 'var(--color-900)' 
+                            50: 'var(--color-50)', 
+                            100: 'var(--color-100)', 
+                            200: 'var(--color-200)', 
+                            300: 'var(--color-300)', 
+                            400: 'var(--color-400)', 
+                            500: 'var(--color-500)', 
+                            600: 'var(--color-600)', 
+                            700: 'var(--color-700)', 
+                            800: 'var(--color-800)', 
+                            900: 'var(--color-900)' 
                         } 
                     } 
                 } 
@@ -36,6 +43,7 @@
 </head>
 <body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden theme-warm relative" id="app-body">
     
+    <!-- 🌟 手機版頂部導覽列 (Mobile Header) -->
     <header class="md:hidden bg-white border-b border-warm-200 px-4 py-3 flex items-center justify-between z-20 shrink-0 shadow-sm">
         <button id="btn-toggle-sidebar" class="w-10 h-10 bg-warm-100 text-warm-700 rounded-xl flex items-center justify-center font-bold transition-all active:scale-95 shadow-sm">
             <i class="fas fa-bars text-lg"></i>
@@ -46,8 +54,9 @@
         </button>
     </header>
 
+    <!-- 側邊欄 (手機版平時收合為抽屜，桌機版固定在左側) -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-80 lg:w-96 bg-white border-r border-warm-200 flex flex-col shadow-2xl md:shadow-[4px_0_24px_rgba(249,115,22,0.05)] transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out md:static h-full">
-        <div id="admin-trigger" class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between cursor-pointer select-none">
+        <div id="admin-trigger" class="p-6 pb-4 border-b border-warm-100 bg-warm-50 flex items-center justify-between cursor-pointer select-none" title="連續點擊3下開啟後台">
             <h1 class="text-2xl font-bold text-warm-800 hidden md:flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 我們這一家</h1>
             <h1 class="text-lg font-bold text-warm-800 md:hidden flex items-center gap-2"><i class="fas fa-home text-warm-500"></i> 選單與即將到來</h1>
             <div class="flex items-center gap-2">
@@ -57,19 +66,22 @@
         </div>
         
         <div class="px-4 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2 shrink-0">
+            <!-- 主題風格切換選單 -->
             <div class="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-warm-200 shadow-sm">
                 <span class="text-xs font-bold text-warm-800 flex items-center gap-1.5"><i class="fas fa-palette text-warm-500"></i> 主題風格</span>
-                <select id="theme-select" class="bg-warm-50 border border-warm-200 text-xs font-bold text-warm-800 rounded-lg px-2 py-1 outline-none cursor-pointer">
+                <select id="theme-select" class="bg-warm-50 border border-warm-200 text-xs font-bold text-warm-800 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-warm-400 cursor-pointer">
                     <option value="warm">🍊 溫馨暖橘</option>
                     <option value="forest">🌿 清新森林</option>
                     <option value="purple">💜 浪漫柔紫</option>
                     <option value="dark">🌙 極簡暗黑</option>
                 </select>
             </div>
+
             <div class="relative">
                 <i class="fas fa-search absolute left-3.5 top-3 text-gray-400 text-sm"></i>
-                <input type="text" id="search-input" placeholder="搜尋行程或成員..." class="w-full pl-10 pr-4 py-2 bg-white border border-warm-200 rounded-xl text-sm outline-none shadow-sm">
+                <input type="text" id="search-input" placeholder="搜尋行程、地點或成員..." class="w-full pl-10 pr-4 py-2 bg-white border border-warm-200 rounded-xl text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all shadow-sm">
             </div>
+            
             <button id="btn-open-gallery" class="w-full py-2.5 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
             </button>
@@ -82,35 +94,41 @@
                 <i class="far fa-calendar-check text-3xl mb-2 opacity-50"></i>
                 <p class="text-sm">沒有符合的行程喔！</p>
             </div>
+            
             <div class="mt-4 flex-1 flex flex-col bg-amber-50 rounded-2xl border border-amber-200 p-3.5 shadow-sm min-h-[110px]">
                 <div class="flex justify-between items-center mb-1.5 shrink-0">
                     <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5"><i class="fas fa-sticky-note text-amber-500"></i> 家庭便利貼</h3>
-                    <span id="note-status" class="text-[10px] font-bold text-amber-600 opacity-0 transition-opacity">已同步</span>
+                    <span id="note-status" class="text-[10px] font-bold text-amber-600 opacity-0 transition-opacity duration-300">已同步</span>
                 </div>
-                <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
+                <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事、採買清單..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.9</div>
+
+            <!-- 確認快取更新用的版本號 -->
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v4.4</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
-            <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 flex items-center justify-center gap-2">
+            <button id="btn-open-add" class="w-full py-3 bg-warm-500 hover:bg-warm-600 text-white rounded-2xl font-bold shadow-lg shadow-warm-500/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> 新增活動
             </button>
         </div>
     </aside>
 
+    <!-- 側邊欄遮罩 (手機版開啟抽屜時顯示) -->
     <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 hidden md:hidden"></div>
 
+    <!-- 滿版主區域 -->
     <main class="flex-1 flex flex-col h-full bg-[#fdfbf9] overflow-hidden">
         <header class="hidden md:flex px-4 py-3 md:px-8 md:py-4 items-center justify-between bg-white/50 backdrop-blur-sm border-b border-warm-100 shrink-0">
             <div class="flex items-center gap-2 md:gap-4">
-                <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
+                <button id="btn-prev-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-left"></i></button>
                 <h2 id="current-month-year" class="text-xl md:text-3xl font-extrabold text-warm-900 w-32 md:w-48 text-center"></h2>
-                <button id="btn-next-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center"><i class="fas fa-chevron-right"></i></button>
+                <button id="btn-next-month" class="w-10 h-10 rounded-full hover:bg-warm-100 text-warm-600 flex items-center justify-center transition-colors"><i class="fas fa-chevron-right"></i></button>
             </div>
-            <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm">今天</button>
+            <button id="btn-today" class="px-4 py-2 bg-warm-100 text-warm-700 hover:bg-warm-200 rounded-xl font-semibold text-sm transition-colors">今天</button>
         </header>
 
+        <!-- 手機版專用精簡月份導航列 -->
         <div class="md:hidden px-4 py-2 bg-white border-b border-warm-100 flex items-center justify-between shrink-0">
             <button id="btn-mob-prev" class="w-8 h-8 rounded-full bg-warm-50 text-warm-600 flex items-center justify-center"><i class="fas fa-chevron-left text-sm"></i></button>
             <h2 id="mob-month-year" class="text-base font-extrabold text-warm-900"></h2>
@@ -132,23 +150,80 @@
         </div>
     </main>
     
+    <!-- 家庭回憶相簿牆 Modal -->
+    <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
+        <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 class="text-xl font-extrabold text-warm-800 flex items-center gap-2"><i class="fas fa-photo-film text-warm-500"></i> 家庭回憶相簿牆</h3>
+                <button id="btn-close-gallery" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="gallery-grid-container" class="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 bg-gray-50"></div>
+        </div>
+    </div>
+
+    <!-- 後台管理 Modal -->
+    <div id="admin-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="admin-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col modal-content">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-warm-800 flex items-center gap-2"><i class="fas fa-tools text-warm-500"></i> 行事曆後台管理</h3>
+                <button id="btn-close-admin" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-3">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">政府假日管理</p>
+                <label class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fas fa-file-arrow-up"></i> 匯入政府行事曆 (.ics)
+                    <input type="file" id="ics-file-input" accept=".ics" class="hidden">
+                </label>
+                <button id="btn-clear-gov" class="w-full py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-trash-alt"></i> 一鍵清空重複假日
+                </button>
+
+                <hr class="border-warm-100 my-2">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">系統安全備份與還原</p>
+                <button id="btn-export-backup" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-download"></i> 下載完整備份 (.json)
+                </button>
+                <label class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fas fa-upload"></i> 匯入備份檔還原 (.json)
+                    <input type="file" id="json-restore-input" accept=".json" class="hidden">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 當日行程列表 Modal -->
+    <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[80vh] modal-content">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 id="day-modal-title" class="text-lg font-bold text-warm-800">當日行程</h3>
+                <button id="btn-close-day-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="day-modal-list" class="p-4 space-y-3 overflow-y-auto flex-1"></div>
+            <div class="p-4 border-t border-warm-100 bg-gray-50 shrink-0">
+                <button id="btn-add-from-day" class="w-full py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> 新增當日活動
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 新增/編輯活動 Modal -->
     <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="event-modal">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
                 <h3 id="modal-title" class="text-lg font-bold text-warm-800">新增活動</h3>
-                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
             </div>
             <form id="event-form" class="p-6 space-y-4 overflow-y-auto">
                 <input type="hidden" id="event-id">
 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">活動名稱 <span class="text-rose-500">*</span></label>
-                    <input type="text" id="event-title" required placeholder="例如：三天兩夜家族露營" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-warm-400">
+                    <input type="text" id="event-title" required placeholder="例如：三天兩夜家族露營" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">選擇貼圖</label>
-                    <select id="event-icon" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm">
+                    <select id="event-icon" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
                         <option value="">(無貼圖)</option>
                         <option value="🏕️">🏕️ 露營</option>
                         <option value="🎉">🎉 聚會/慶祝</option>
@@ -162,143 +237,229 @@
                         <option value="🛒">🛒 購物</option>
                     </select>
                 </div>
+                
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-image text-warm-500"></i> 貼上相片網址 (可選)</label>
-                    <input type="url" id="event-photo-url" placeholder="例如 Google 雲端轉直鏈..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                    <input type="url" id="event-photo-url" placeholder="例如 Google 雲端轉直鏈..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
                     <div id="photo-preview" class="mt-2 hidden relative">
-                        <img src="" class="w-full h-32 object-cover rounded-xl border">
-                        <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 rounded-full text-rose-500 flex items-center justify-center"><i class="fas fa-trash-alt"></i></button>
+                        <img src="" class="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm">
+                        <button type="button" id="btn-remove-photo" class="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur rounded-full text-rose-500 flex items-center justify-center hover:bg-white transition-colors shadow-sm"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>
+
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-paperclip text-blue-500"></i> 相關檔案/文件附件網址 (可選)</label>
-                    <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF 網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">開始日期 <span class="text-rose-500">*</span></label>
-                        <input type="date" id="event-start-date" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">結束日期</label>
-                        <input type="date" id="event-end-date" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-200">
-                    <input type="checkbox" id="event-is-lunar-recurring" class="w-4 h-4 text-amber-600 rounded">
-                    <label for="event-is-lunar-recurring" class="text-sm font-bold text-amber-900 cursor-pointer">
-                        <i class="fas fa-moon text-amber-600 mr-1"></i> 每年農曆生日/節日自動重複
-                    </label>
+                    <input type="url" id="event-file-url" placeholder="例如 Google 雲端 PDF / 訂位截圖網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm text-gray-700">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">開始日期 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="event-start-date" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">結束日期</label>
+                        <input type="date" id="event-end-date" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">時間</label>
-                        <input type="time" id="event-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                        <input type="time" id="event-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
                     </div>
                     <div>
                         <div class="flex justify-between items-end mb-1">
                             <label class="block text-sm font-bold text-gray-700">建立者 <span class="text-rose-500">*</span></label>
-                            <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold"><i class="fas fa-users-cog"></i> 管理成員</button>
+                            <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold transition-colors"><i class="fas fa-users-cog"></i> 管理成員</button>
                         </div>
-                        <input type="text" id="event-author" list="member-list" required placeholder="輸入名稱..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                        <input type="text" id="event-author" list="member-list" required placeholder="輸入名稱..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-gray-700 text-sm">
                         <datalist id="member-list"></datalist>
                     </div>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">詳細備註</label>
-                    <textarea id="event-desc" rows="2" placeholder="注意事項..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"></textarea>
+                    <textarea id="event-desc" rows="2" placeholder="例如：注意事項、集合時間..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none transition-all text-sm"></textarea>
                 </div>
 
+                <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-bold text-emerald-900 flex items-center gap-1.5 cursor-pointer">
+                            <i class="fas fa-clipboard-check text-emerald-600"></i> 啟用攜帶物品 / 任務認領清單
+                        </label>
+                        <input type="checkbox" id="event-is-checklist" class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400 cursor-pointer">
+                    </div>
+                    <div id="checklist-fields" class="hidden space-y-2 pt-1">
+                        <div id="checklist-items-container" class="space-y-2"></div>
+                        <button type="button" id="btn-add-checklist-item" class="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                            <i class="fas fa-plus"></i> 新增物品或任務
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
                             <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票 (匿名單選)
                         </label>
-                        <input type="checkbox" id="event-is-poll" class="w-4 h-4 text-indigo-500 rounded cursor-pointer">
+                        <input type="checkbox" id="event-is-poll" class="w-4 h-4 text-indigo-500 rounded focus:ring-indigo-400 cursor-pointer">
                     </div>
                     <div id="poll-fields" class="hidden space-y-2 pt-1">
                         <div id="poll-options-container" class="space-y-2"></div>
-                        <button type="button" id="btn-add-poll-option" class="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-xl font-bold text-xs flex items-center gap-1">
+                        <button type="button" id="btn-add-poll-option" class="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
                             <i class="fas fa-plus"></i> 新增選項
                         </button>
                     </div>
                 </div>
 
+                <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-bold text-amber-900 flex items-center gap-1.5 cursor-pointer">
+                            <i class="fas fa-receipt text-amber-600"></i> 啟用代墊記帳與權重分帳
+                        </label>
+                        <input type="checkbox" id="event-is-expense" class="w-4 h-4 text-warm-500 rounded focus:ring-warm-400 cursor-pointer">
+                    </div>
+                    <div id="expense-fields" class="hidden space-y-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">1. 誰先出錢了？（代墊紀錄）</label>
+                            <div id="payers-container" class="space-y-2"></div>
+                            <button type="button" id="btn-add-payer" class="mt-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                                <i class="fas fa-plus"></i> 新增一筆代墊人
+                            </button>
+                        </div>
+                        <div class="pt-2 border-t border-amber-200/60">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">2. 分攤方式（可設定各家庭/成員份數）</label>
+                            <div id="sharers-container" class="space-y-2 mb-2"></div>
+                            <button type="button" id="btn-add-sharer" class="px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1">
+                                <i class="fas fa-user-friends"></i> 新增分攤成員與份數 (例: A家庭 3份)
+                            </button>
+                            <div id="simple-split-box" class="mt-2 flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+                                <span class="text-xs text-gray-500">若不指定成員份數，預設均分總人數：</span>
+                                <input type="number" id="expense-splits" value="4" min="1" max="50" class="w-16 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-center font-bold outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 bg-warm-50/50 p-3 rounded-xl border border-warm-100">
+                    <input type="checkbox" id="event-is-nav" class="w-4 h-4 text-warm-500 rounded focus:ring-warm-400">
+                    <label for="event-is-nav" class="text-sm font-bold text-gray-700 cursor-pointer">
+                        <i class="fas fa-map-marker-alt text-rose-500 mr-1"></i> 這是一個需要導航的地點/地址
+                    </label>
+                </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">標籤顏色</label>
                     <div class="flex flex-wrap gap-3">
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-rose-400" class="peer sr-only" checked><div class="w-8 h-8 rounded-full bg-rose-400 ring-2 ring-transparent peer-checked:ring-rose-600"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-red-500" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-red-500 ring-2 ring-transparent peer-checked:ring-red-700"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-blue-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-blue-400 ring-2 ring-transparent peer-checked:ring-blue-600"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-indigo-500" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-indigo-500 ring-2 ring-transparent peer-checked:ring-indigo-700"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-emerald-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-emerald-400 ring-2 ring-transparent peer-checked:ring-emerald-600"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-amber-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-amber-400 ring-2 ring-transparent peer-checked:ring-amber-600"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-purple-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-purple-400 ring-2 ring-transparent peer-checked:ring-purple-600"></div></label>
-                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-gray-600" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-gray-600 ring-2 ring-transparent peer-checked:ring-gray-800"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-rose-400" class="peer sr-only" checked><div class="w-8 h-8 rounded-full bg-rose-400 ring-2 ring-transparent peer-checked:ring-rose-600 peer-checked:ring-offset-2 transition-all" title="粉紅"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-red-500" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-red-500 ring-2 ring-transparent peer-checked:ring-red-700 peer-checked:ring-offset-2 transition-all" title="經典紅"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-blue-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-blue-400 ring-2 ring-transparent peer-checked:ring-blue-600 peer-checked:ring-offset-2 transition-all" title="天空藍"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-indigo-500" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-indigo-500 ring-2 ring-transparent peer-checked:ring-indigo-700 peer-checked:ring-offset-2 transition-all" title="靛藍"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-emerald-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-emerald-400 ring-2 ring-transparent peer-checked:ring-emerald-600 peer-checked:ring-offset-2 transition-all" title="清新綠"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-amber-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-amber-400 ring-2 ring-transparent peer-checked:ring-amber-600 peer-checked:ring-offset-2 transition-all" title="暖黃橘"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-purple-400" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-purple-400 ring-2 ring-transparent peer-checked:ring-purple-600 peer-checked:ring-offset-2 transition-all" title="浪漫紫"></div></label>
+                        <label class="cursor-pointer"><input type="radio" name="event-color" value="bg-gray-600" class="peer sr-only"><div class="w-8 h-8 rounded-full bg-gray-600 ring-2 ring-transparent peer-checked:ring-gray-800 peer-checked:ring-offset-2 transition-all" title="沉穩灰"></div></label>
                     </div>
                 </div>
                 <div class="pt-2 flex gap-3 shrink-0">
-                    <button type="button" id="btn-delete" class="hidden px-4 py-2 bg-gray-100 hover:bg-rose-100 text-gray-600 rounded-xl font-bold">刪除</button>
+                    <button type="button" id="btn-delete" class="hidden px-4 py-2 bg-gray-100 hover:bg-rose-100 text-gray-600 hover:text-rose-600 rounded-xl font-bold transition-colors">刪除</button>
                     <div class="flex-1"></div>
-                    <button type="button" id="btn-cancel-modal" class="px-5 py-2 text-gray-500 hover:bg-gray-100 rounded-xl font-bold">取消</button>
-                    <button type="submit" id="btn-save-event" class="px-6 py-2 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold shadow-md">儲存</button>
+                    <button type="button" id="btn-cancel-modal" class="px-5 py-2 text-gray-500 hover:bg-gray-100 rounded-xl font-bold transition-colors">取消</button>
+                    <button type="submit" id="btn-save-event" class="px-6 py-2 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold shadow-md transition-all active:scale-95">儲存</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Gallery, Admin, Day, View, Member Modals -->
-    <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
-        <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col modal-content">
-            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-xl font-extrabold">相簿牆</h3><button id="btn-close-gallery" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
-            <div id="gallery-grid-container" class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto flex-1 bg-gray-50"></div>
-        </div>
-    </div>
-
-    <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content">
-            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 id="day-modal-title" class="text-lg font-bold">當日行程</h3><button id="btn-close-day-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
-            <div id="day-modal-list" class="p-4 space-y-3 overflow-y-auto flex-1"></div>
-        </div>
-    </div>
-
+    <!-- 單一活動詳細檢視 Modal -->
     <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="view-modal">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative modal-content flex flex-col max-h-[90vh]">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in relative modal-content flex flex-col max-h-[90vh]">
             <div id="view-modal-header" class="h-16 w-full shrink-0"></div>
-            <button id="btn-close-view" class="absolute top-4 right-4 w-8 h-8 bg-white/30 rounded-full flex items-center justify-center text-white"><i class="fas fa-times"></i></button>
-            <div class="p-6 overflow-y-auto flex-1 space-y-3">
-                <h3 id="view-title" class="text-2xl font-extrabold text-gray-800"></h3>
-                <div id="view-photo-container" class="hidden mb-2"><img id="view-photo" class="w-full object-cover max-h-48 rounded-xl"></div>
-                <div id="view-file-container" class="hidden mb-2"><a id="view-file-link" href="#" target="_blank" class="w-full py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><i class="fas fa-paperclip"></i> 開啟附件檔案</a></div>
-                <p id="view-date" class="text-sm font-bold text-gray-600"></p>
-                <p id="view-author" class="text-xs text-gray-400"></p>
-                <div id="view-poll-container" class="bg-indigo-50 p-3 rounded-2xl space-y-2 hidden">
-                    <div class="font-bold text-xs text-indigo-800"><i class="fas fa-poll"></i> 投票區</div>
-                    <select id="poll-voter-select" class="w-full px-2 py-1 rounded bg-white border text-xs mb-1"></select>
-                    <div id="view-poll-options" class="space-y-1.5 text-xs"></div>
+            <button id="btn-close-view" class="absolute top-4 right-4 w-8 h-8 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors"><i class="fas fa-times"></i></button>
+            <div class="p-6 overflow-y-auto flex-1 hide-scrollbar">
+                <h3 id="view-title" class="text-2xl font-extrabold text-gray-800 mb-4">活動名稱</h3>
+                <div class="space-y-3 text-gray-600 font-medium text-sm">
+                    
+                    <div id="view-photo-container" class="hidden mb-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                        <img id="view-photo" src="" class="w-full object-cover max-h-64">
+                    </div>
+
+                    <div id="view-file-container" class="hidden mb-2">
+                        <a id="view-file-link" href="#" target="_blank" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fas fa-paperclip text-blue-500"></i> 開啟相關檔案與附件文件
+                        </a>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-calendar"></i></div>
+                        <span id="view-date"></span>
+                    </div>
+                    <div id="view-time-container" class="flex items-center gap-3 hidden">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-clock"></i></div>
+                        <span id="view-time"></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0"><i class="far fa-user"></i></div>
+                        <span id="view-author"></span>
+                    </div>
+                    <div id="view-desc-container" class="flex items-start gap-3 hidden">
+                        <div class="w-8 h-8 rounded-full bg-warm-50 text-warm-500 flex items-center justify-center shrink-0 mt-0.5"><i class="far fa-file-alt"></i></div>
+                        <span id="view-desc" class="whitespace-pre-line text-gray-700"></span>
+                    </div>
+
+                    <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
+                        <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
+                            <span><i class="fas fa-clipboard-check text-sm mr-1"></i> 裝備與任務認領清單</span>
+                            <span id="view-checklist-progress" class="text-[10px] bg-emerald-200/70 px-2 py-0.5 rounded-full">0/0</span>
+                        </div>
+                        <div id="view-checklist-items" class="space-y-1.5 text-xs"></div>
+                    </div>
+                    
+                    <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 space-y-3 hidden">
+                        <div class="font-bold flex items-center gap-1.5 text-xs text-indigo-800 border-b border-indigo-100 pb-2">
+                            <i class="fas fa-poll text-lg"></i> 匿名活動意願表決 (單選)
+                        </div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs text-indigo-700 font-bold">目前投票人：</span>
+                            <select id="poll-voter-select" class="flex-1 member-select px-2 py-1.5 rounded-lg bg-white border border-indigo-200 text-xs outline-none focus:ring-2 focus:ring-indigo-400"></select>
+                        </div>
+                        <div id="view-poll-options" class="space-y-2 text-sm"></div>
+                    </div>
+
+                    <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
+                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 代墊與分帳結算</div>
+                        <div id="view-expense-details" class="text-xs space-y-1.5"></div>
+                    </div>
                 </div>
-                <div class="pt-4 flex gap-2">
-                    <button id="btn-edit-from-view" class="flex-1 py-2 bg-warm-100 text-warm-700 rounded-xl font-bold text-sm">編輯</button>
+
+                <div id="map-btn-container" class="mt-4 hidden">
+                    <a id="map-nav-link" href="#" target="_blank" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-map-marked-alt"></i> 開啟 Google 地圖導航
+                    </a>
+                </div>
+
+                <div class="mt-6 flex gap-3">
+                    <button id="btn-copy-from-view" class="py-2.5 px-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-1.5" title="複製行程"><i class="fas fa-copy"></i> 複製</button>
+                    <button id="btn-edit-from-view" class="flex-1 py-2.5 bg-warm-100 hover:bg-warm-200 text-warm-700 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"><i class="fas fa-pen text-sm"></i> 編輯</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 管理成員 Modal -->
     <div id="member-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-modal">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content">
-            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-lg font-bold">成員管理</h3><button id="btn-close-member-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
-            <div class="p-4 border-b flex gap-2"><input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none"><button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button></div>
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[80vh] modal-content">
+            <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-warm-800"><i class="fas fa-users-cog text-warm-500"></i> 管理家族成員</h3>
+                <button id="btn-close-member-modal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-4 border-b border-warm-100 bg-white flex gap-2 shrink-0">
+                <input type="text" id="new-member-name" placeholder="輸入新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warm-400">
+                <button id="btn-add-member" class="px-4 py-2 bg-warm-500 hover:bg-warm-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm"><i class="fas fa-plus"></i></button>
+            </div>
             <div id="member-list-container" class="p-4 space-y-2 overflow-y-auto flex-1 bg-gray-50"></div>
         </div>
     </div>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
-        }
-    </script>
-    <script type="module" src="./app.js?v=4.9"></script>
+    <!-- 載入主程式模組 (升級為 v=4.4 強制清除快取) -->
+    <script type="module" src="./app.js?v=4.4"></script>
 </body>
 </html>
