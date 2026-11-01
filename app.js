@@ -105,7 +105,7 @@ function renderMemberSelects() {
     const voterSelect = document.getElementById('poll-voter-select');
     if (datalist) datalist.innerHTML = '';
     let curVoter = voterSelect ? voterSelect.value : '';
-    if (voterSelect) voterSelect.innerHTML = '<option value="" disabled selected>請選擇投票人...</option>';
+    if (voterSelect) voterSelect.innerHTML = '<option value="" disabled selected>請點此選擇您是哪位成員...</option>';
     familyMembers.forEach(m => {
         if (datalist) { const opt = document.createElement('option'); opt.value = m.name; datalist.appendChild(opt); }
         if (voterSelect) { const vOpt = document.createElement('option'); vOpt.value = m.name; vOpt.textContent = m.name; voterSelect.appendChild(vOpt); }
@@ -386,18 +386,32 @@ function openViewModal(id) {
     const voterSelect = document.getElementById('poll-voter-select');
     const finalizeBtn = document.getElementById('btn-finalize-poll');
     const pollBadge = document.getElementById('poll-summary-badge');
+    const votedMembersBanner = document.getElementById('voted-members-banner');
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
         const voter = voterSelect ? voterSelect.value : '';
+
+        // 收集所有已投票的成員名單（去重複）
+        let allVotedMembersSet = new Set();
+        evt.pollOptions.forEach(opt => {
+            opt.voters.forEach(name => allVotedMembersSet.add(name));
+        });
+        const allVotedMembersArr = Array.from(allVotedMembersSet);
+
+        if (allVotedMembersArr.length > 0) {
+            votedMembersBanner.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投過票的成員：<strong>${allVotedMembersArr.join(', ')}</strong>`;
+        } else {
+            votedMembersBanner.innerHTML = `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
+        }
 
         let maxVotes = -1;
         evt.pollOptions.forEach(opt => {
             if (opt.voters.length > maxVotes) maxVotes = opt.voters.length;
         });
 
-        let totalVotesCount = evt.pollOptions.reduce((sum, o) => sum + o.voters.length, 0);
-        pollBadge.innerText = `已投 ${totalVotesCount} 票`;
+        let totalVotesCount = allVotedMembersArr.length;
+        pollBadge.innerText = `已參與: ${totalVotesCount} 人`;
 
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
@@ -405,7 +419,7 @@ function openViewModal(id) {
             const hasVoted = voter && opt.voters.includes(voter);
             const isWinner = maxVotes > 0 && opt.voters.length === maxVotes;
 
-            // 🌟 完全匿名：只顯示選項與總票數，不顯示其他投票人的姓名名單
+            // 🌟 核心修改：只顯示選項名稱、最高票皇冠、按鈕狀態與總票數，絕對不印出誰投了哪一項！
             row.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-gray-800 flex items-center gap-1.5">
@@ -418,25 +432,26 @@ function openViewModal(id) {
             `;
             
             row.querySelector('button').addEventListener('click', async () => {
-                if (!voter) return alert('請先在上方選擇您是哪位投票人！');
+                if (!voter) return alert('請先在上方選擇您是哪位成員！');
                 let updated = evt.pollOptions.map(o => ({ title: o.title, voters: [...o.voters] }));
-                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter));
-                if (!hasVoted) updated[idx].voters.push(voter);
+                updated.forEach(o => o.voters = o.voters.filter(n => n !== voter)); // 單選：先從其他選項移除
+                if (!hasVoted) updated[idx].voters.push(voter); // 若沒投過此項則加入
                 await updateDoc(doc(eventsRef, evt.id), { pollOptions: updated });
             });
             pollOptionsEl.appendChild(row);
         });
 
+        // 🌟 總結報告與一鍵拍板定案（拍板時才總結誰勝出，投票過程中依然保密個別選項歸屬）
         finalizeBtn.onclick = async () => {
             const winnerOpt = evt.pollOptions.reduce((prev, curr) => (curr.voters.length > prev.voters.length) ? curr : prev);
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             
-            if (confirm(`確定要將最高票選項「${winnerOpt.title}」拍板定案為正式行程標題嗎？`)) {
+            if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), {
                     title: winnerOpt.title,
-                    isPoll: false
+                    isPoll: false // 結束投票
                 });
-                alert('已成功拍板定案！');
+                alert('🎉 已成功將最高票拍板定案！');
                 document.getElementById('view-modal').classList.add('hidden');
             }
         };
@@ -447,6 +462,7 @@ function openViewModal(id) {
         pollContainer.classList.add('hidden');
     }
 
+    document.getElementById('view-modal').classList.add('hidden');
     document.getElementById('view-modal').classList.remove('hidden');
 }
 

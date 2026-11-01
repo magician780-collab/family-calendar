@@ -89,7 +89,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-sm text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v5.0</div>
+            <div class="absolute top-4 right-4 text-[10px] text-gray-300 font-bold select-none">v5.6</div>
         </div>
 
         <div class="p-4 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -214,7 +214,7 @@
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
-                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動投票 (匿名單選)
+                            <i class="fas fa-poll text-indigo-600"></i> 啟用活動意願投票 (保密投票)
                         </label>
                         <input type="checkbox" id="event-is-poll" class="w-4 h-4 text-indigo-500 rounded cursor-pointer">
                     </div>
@@ -249,7 +249,7 @@
         </div>
     </div>
 
-    <!-- Gallery, Admin, Day, View, Member Modals -->
+    <!-- Gallery, Day, View, Member Modals -->
     <div id="gallery-modal" class="fixed inset-0 bg-warm-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="gallery-modal">
         <div class="bg-white w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col modal-content">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 class="text-xl font-extrabold">相簿牆</h3><button id="btn-close-gallery" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
@@ -275,17 +275,27 @@
                 <p id="view-date" class="text-sm font-bold text-gray-600"></p>
                 <p id="view-author" class="text-xs text-gray-400"></p>
                 
-                <!-- 🌟 投票區塊 (含最高票當選與一鍵拍板定案) -->
+                <!-- 🌟 投票區塊 (顯示誰已投，但不顯示誰投哪個選項) -->
                 <div id="view-poll-container" class="bg-indigo-50 p-3.5 rounded-2xl space-y-2.5 hidden border border-indigo-100">
                     <div class="font-bold text-xs text-indigo-800 flex items-center justify-between">
-                        <span><i class="fas fa-poll text-base mr-1"></i> 家族意願投票區</span>
-                        <span id="poll-summary-badge" class="text-[10px] bg-indigo-200/70 px-2 py-0.5 rounded-full text-indigo-900">自動統計中</span>
+                        <span><i class="fas fa-poll text-base mr-1"></i> 家族保密投票</span>
+                        <span id="poll-summary-badge" class="text-[10px] bg-indigo-200/70 px-2 py-0.5 rounded-full text-indigo-900">投票中</span>
                     </div>
-                    <select id="poll-voter-select" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-indigo-200 text-xs outline-none"></select>
-                    <div id="view-poll-options" class="space-y-2 text-xs"></div>
-                    <!-- 一鍵拍板定案按鈕 -->
-                    <button id="btn-finalize-poll" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5">
-                        <i class="fas fa-crown text-amber-300"></i> 將最高票拍板定案為行程標題
+                    <div class="space-y-1">
+                        <label class="block text-[11px] font-bold text-indigo-900">1. 選擇您是哪位成員：</label>
+                        <select id="poll-voter-select" class="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 text-xs outline-none focus:ring-2 focus:ring-indigo-400"></select>
+                    </div>
+                    <!-- 🌟 顯示誰已參與投票的總清單提示 -->
+                    <div id="voted-members-banner" class="bg-indigo-100/60 p-2 rounded-xl text-[11px] text-indigo-900 font-medium">
+                        已參與投票成員：尚未有人投票
+                    </div>
+                    <div class="pt-1">
+                        <label class="block text-[11px] font-bold text-indigo-900 mb-1.5">2. 點擊選項支援（保密投票）：</label>
+                        <div id="view-poll-options" class="space-y-2 text-xs"></div>
+                    </div>
+                    <!-- 投票總結與一鍵拍板定案 -->
+                    <button id="btn-finalize-poll" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 mt-2">
+                        <i class="fas fa-crown text-amber-300"></i> 查看總結並將最高票拍板定案
                     </button>
                 </div>
 
@@ -309,6 +319,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=5.0"></script>
+    <script type="module" src="./app.js?v=5.6"></script>
 </body>
 </html>
