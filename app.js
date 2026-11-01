@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
@@ -14,6 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
+const noteRef = doc(db, 'familyNotes', 'mainNote'); // 便利貼專屬資料庫位置
 
 let currentDate = new Date();
 let events = [];
@@ -30,6 +31,42 @@ function triggerHaptic() {
         window.navigator.vibrate(10);
     }
 }
+
+/* ================== 家庭共用便利貼 (即時同步) ================== */
+const stickyNoteEl = document.getElementById('family-sticky-note');
+const noteStatusEl = document.getElementById('note-status');
+let noteTimeout = null;
+
+// 即時監聽雲端便利貼內容
+onSnapshot(noteRef, (docSnap) => {
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        // 只有當使用者「不在打字中」時才覆蓋畫面，避免打斷當前的輸入
+        if (document.activeElement !== stickyNoteEl) {
+            stickyNoteEl.value = data.content || '';
+        }
+    }
+});
+
+// 當使用者打字時，防手震 (Debounce) 自動儲存
+stickyNoteEl.addEventListener('input', () => {
+    noteStatusEl.textContent = '儲存中...';
+    noteStatusEl.classList.remove('opacity-0');
+    
+    if (noteTimeout) clearTimeout(noteTimeout);
+    
+    // 停止打字 1 秒鐘後，自動上傳到 Firebase
+    noteTimeout = setTimeout(async () => {
+        try {
+            await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
+            noteStatusEl.textContent = '已同步';
+            setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
+        } catch (e) {
+            console.error('Save note error:', e);
+            noteStatusEl.textContent = '儲存失敗';
+        }
+    }, 1000); 
+});
 
 /* ================== 成員管理系統 ================== */
 onSnapshot(membersRef, (snapshot) => {
@@ -594,7 +631,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
 
-    // 🌟 核心防呆：檢查「建立者」是否在名冊內
     const authorInput = document.getElementById('event-author').value.trim();
     if (authorInput !== '' && authorInput !== '政府行事曆') {
         const isAuthorExist = familyMembers.some(m => m.name === authorInput);
@@ -607,7 +643,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     const isExpense = expenseCheckbox.checked;
     let payersList = [];
     
-    // 🌟 核心防呆：檢查「墊付人」是否在名冊內
     if (isExpense) {
         let payerError = false;
         document.querySelectorAll('.payer-row').forEach(row => {
