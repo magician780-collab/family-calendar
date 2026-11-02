@@ -31,7 +31,17 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
-// 動態載入 AI 呼吸燈動畫樣式 (修正為支援主題變數，且不遮擋內容)
+// 🌟 核心小工具：自動轉換 Google Drive 圖片為直連網址 (繞過 403 阻擋)
+function getDirectImageUrl(url) {
+    if (!url) return '';
+    if (url.includes('drive.google.com/file/d/')) {
+        const fileId = url.split('/d/')[1].split('/')[0];
+        return `https://lh3.googleusercontent.com/d/${fileId}`;
+    }
+    return url;
+}
+
+// 動態載入 AI 呼吸燈動畫樣式
 if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
     style.id = 'ai-border-style';
@@ -86,7 +96,7 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-/* 通用：點擊背景自動關閉 Modal (加入自動停止影片) */
+/* 通用：點擊背景自動關閉 Modal */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
         triggerHaptic();
@@ -157,29 +167,22 @@ if (searchInputEl) {
 }
 
 /* ========================================================
-   🎨 23 種多樣化主題風格設定 (修復對比度遮擋問題)
+   🎨 23 種多樣化主題風格設定 
    ======================================================== */
 const themePalettes = {
-    // 經典系列
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
     purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
-    
-    // 🤖 AI 與科技風系列 (修正為淺色底、深色字，保持超高對比不遮擋)
     ai_cyber: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
     ai_matrix: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' },
     ai_neon: { 50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe', 300: '#f0abfc', 400: '#e879f9', 500: '#d946ef', 600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75' },
     ai_quantum: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
     ai_neural: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#881337', 900: '#4c0519' },
-
-    // 🎀 馬卡龍 (Macaron) 粉嫩系列
     macaron_pink: { 50: '#fff0f5', 100: '#ffe4e1', 200: '#ffc0cb', 300: '#ffb6c1', 400: '#ff69b4', 500: '#ff9eb5', 600: '#ff7b9c', 700: '#ff5c8a', 800: '#d84a72', 900: '#b03a5b' },
     macaron_blue: { 50: '#f0f8ff', 100: '#e6f2ff', 200: '#cce5ff', 300: '#99ccff', 400: '#66b2ff', 500: '#a2d2ff', 600: '#7ebdf6', 700: '#5aa8ec', 800: '#3993e2', 900: '#1a7dd8' },
     macaron_purple: { 50: '#f8f4ff', 100: '#f3e8ff', 200: '#e6ccff', 300: '#d9b3ff', 400: '#cc99ff', 500: '#cdb4db', 600: '#b892c9', 700: '#a370b7', 800: '#8e4ea5', 900: '#792c93' },
     macaron_yellow: { 50: '#fffff0', 100: '#ffffe0', 200: '#fffacd', 300: '#fff68f', 400: '#ffebcd', 500: '#fcf6bd', 600: '#e9e29c', 700: '#d6ce7b', 800: '#c3ba5a', 900: '#b0a639' },
     macaron_green: { 50: '#f0fff0', 100: '#e0ffe0', 200: '#ccffcc', 300: '#b3ffb3', 400: '#99ff99', 500: '#d0f4de', 600: '#addcb8', 700: '#8ac492', 800: '#67ac6c', 900: '#449446' },
-
-    // 🌸 自然與生活感系列
     cherry: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#881337', 900: '#4c0519' },
     ocean: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
     sunset: { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f' },
@@ -197,7 +200,6 @@ function initThemeSelectOptions() {
     if (!sel) return;
     
     sel.innerHTML = '';
-
     const customThemes = [
         { id: 'warm', name: '🍊 溫馨暖橘' },
         { id: 'forest', name: '🌿 清新森林' },
@@ -261,7 +263,6 @@ if (themeSelectEl) {
         setTheme(e.target.value); 
     });
 }
-/* ======================================================== */
 
 /* 天氣 API */
 async function fetchWeather() {
@@ -324,29 +325,24 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 /* ========================================================
-   📅 通用版：政府行事曆與國定假日 (動態推算年份 + 防重複與清除)
+   📅 通用版：政府行事曆與國定假日
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
-    
     importGovBtn.addEventListener('click', async () => {
         triggerHaptic();
-        
         const defaultYear = currentDate.getFullYear();
         const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
         if (!yearStr) return;
-        
         const targetYear = parseInt(yearStr, 10);
-        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) {
-            return alert('請輸入有效的西元年份 (例如：2025, 2026, 2027)！');
-        }
+        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
 
         try {
-            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar(); // 春節
-            const eve = lunarJan1.next(-1); // 除夕
-            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar(); // 端午
-            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar(); // 中秋
+            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
+            const eve = lunarJan1.next(-1);
+            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
+            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
 
             const govHolidays = [
                 { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
@@ -368,58 +364,38 @@ if (importGovBtn) {
                     importedCount++;
                 }
             }
-            
-            if (importedCount > 0) {
-                alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
-            } else {
-                alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
-            }
+            if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
+            else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
         } catch (err) {
-            console.error("節日推算或寫入失敗:", err);
-            alert('匯入失敗，請檢查網路連線或套件是否載入。');
+            alert('匯入失敗，請檢查網路連線。');
         }
     });
 }
 
-// 動態加入「清除重複假日」按鈕
 if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
     const cleanupBtn = document.createElement('button');
     cleanupBtn.id = 'btn-cleanup-holidays';
     cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
     cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
     importGovBtn.parentNode.appendChild(cleanupBtn);
-
     cleanupBtn.addEventListener('click', async () => {
         if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
         triggerHaptic();
-
         try {
             const govEvents = events.filter(e => e.author === '政府行事曆');
             const seen = new Set();
             const duplicates = [];
-
             for (const evt of govEvents) {
                 const uniqueKey = `${evt.title}_${evt.startDate}`;
-                if (seen.has(uniqueKey)) {
-                    duplicates.push(evt.id); 
-                } else {
-                    seen.add(uniqueKey); 
-                }
+                if (seen.has(uniqueKey)) duplicates.push(evt.id); 
+                else seen.add(uniqueKey); 
             }
-
-            if (duplicates.length === 0) {
-                return alert('✅ 太棒了！目前行事曆中沒有發現重複的假日。');
-            }
-
+            if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
             if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                for (const id of duplicates) {
-                    await deleteDoc(doc(eventsRef, id));
-                }
+                for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
                 alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
             }
-        } catch (err) {
-            alert('清除失敗，請檢查網路連線。');
-        }
+        } catch (err) { alert('清除失敗，請檢查網路連線。'); }
     });
 }
 
@@ -430,7 +406,6 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
     const icsContainer = document.createElement('div');
     icsContainer.id = 'btn-import-ics-container';
     icsContainer.className = 'mt-4 pt-4 border-t border-gray-200';
-    
     icsContainer.innerHTML = `
         <label class="block text-xs font-bold text-gray-700 mb-2">外部行事曆匯入</label>
         <label class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95">
@@ -447,39 +422,24 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
         reader.onload = async (event) => {
             const icsData = event.target.result;
             const parsedEvents = parseICS(icsData);
-            
-            if (parsedEvents.length === 0) {
-                e.target.value = '';
-                return alert('找不到任何有效的行程資料，請確認這是一個標準的 ICS 檔案！');
-            }
-
-            if (confirm(`成功從檔案解析出 ${parsedEvents.length} 筆行程，確定要匯入嗎？\n(系統將自動略過已經存在相同日期與名稱的重複行程)`)) {
+            if (parsedEvents.length === 0) { e.target.value = ''; return alert('找不到有效行程資料！'); }
+            if (confirm(`成功從檔案解析出 ${parsedEvents.length} 筆行程，確定要匯入嗎？`)) {
                 triggerHaptic();
                 let importedCount = 0;
                 for (const ev of parsedEvents) {
                     const isExist = events.some(e => e.title === ev.title && e.startDate === ev.startDate);
                     if (!isExist) {
                         const newEvent = {
-                            title: ev.title || '未命名行程',
-                            startDate: ev.startDate,
-                            endDate: ev.endDate || ev.startDate,
-                            location: ev.location || '',
-                            author: 'ICS 匯入',
-                            color: 'bg-blue-500',
-                            icon: '🗓️',
-                            isChecklist: false, checklist: [],
-                            isPoll: false, pollOptions: [],
-                            isExpense: false, payers: [], sharers: []
+                            title: ev.title || '未命名行程', startDate: ev.startDate, endDate: ev.endDate || ev.startDate,
+                            location: ev.location || '', author: 'ICS 匯入', color: 'bg-blue-500', icon: '🗓️',
+                            isChecklist: false, checklist: [], isPoll: false, pollOptions: [], isExpense: false, payers: [], sharers: []
                         };
                         await addDoc(eventsRef, newEvent);
                         importedCount++;
                     }
                 }
-                if (importedCount > 0) {
-                    alert(`🎉 成功匯入 ${importedCount} 筆新行程！`);
-                } else {
-                    alert(`ℹ️ 這些行程已經存在行事曆中了，無須重複匯入！`);
-                }
+                if (importedCount > 0) alert(`🎉 成功匯入 ${importedCount} 筆新行程！`);
+                else alert(`ℹ️ 這些行程已經存在行事曆中了，無須重複匯入！`);
                 document.getElementById('member-modal').classList.add('hidden');
             }
             e.target.value = ''; 
@@ -491,23 +451,16 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
         const parsed = [];
         const lines = data.split(/\r?\n/);
         let currentEvent = null;
-
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
-                i++;
-                line += lines[i].substring(1);
-            }
-
-            if (line.startsWith('BEGIN:VEVENT')) {
-                currentEvent = {};
-            } else if (line.startsWith('END:VEVENT') && currentEvent) {
+            while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) { i++; line += lines[i].substring(1); }
+            if (line.startsWith('BEGIN:VEVENT')) currentEvent = {};
+            else if (line.startsWith('END:VEVENT') && currentEvent) {
                 if (currentEvent.startDate) parsed.push(currentEvent);
                 currentEvent = null;
             } else if (currentEvent) {
-                if (line.startsWith('SUMMARY:')) {
-                    currentEvent.title = line.substring(8).trim();
-                } else if (line.match(/^DTSTART/)) {
+                if (line.startsWith('SUMMARY:')) currentEvent.title = line.substring(8).trim();
+                else if (line.match(/^DTSTART/)) {
                     const match = line.match(/:([0-9T]+Z?)/);
                     if (match) currentEvent.startDate = formatICSDate(match[1]);
                 } else if (line.match(/^DTEND/)) {
@@ -515,31 +468,24 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
                     if (match) {
                         let eDate = formatICSDate(match[1]);
                         if (match[1].length === 8 && eDate !== currentEvent.startDate) {
-                            const d = new Date(eDate);
-                            d.setDate(d.getDate() - 1);
+                            const d = new Date(eDate); d.setDate(d.getDate() - 1);
                             eDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                         }
                         currentEvent.endDate = eDate;
                     }
-                } else if (line.startsWith('LOCATION:')) {
-                    currentEvent.location = line.substring(9).trim();
-                }
+                } else if (line.startsWith('LOCATION:')) currentEvent.location = line.substring(9).trim();
             }
         }
         return parsed;
     }
-
     function formatICSDate(icsDateStr) {
         const clean = icsDateStr.replace(/[^0-9]/g, '');
-        if (clean.length >= 8) {
-            return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`;
-        }
+        if (clean.length >= 8) return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`;
         return '';
     }
 }
-/* ======================================================== */
 
-/* ☁️ 雲端備份與還原 (支援多天歷史快照) */
+/* ☁️ 雲端備份與還原 */
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
 
@@ -561,45 +507,27 @@ if (exportBtn && importInput) {
     exportBtn.addEventListener('click', async () => {
         if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
         triggerHaptic();
-        
         try {
             exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...';
             exportBtn.disabled = true;
-            
-            const backupData = {
-                exportDate: new Date().toISOString(),
-                events: events
-            };
-            
+            const backupData = { exportDate: new Date().toISOString(), events: events };
             const backupId = Date.now().toString();
             await setDoc(doc(db, 'familyBackups', backupId), backupData);
-            
             alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
-        } catch (err) {
-            console.error(err);
-            alert('備份失敗，請檢查網路連線。');
-        } finally {
-            exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
-            exportBtn.disabled = false;
-        }
+        } catch (err) { alert('備份失敗，請檢查網路連線。'); } 
+        finally { exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端'; exportBtn.disabled = false; }
     });
 
     cloudRestoreBtn.addEventListener('click', async () => {
         triggerHaptic();
-        
         try {
             cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...';
             cloudRestoreBtn.disabled = true;
-            
             const snap = await getDocs(collection(db, 'familyBackups'));
-            if (snap.empty) {
-                alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。');
-                return;
-            }
+            if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
             
             const backupsList = [];
             snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
-            
             backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
 
             const modal = document.createElement('div');
@@ -607,21 +535,13 @@ if (exportBtn && importInput) {
             
             let listHtml = '';
             backupsList.slice(0, 10).forEach((b, index) => {
-                const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute:'2-digit', second:'2-digit'
-                });
+                const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
                 const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2 font-bold">最新</span>' : '';
-                
                 listHtml += `
                     <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
-                        <div>
-                            <div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div>
-                            <div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div>
-                        </div>
+                        <div><div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div><div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div></div>
                         <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
-                    </button>
-                `;
+                    </button>`;
             });
 
             modal.innerHTML = `
@@ -630,11 +550,8 @@ if (exportBtn && importInput) {
                         <h3 class="font-bold text-amber-900 flex items-center gap-2"><i class="fas fa-history text-amber-500"></i> 選擇要還原的歷史備份</h3>
                         <button id="btn-close-backup-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
                     </div>
-                    <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">
-                        ${listHtml}
-                    </div>
-                </div>
-            `;
+                    <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">${listHtml}</div>
+                </div>`;
             document.body.appendChild(modal);
 
             document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
@@ -645,45 +562,26 @@ if (exportBtn && importInput) {
                     e.stopPropagation();
                     const bId = btn.getAttribute('data-id');
                     const selectedBackup = backupsList.find(b => b.id === bId);
-                    
                     const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
                     if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
                         modal.remove();
                         cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...';
                         cloudRestoreBtn.disabled = true;
-                        
                         try {
-                            for (const evt of events) {
-                                await deleteDoc(doc(eventsRef, evt.id));
-                            }
-                            
-                            for (const ev of selectedBackup.events) {
-                                delete ev.id;
-                                await addDoc(eventsRef, ev);
-                            }
-                            
+                            for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
+                            for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
                             alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
                             document.getElementById('member-modal').classList.add('hidden');
-                        } catch (err) {
-                            console.error(err);
-                            alert('寫入資料失敗，請檢查網路。');
-                        }
+                        } catch (err) { alert('寫入資料失敗，請檢查網路。'); }
                     }
                 };
             });
-            
-        } catch (err) {
-            console.error(err);
-            alert('讀取雲端歷史紀錄失敗，請檢查網路連線。');
-        } finally {
-            cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
-            cloudRestoreBtn.disabled = false;
-        }
+        } catch (err) { alert('讀取雲端歷史紀錄失敗，請檢查網路連線。'); } 
+        finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
     });
 }
-/* ======================================================== */
 
-/* 相片牆 */
+/* 相片牆 (整合自動圖檔解析) */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
@@ -699,46 +597,36 @@ function renderGalleryGrid() {
     photoEvents.forEach(evt => {
         const item = document.createElement('div');
         item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
-        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${evt.photoUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
+        const imgUrl = getDirectImageUrl(evt.photoUrl); // 🌟 使用防破圖轉換引擎
+        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
         item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
         container.appendChild(item);
     });
 }
 
-/* ================= 下拉選單處理 ================= */
+/* 下拉選單處理 */
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
-    familyMembers.forEach(m => {
-        html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`;
-    });
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
     return html;
 }
-
 function getChecklistMemberOptions(selected = '') {
     let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
-    familyMembers.forEach(m => {
-        html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`;
-    });
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
     return html;
 }
-
 function updateUniqueSelects(containerId, selectClass) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const selects = Array.from(container.querySelectorAll(selectClass));
     const selectedValues = selects.map(s => s.value).filter(v => v !== '');
-
     selects.forEach(select => {
         const currentValue = select.value;
         Array.from(select.options).forEach(option => {
             if (option.value === '') return;
             if (selectedValues.includes(option.value) && option.value !== currentValue) {
-                option.disabled = true;
-                option.textContent = `${option.value} (已選)`;
-            } else {
-                option.disabled = false;
-                option.textContent = option.value;
-            }
+                option.disabled = true; option.textContent = `${option.value} (已選)`;
+            } else { option.disabled = false; option.textContent = option.value; }
         });
     });
 }
@@ -757,9 +645,7 @@ function addChecklistRow(text = '', assignee = '', done = false) {
     row.dataset.done = done ? 'true' : 'false';
     row.innerHTML = `
         <input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
-        <select class="checklist-assignee w-24 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer">
-            ${getChecklistMemberOptions(assignee)}
-        </select>
+        <select class="checklist-assignee w-24 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer">${getChecklistMemberOptions(assignee)}</select>
         <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
     `;
     row.querySelector('button').addEventListener('click', () => row.remove());
@@ -798,19 +684,12 @@ function addPayerRow(name = '', amount = '') {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 payer-row';
     row.innerHTML = `
-        <select class="payer-name w-1/3 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>
-            ${getMemberOptions(name, '代墊人...')}
-        </select>
+        <select class="payer-name w-1/3 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '代墊人...')}</select>
         <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
         <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
     `;
-    row.querySelector('button').addEventListener('click', () => { 
-        row.remove(); 
-        updateUniqueSelects('payers-container', '.payer-name'); 
-    });
-    row.querySelector('.payer-name').addEventListener('change', () => {
-        updateUniqueSelects('payers-container', '.payer-name');
-    });
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('payers-container', '.payer-name'); });
+    row.querySelector('.payer-name').addEventListener('change', () => { updateUniqueSelects('payers-container', '.payer-name'); });
     payersContainer.appendChild(row);
     updateUniqueSelects('payers-container', '.payer-name');
 }
@@ -820,22 +699,15 @@ function addSharerRow(name = '', weight = 1) {
     const row = document.createElement('div');
     row.className = 'flex items-center gap-2 sharer-row';
     row.innerHTML = `
-        <select class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>
-            ${getMemberOptions(name, '分攤對象...')}
-        </select>
+        <select class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '分攤對象...')}</select>
         <div class="flex items-center bg-white border rounded-xl px-2 py-1">
             <input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none">
             <span class="text-[10px]">份</span>
         </div>
         <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
     `;
-    row.querySelector('button').addEventListener('click', () => { 
-        row.remove(); 
-        updateUniqueSelects('sharers-container', '.sharer-name'); 
-    });
-    row.querySelector('.sharer-name').addEventListener('change', () => {
-        updateUniqueSelects('sharers-container', '.sharer-name');
-    });
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('sharers-container', '.sharer-name'); });
+    row.querySelector('.sharer-name').addEventListener('change', () => { updateUniqueSelects('sharers-container', '.sharer-name'); });
     sharersContainer.appendChild(row);
     updateUniqueSelects('sharers-container', '.sharer-name');
 }
@@ -916,12 +788,10 @@ function createDayCell(dayNum, dateStr, isToday) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
     
-    // 🔍 搜尋過濾邏輯
     const dayEvents = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
         if (!searchQuery) return true;
-        
         const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
         const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
         const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
@@ -933,19 +803,14 @@ function createDayCell(dayNum, dateStr, isToday) {
     const isRedDay = isWeekend || isGovHoliday;
 
     let cellBgClass = isToday ? 'bg-warm-50' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
-    
-    // 判斷是否為「當前選中」的格子，加上 AI 動畫外框樣式
     let isSelected = (dateStr === activeCellDate);
     let activeRingClass = isSelected ? 'ai-active-cell transition-all duration-300' : '';
 
     const cell = document.createElement('div');
     cell.className = `day-cell border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass} ${activeRingClass}`;
     
-    // 點擊格子時，轉移外框並開啟該日行程
     cell.addEventListener('click', () => {
-        document.querySelectorAll('.day-cell').forEach(c => {
-            c.classList.remove('ai-active-cell', 'transition-all', 'duration-300');
-        });
+        document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ai-active-cell', 'transition-all', 'duration-300'));
         cell.classList.add('ai-active-cell', 'transition-all', 'duration-300');
         activeCellDate = dateStr;
         openDayModal(dateStr);
@@ -959,13 +824,10 @@ function createDayCell(dayNum, dateStr, isToday) {
     dayEvents.forEach(evt => {
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px]"></i>` : '';
         const el = document.createElement('div');
-        
         el.className = `${evt.color} text-white text-xs md:text-sm font-bold px-1.5 py-1 rounded md:rounded-md shadow-sm transition-transform hover:scale-[1.02] leading-tight whitespace-normal break-words`;
-        
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollBadge}`;
         el.addEventListener('click', (ev) => { 
             ev.stopPropagation(); 
-            // 點擊行程標籤時同樣將 AI 框轉移過去
             document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ai-active-cell', 'transition-all', 'duration-300'));
             cell.classList.add('ai-active-cell', 'transition-all', 'duration-300');
             activeCellDate = dateStr;
@@ -983,12 +845,10 @@ function openDayModal(dateStr, setGlobal = true) {
     const list = document.getElementById('day-modal-list');
     list.innerHTML = '';
     
-    // 🔍 搜尋過濾邏輯
     const dayEvts = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
         if (!searchQuery) return true;
-        
         const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
         const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
         const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
@@ -1011,7 +871,6 @@ function openDayModal(dateStr, setGlobal = true) {
 }
 function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); }
 
-// 🌟 修復：左側摺疊頁「即將到來」字體與內距全面放大整合
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const empty = document.getElementById('no-upcoming');
@@ -1020,11 +879,9 @@ function renderUpcoming() {
     todayObj.setHours(0, 0, 0, 0);
     const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
     
-    // 🔍 搜尋過濾邏輯
     const upcoming = events.filter(e => {
         if (e.endDate < todayStr) return false;
         if (!searchQuery) return true;
-        
         const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
         const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
         const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
@@ -1034,7 +891,6 @@ function renderUpcoming() {
     empty.classList.toggle('hidden', upcoming.length > 0);
     upcoming.forEach(evt => {
         const el = document.createElement('div');
-        // ✨ 放大卡片內距與間距
         el.className = 'bg-white p-3 md:p-4 rounded-xl border shadow-sm cursor-pointer flex items-center gap-3 md:gap-4 hover:bg-warm-50 transition-colors';
         el.addEventListener('click', () => openViewModal(evt.id));
 
@@ -1043,7 +899,6 @@ function renderUpcoming() {
         const diffDays = Math.round((startObj - todayObj) / (1000 * 60 * 60 * 24));
         
         let countdownHtml = '';
-        // ✨ 放大倒數標籤字體 (text-xs) 與內距
         if (diffDays <= 0) countdownHtml = `<span class="px-2.5 py-1 bg-rose-500 text-white rounded-full text-xs font-extrabold animate-pulse">🎉 今天</span>`;
         else if (diffDays === 1) countdownHtml = `<span class="px-2.5 py-1 bg-orange-500 text-white rounded-full text-xs font-bold">🔥 明天</span>`;
         else if (diffDays <= 7) countdownHtml = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">⏳ 倒數 ${diffDays} 天</span>`;
@@ -1078,7 +933,6 @@ document.getElementById('btn-close-modal').addEventListener('click', closeModal)
 document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
 document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
 
-/* 🛑 關閉視窗與停止影片的邏輯 */
 document.getElementById('btn-close-view').addEventListener('click', () => { 
     document.getElementById('view-modal').classList.add('hidden');
     stopViewVideo(); 
@@ -1089,6 +943,30 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
     stopViewVideo();
     openModal(id); 
 });
+
+// 🌟 新增行程時支援「即時預覽」與「刪除按鈕修復」
+const photoUrlInput = document.getElementById('event-photo-url');
+if(photoUrlInput) {
+    photoUrlInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        const previewBox = document.getElementById('photo-preview');
+        const imgEl = previewBox.querySelector('img');
+        if (val) {
+            imgEl.src = getDirectImageUrl(val); // 套用防破圖引擎
+            previewBox.classList.remove('hidden');
+        } else {
+            previewBox.classList.add('hidden');
+            imgEl.src = '';
+        }
+    });
+    
+    document.getElementById('btn-remove-photo').addEventListener('click', () => {
+        triggerHaptic();
+        document.getElementById('event-photo-url').value = '';
+        document.getElementById('photo-preview').classList.add('hidden');
+        document.querySelector('#photo-preview img').src = '';
+    });
+}
 
 function openModal(id = null) {
     document.getElementById('event-form').reset();
@@ -1113,7 +991,6 @@ function openModal(id = null) {
     sharersContainer.innerHTML = '';
 
     currentEditingId = id;
-    
     const authorSelect = document.getElementById('event-author');
 
     if (id) {
@@ -1130,7 +1007,7 @@ function openModal(id = null) {
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
             if (evt.photoUrl) {
                 document.getElementById('event-photo-url').value = evt.photoUrl;
-                document.querySelector('#photo-preview img').src = evt.photoUrl;
+                document.querySelector('#photo-preview img').src = getDirectImageUrl(evt.photoUrl); // 🌟 套用防破圖引擎
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
             if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl;
@@ -1174,15 +1051,18 @@ function openViewModal(id) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author}`;
 
-    // 處理相片
+    // 處理相片 (🌟 預覽彈出視窗套用防破圖引擎)
     const pBox = document.getElementById('view-photo-container');
-    if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = evt.photoUrl; } else pBox.classList.add('hidden');
+    if (evt.photoUrl) { 
+        pBox.classList.remove('hidden'); 
+        document.getElementById('view-photo').src = getDirectImageUrl(evt.photoUrl); 
+    } else {
+        pBox.classList.add('hidden');
+    }
 
-    // 🎥 處理影片播放 (完美支援 Drive 預覽)
     const vBox = document.getElementById('view-video-container');
     const vIframe = document.getElementById('view-video-iframe');
     const vElement = document.getElementById('view-video-element');
-    
     if (evt.videoUrl) {
         let url = evt.videoUrl.trim();
         vIframe.classList.add('hidden');
@@ -1197,13 +1077,9 @@ function openViewModal(id) {
             vIframe.src = `https://www.youtube.com/embed/${vId}`;
             vIframe.classList.remove('hidden');
         } else if (url.includes('drive.google.com')) {
-            // 完美處理 Google Drive 影片預覽轉換
             let fileId = '';
-            if (url.includes('/d/')) {
-                fileId = url.split('/d/')[1].split('/')[0];
-            } else if (url.includes('id=')) {
-                fileId = new URL(url).searchParams.get('id');
-            }
+            if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
+            else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
             if (fileId) {
                 vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
                 vIframe.classList.remove('hidden');
@@ -1212,7 +1088,6 @@ function openViewModal(id) {
                 vIframe.classList.remove('hidden');
             }
         } else {
-            // 原生 mp4
             vElement.src = url;
             vElement.classList.remove('hidden');
         }
@@ -1275,7 +1150,6 @@ function openViewModal(id) {
 
     if (evt.isPoll && evt.pollOptions && evt.pollOptions.length > 0) {
         pollOptionsEl.innerHTML = '';
-        
         let allVotedMembersSet = new Set();
         evt.pollOptions.forEach(opt => opt.voters.forEach(name => allVotedMembersSet.add(name)));
         const allVotedMembersArr = Array.from(allVotedMembersSet);
@@ -1285,17 +1159,12 @@ function openViewModal(id) {
             const hasVoted = allVotedMembersArr.includes(m.name);
             const opt = document.createElement('option');
             opt.value = m.name;
-            if (hasVoted) {
-                opt.disabled = true;
-                opt.textContent = `${m.name} (已投票，不可再選)`;
-            } else {
-                opt.textContent = m.name;
-            }
+            if (hasVoted) { opt.disabled = true; opt.textContent = `${m.name} (已投票，不可再選)`; } 
+            else opt.textContent = m.name;
             voterSelect.appendChild(opt);
         });
 
         const voter = voterSelect.value;
-
         votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? 
             `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : 
             `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
@@ -1307,7 +1176,6 @@ function openViewModal(id) {
             const row = document.createElement('div');
             row.className = 'bg-white p-2.5 rounded-xl border flex flex-col gap-1.5 shadow-sm';
             const isWinner = maxVotes > 0 && opt.voters.length === maxVotes;
-
             row.innerHTML = `
                 <div class="flex justify-between items-center">
                     <span class="font-bold text-gray-800 flex items-center gap-1.5">
@@ -1316,9 +1184,7 @@ function openViewModal(id) {
                     <button class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm">
                         投一票 (${opt.voters.length} 票)
                     </button>
-                </div>
-            `;
-            
+                </div>`;
             row.querySelector('button').addEventListener('click', async () => {
                 const currentVoter = voterSelect.value;
                 if (!currentVoter) return alert('請先在上方選擇您是哪位成員！');
@@ -1333,18 +1199,14 @@ function openViewModal(id) {
         finalizeBtn.onclick = async () => {
             const winnerOpt = evt.pollOptions.reduce((prev, curr) => (curr.voters.length > prev.voters.length) ? curr : prev);
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
-            
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
                 alert('🎉 已成功將最高票拍板定案！');
                 document.getElementById('view-modal').classList.add('hidden');
             }
         };
-
         pollContainer.classList.remove('hidden');
-    } else {
-        pollContainer.classList.add('hidden');
-    }
+    } else pollContainer.classList.add('hidden');
 
     const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
@@ -1352,9 +1214,7 @@ function openViewModal(id) {
         let totalExpense = evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
         let perWeightAmount = totalExpense / totalWeight;
-
-        let html = `<div class="font-bold border-b border-amber-200 pb-1 mb-1">總支出：$${totalExpense.toLocaleString()} 元</div>`;
-        html += `<div class="space-y-1">`;
+        let html = `<div class="font-bold border-b border-amber-200 pb-1 mb-1">總支出：$${totalExpense.toLocaleString()} 元</div><div class="space-y-1">`;
         (evt.sharers || []).forEach(s => {
             let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
             html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} 元</span></div>`;
@@ -1362,15 +1222,12 @@ function openViewModal(id) {
         html += `</div>`;
         expenseDetails.innerHTML = html;
         expenseContainer.classList.remove('hidden');
-    } else {
-        expenseContainer.classList.add('hidden');
-    }
+    } else expenseContainer.classList.add('hidden');
 
     document.getElementById('view-modal').classList.add('hidden');
     document.getElementById('view-modal').classList.remove('hidden');
 }
 
-/* 儲存表單 */
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
@@ -1466,27 +1323,25 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器 (支援 API 自動抓取與搜尋)
+// 📻 動態加入：網路電台播放器
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
-    // 🌟 基礎預設電台清單
     let stations = [
         { name: "🎵 輕鬆背景音", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📻 A-Line 青春電台 (98.7)", url: "https://stream.rcs.revma.com/39w4m82987zuv", type: "live" },
         { name: "📻 台北愛樂 (古典樂)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 ICRT 國際社區廣播", url: "https://live.leanstream.co/ICRTFM-MP3", type: "live" },
-        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" },
-        { name: "📻 Lofi Girl (放鬆學習)", url: "https://play.streamafrica.net/lofi", type: "live" }
+        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" }
     ];
 
-    // 從瀏覽器記憶體載入使用者自訂的電台
     try {
         const customStations = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
         stations = [...stations, ...customStations];
     } catch (e) {}
 
     let currentStationIdx = 0;
+    let hlsInstance = null; 
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
@@ -1505,7 +1360,6 @@ function initRadioPlayer() {
         </button>
         <audio id="radio-audio" preload="none"></audio>
     `;
-    
     document.body.appendChild(radioContainer);
 
     const menuContainer = document.createElement('div');
@@ -1528,8 +1382,7 @@ function initRadioPlayer() {
             const isActive = (idx === currentStationIdx);
             item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
             
-            // 預設電台有 5 個，第 6 個以後的都可以刪除
-            const isCustom = idx >= 5; 
+            const isCustom = idx >= 4; 
             const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
 
             item.innerHTML = `
@@ -1544,24 +1397,23 @@ function initRadioPlayer() {
             
             item.addEventListener('click', (e) => {
                 e.stopPropagation(); 
-                
                 if (e.target.dataset.delete) {
                     if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
                         stations.splice(idx, 1);
-                        const customStations = stations.slice(5);
+                        const customStations = stations.slice(4);
                         localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
                         
                         if (currentStationIdx === idx) {
                             audio.pause();
+                            if(hlsInstance) hlsInstance.destroy();
                             isPlaying = false;
                             currentStationIdx = 0;
                             text.innerText = stations[0].name;
                             statusText.innerText = '點擊播放';
                             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
                             radioContainer.classList.remove('ring-2', 'ring-warm-400');
-                        } else if (currentStationIdx > idx) {
-                            currentStationIdx--;
-                        }
+                        } else if (currentStationIdx > idx) currentStationIdx--;
+                        
                         renderMenu();
                     }
                     return;
@@ -1576,32 +1428,22 @@ function initRadioPlayer() {
             menuContainer.appendChild(item);
         });
 
-        // 🌟 核心功能：連線 API 自動搜尋電台
-        const addBtn = document.createElement('button');
-        addBtn.className = 'w-full mt-1 px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs md:text-sm font-bold border border-dashed border-blue-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm';
-        addBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台';
-        
-        addBtn.addEventListener('click', async (e) => {
+        const searchBtn = document.createElement('button');
+        searchBtn.className = 'w-full mt-1 px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs md:text-sm font-bold border border-dashed border-blue-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm';
+        searchBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台';
+        searchBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const keyword = prompt('🔍 請輸入想搜尋的電台關鍵字 (例如：KISS, 飛碟, Jazz, Pop, Japan)：');
+            const keyword = prompt('🔍 搜尋電台關鍵字 (例如：KISS, 飛碟, Jazz, Pop, Japan)：');
             if (!keyword) return;
             
-            addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> API 抓取網址中...';
-            
+            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> API 抓取網址中...';
             try {
-                // 自動抓取 Radio Browser 開源資料庫 (過濾掉已失效的網址)
                 const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(keyword)}&limit=8&hidebroken=true`);
                 const data = await res.json();
-                
-                if (data.length === 0) {
-                    alert('找不到相關電台，或該電台的串流已失效，請換個關鍵字試試。');
-                    return;
-                }
+                if (data.length === 0) return alert('找不到相關電台，請換個關鍵字試試。');
 
                 let msg = '請輸入要加入的電台編號：\n\n';
-                data.forEach((s, i) => {
-                    msg += `[${i + 1}] ${s.name} (${s.countryCode})\n`;
-                });
+                data.forEach((s, i) => { msg += `[${i + 1}] ${s.name} (${s.countryCode})\n`; });
                 
                 const choice = prompt(msg);
                 if (!choice) return;
@@ -1616,16 +1458,33 @@ function initRadioPlayer() {
                     custom.push(newStation);
                     localStorage.setItem('my_custom_stations', JSON.stringify(custom));
                     
-                    alert('🎉 成功抓取並新增電台！請在選單中點選播放。');
+                    alert('🎉 成功新增電台！請在選單中點選播放。');
                     renderMenu();
-                } else {
-                    alert('輸入的編號無效。');
-                }
-            } catch (err) {
-                alert('自動抓取失敗，請檢查網路。');
-            } finally {
-                addBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台';
-            }
+                } else alert('輸入的編號無效。');
+            } catch (err) { alert('自動抓取失敗，請檢查網路。'); } 
+            finally { searchBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台'; }
+        });
+        menuContainer.appendChild(searchBtn);
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入自訂網址';
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const newName = prompt('請輸入電台名稱：');
+            if (!newName) return;
+            const newUrl = prompt('請貼上電台串流網址 (支援 .mp3 或 .m3u8 結尾)：');
+            if (!newUrl) return;
+            
+            const newStation = { name: '📻 ' + newName, url: newUrl, type: 'live' };
+            stations.push(newStation);
+            
+            const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
+            custom.push(newStation);
+            localStorage.setItem('my_custom_stations', JSON.stringify(custom));
+            
+            alert('🎉 新增成功！請在選單中點選播放。');
+            renderMenu();
         });
         menuContainer.appendChild(addBtn);
     }
@@ -1646,25 +1505,46 @@ function initRadioPlayer() {
 
     function loadAndPlayStation(index) {
         const station = stations[index];
-        audio.src = station.url;
-        audio.loop = (station.type === 'bgm'); 
         text.innerText = station.name;
-        
         audio.volume = 0.4;
         statusText.innerText = '連線中...';
         icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
         isPlaying = true;
-        
-        audio.play().then(() => {
+
+        if (hlsInstance) {
+            hlsInstance.destroy();
+            hlsInstance = null;
+        }
+
+        const onPlaySuccess = () => {
             icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
             statusText.innerText = '正在播放';
             radioContainer.classList.add('ring-2', 'ring-warm-400');
-        }).catch(e => {
-            statusText.innerText = '電台網址已失效';
+        };
+
+        const onPlayError = (e) => {
+            console.log('Stream Error:', e);
+            statusText.innerText = '網址失效或阻擋連線';
             icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
             isPlaying = false;
-        });
+        };
+
+        if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(station.url);
+            hlsInstance.attachMedia(audio);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                audio.play().then(onPlaySuccess).catch(onPlayError);
+            });
+            hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) onPlayError(data);
+            });
+        } else {
+            audio.src = station.url;
+            audio.loop = (station.type === 'bgm'); 
+            audio.play().then(onPlaySuccess).catch(onPlayError);
+        }
     }
 
     playBtn.addEventListener('click', (e) => {
@@ -1684,7 +1564,7 @@ function initRadioPlayer() {
 
     audio.addEventListener('error', () => {
         if (isPlaying) {
-            statusText.innerText = '電台斷線或失效';
+            statusText.innerText = '電台斷線，請換台';
             icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             isPlaying = false;
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
@@ -1692,6 +1572,5 @@ function initRadioPlayer() {
     });
 }
 
-// 啟動 Radio 小工具與 App
 initRadioPlayer();
 renderApp();
