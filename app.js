@@ -165,7 +165,7 @@ const themePalettes = {
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
     purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
     
-    // 🤖 AI 與科技風系列 (修正為淺色底、深色字，保持超高對比不遮擋)
+    // 🤖 AI 與科技風系列
     ai_cyber: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
     ai_matrix: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' },
     ai_neon: { 50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe', 300: '#f0abfc', 400: '#e879f9', 500: '#d946ef', 600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75' },
@@ -192,31 +192,26 @@ const themePalettes = {
     arctic: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' }
 };
 
-// 動態覆蓋 index.html 寫死的下拉選項，提供完整 23 種風格
 function initThemeSelectOptions() {
     const sel = document.getElementById('theme-select');
     if (!sel) return;
     
-    // 清空舊選項
     sel.innerHTML = '';
 
     const customThemes = [
         { id: 'warm', name: '🍊 溫馨暖橘' },
         { id: 'forest', name: '🌿 清新森林' },
         { id: 'purple', name: '💜 浪漫柔紫' },
-        // AI 科技風
         { id: 'ai_cyber', name: '🤖 AI 賽博藍' },
         { id: 'ai_matrix', name: '🟩 AI 數位綠' },
         { id: 'ai_neon', name: '🔮 AI 霓虹紫' },
         { id: 'ai_quantum', name: '⚡ AI 量子紫藍' },
         { id: 'ai_neural', name: '🧬 AI 神經紅' },
-        // 馬卡龍色系
         { id: 'macaron_pink', name: '🎀 馬卡龍粉' },
         { id: 'macaron_blue', name: '🍼 馬卡龍藍' },
         { id: 'macaron_purple', name: '🦄 馬卡龍紫' },
         { id: 'macaron_yellow', name: '🐣 馬卡龍黃' },
         { id: 'macaron_green', name: '🍈 馬卡龍綠' },
-        // 自然與生活
         { id: 'cherry', name: '🌸 櫻花紛飛' },
         { id: 'ocean', name: '🌊 蔚藍海洋' },
         { id: 'sunset', name: '🌇 夕陽黃昏' },
@@ -237,7 +232,6 @@ function initThemeSelectOptions() {
     });
 
     const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
-    // 防呆：如果之前的紀錄是已經被刪除的 dark，就重置回預設的暖橘色
     if (customThemes.some(t => t.id === savedTheme)) {
         sel.value = savedTheme;
     } else {
@@ -255,13 +249,11 @@ function setTheme(name) {
     if (sel) sel.value = name;
 }
 
-// 啟動時先將自訂的 23 種清單注入畫面的 select，再讀取使用者的主題偏好
 initThemeSelectOptions();
 setTheme(localStorage.getItem('family_app_theme') || 'warm');
 
 const themeSelectEl = document.getElementById('theme-select');
 if (themeSelectEl) {
-    // 覆蓋原本在底下的簡單監聽，以避免衝突
     const newSelectEl = themeSelectEl.cloneNode(true);
     themeSelectEl.parentNode.replaceChild(newSelectEl, themeSelectEl);
     newSelectEl.addEventListener('change', (e) => { 
@@ -336,7 +328,6 @@ document.getElementById('btn-close-member-modal').addEventListener('click', () =
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
-    // 透過 JS 動態將 HTML 上寫死的按鈕文字改成通用名稱
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     
     importGovBtn.addEventListener('click', async () => {
@@ -410,9 +401,9 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
             for (const evt of govEvents) {
                 const uniqueKey = `${evt.title}_${evt.startDate}`;
                 if (seen.has(uniqueKey)) {
-                    duplicates.push(evt.id); // 已存在，列入刪除名單
+                    duplicates.push(evt.id); 
                 } else {
-                    seen.add(uniqueKey); // 第一筆，保留
+                    seen.add(uniqueKey); 
                 }
             }
 
@@ -567,7 +558,6 @@ if (exportBtn && importInput) {
     
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
 
-    // 建立新備份
     exportBtn.addEventListener('click', async () => {
         if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
         triggerHaptic();
@@ -581,7 +571,6 @@ if (exportBtn && importInput) {
                 events: events
             };
             
-            // 使用當下時間作為文件 ID，保留多份歷史紀錄
             const backupId = Date.now().toString();
             await setDoc(doc(db, 'familyBackups', backupId), backupData);
             
@@ -595,7 +584,6 @@ if (exportBtn && importInput) {
         }
     });
 
-    // 從歷史清單還原
     cloudRestoreBtn.addEventListener('click', async () => {
         triggerHaptic();
         
@@ -603,7 +591,6 @@ if (exportBtn && importInput) {
             cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...';
             cloudRestoreBtn.disabled = true;
             
-            // 抓取雲端所有備份
             const snap = await getDocs(collection(db, 'familyBackups'));
             if (snap.empty) {
                 alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。');
@@ -613,15 +600,12 @@ if (exportBtn && importInput) {
             const backupsList = [];
             snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
             
-            // 依時間新到舊排序
             backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
 
-            // 動態產生還原選單 UI
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
             
             let listHtml = '';
-            // 最多顯示最近 10 筆備份
             backupsList.slice(0, 10).forEach((b, index) => {
                 const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', {
                     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -656,7 +640,6 @@ if (exportBtn && importInput) {
             document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
             modal.onclick = () => modal.remove();
 
-            // 綁定各版本的點擊還原事件
             modal.querySelectorAll('button[data-id]').forEach(btn => {
                 btn.onclick = async (e) => {
                     e.stopPropagation();
@@ -670,12 +653,10 @@ if (exportBtn && importInput) {
                         cloudRestoreBtn.disabled = true;
                         
                         try {
-                            // 1. 徹底清空目前所有行程
                             for (const evt of events) {
                                 await deleteDoc(doc(eventsRef, evt.id));
                             }
                             
-                            // 2. 寫入所選版本的行程
                             for (const ev of selectedBackup.events) {
                                 delete ev.id;
                                 await addDoc(eventsRef, ev);
@@ -979,7 +960,6 @@ function createDayCell(dayNum, dateStr, isToday) {
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px]"></i>` : '';
         const el = document.createElement('div');
         
-        // ✨ 修改：手機版字體放大為 text-xs，並加上 whitespace-normal break-words 允許自動換行
         el.className = `${evt.color} text-white text-xs md:text-sm font-bold px-1.5 py-1 rounded md:rounded-md shadow-sm transition-transform hover:scale-[1.02] leading-tight whitespace-normal break-words`;
         
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollBadge}`;
@@ -1486,7 +1466,7 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器 (Radio Widget - 全面同步版)
+// 📻 動態加入：網路電台播放器 (Radio Widget - 全面同步版 + 彈出式選單)
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
@@ -1507,99 +1487,130 @@ function initRadioPlayer() {
     ];
     let currentStationIdx = 0;
 
+    // 建立主播放按鈕
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
-    radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none';
+    radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-pointer hover:scale-105 transition-all';
     
     radioContainer.innerHTML = `
-        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 cursor-pointer transition-colors shrink-0">
+        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0">
             <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
         </div>
         <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1">
             <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
             <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
         </div>
-        <button id="btn-radio-next" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0" title="切換下一個頻道">
-            <i class="fas fa-step-forward text-[10px] md:text-xs"></i>
+        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0" title="開啟電台選單">
+            <i class="fas fa-list-ul text-[10px] md:text-xs"></i>
         </button>
         <audio id="radio-audio" preload="none"></audio>
     `;
     
     document.body.appendChild(radioContainer);
+
+    // 建立彈出式電台選單 (預設隱藏)
+    const menuContainer = document.createElement('div');
+    menuContainer.id = 'radio-menu';
+    menuContainer.className = 'fixed bottom-16 md:bottom-20 right-4 md:right-6 z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
+    
+    stations.forEach((station, idx) => {
+        const item = document.createElement('button');
+        item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${idx === 0 ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
+        item.innerHTML = `
+            <span class="truncate pr-2">${station.name}</span>
+            <i class="fas fa-volume-up text-warm-500 ${idx === 0 ? 'opacity-100' : 'opacity-0'}"></i>
+        `;
+        
+        item.addEventListener('click', (e) => {
+            e.stopPropagation(); // 防止事件冒泡關閉選單
+            triggerHaptic();
+            
+            // 更新選單視覺狀態
+            Array.from(menuContainer.children).forEach((child, i) => {
+                child.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${i === idx ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
+                child.querySelector('i').classList.toggle('opacity-100', i === idx);
+                child.querySelector('i').classList.toggle('opacity-0', i !== idx);
+            });
+
+            currentStationIdx = idx;
+            loadAndPlayStation(idx);
+            
+            // 點擊後自動關閉選單 (若覺得不需要自動關閉可移除此行)
+            menuContainer.classList.add('hidden');
+        });
+        
+        menuContainer.appendChild(item);
+    });
+    
+    document.body.appendChild(menuContainer);
     
     const audio = document.getElementById('radio-audio');
     const playBtn = document.getElementById('btn-radio-play');
-    const nextBtn = document.getElementById('btn-radio-next');
+    const menuBtn = document.getElementById('btn-radio-menu');
     const icon = document.getElementById('radio-icon');
     const text = document.getElementById('radio-text');
     const statusText = document.getElementById('radio-status');
     let isPlaying = false;
 
-    // 載入頻道
-    function loadStation(index) {
+    // 開關電台選單
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerHaptic();
+        menuContainer.classList.toggle('hidden');
+    });
+
+    // 點擊空白處關閉選單
+    document.addEventListener('click', (e) => {
+        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) {
+            menuContainer.classList.add('hidden');
+        }
+    });
+
+    // 載入並強制播放頻道
+    function loadAndPlayStation(index) {
         const station = stations[index];
         audio.src = station.url;
-        audio.loop = (station.type === 'bgm'); // 只有背景音樂 mp3 需要重複播放，Live 電台不需要
+        audio.loop = (station.type === 'bgm'); // 只有背景音樂 mp3 需要重複播放
         text.innerText = station.name;
+        
+        audio.volume = 0.4;
+        statusText.innerText = '連線中...';
+        icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
+        isPlaying = true;
+        
+        audio.play().then(() => {
+            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+            statusText.innerText = '正在播放';
+            radioContainer.classList.add('ring-2', 'ring-warm-400');
+        }).catch(e => {
+            statusText.innerText = '連線失敗，請換台';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+            isPlaying = false;
+        });
     }
 
-    // 初始載入第一台
-    loadStation(0);
-
-    // 播放/暫停控制
-    playBtn.addEventListener('click', () => {
+    // 播放/暫停控制 (點擊左側頭像區塊)
+    playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         triggerHaptic();
+        
         if (isPlaying) {
             audio.pause();
             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
             statusText.innerText = '已暫停';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
         } else {
-            audio.volume = 0.4; // 舒適的背景音量
-            statusText.innerText = '連線中...';
-            
-            audio.play().then(() => {
-                icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-                statusText.innerText = '正在播放';
-                radioContainer.classList.add('ring-2', 'ring-warm-400');
-            }).catch(e => {
-                console.log('播放失敗:', e);
-                statusText.innerText = '連線失敗，請換台';
-                icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
-            });
+            loadAndPlayStation(currentStationIdx);
         }
         isPlaying = !isPlaying;
-    });
-
-    // 切換頻道
-    nextBtn.addEventListener('click', () => {
-        triggerHaptic();
-        currentStationIdx = (currentStationIdx + 1) % stations.length;
-        loadStation(currentStationIdx);
-        
-        if (isPlaying) {
-            statusText.innerText = '切換頻道連線中...';
-            icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
-            
-            audio.play().then(() => {
-                icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-                statusText.innerText = '正在播放';
-            }).catch(e => {
-                statusText.innerText = '頻道離線，請切換';
-                icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
-                isPlaying = false;
-                radioContainer.classList.remove('ring-2', 'ring-warm-400');
-            });
-        } else {
-            statusText.innerText = '點擊播放';
-        }
     });
 
     // 處理直播中斷或錯誤
     audio.addEventListener('error', () => {
         if (isPlaying) {
             statusText.innerText = '頻道無回應，請換台';
-            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             isPlaying = false;
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
         }
