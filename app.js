@@ -629,8 +629,8 @@ function createDayCell(dayNum, dateStr, isToday) {
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px]"></i>` : '';
         const el = document.createElement('div');
         
-        // ✨ 修改這裡：大幅放大電腦版的字體尺寸 (md:text-sm)，並增加留白空間
-        el.className = `${evt.color} text-white text-[11px] md:text-sm font-bold px-1.5 py-0.5 md:py-1 rounded md:rounded-md truncate shadow-sm transition-transform hover:scale-[1.02]`;
+        // ✨ 修改：手機版字體放大為 text-xs，並加上 whitespace-normal break-words 允許自動換行
+        el.className = `${evt.color} text-white text-xs md:text-sm font-bold px-1.5 py-1 rounded md:rounded-md shadow-sm transition-transform hover:scale-[1.02] leading-tight whitespace-normal break-words`;
         
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollBadge}`;
         el.addEventListener('click', (ev) => { 
