@@ -31,6 +31,26 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
+// 動態載入 AI 呼吸燈動畫樣式
+if (!document.getElementById('ai-border-style')) {
+    const style = document.createElement('style');
+    style.id = 'ai-border-style';
+    style.innerHTML = `
+    @keyframes ai-glow {
+        0%, 100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.2); border-color: #8b5cf6; }
+        50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(168, 85, 247, 0.5); border-color: #3b82f6; }
+    }
+    .ai-active-cell {
+        animation: ai-glow 2s infinite alternate;
+        transform: scale(1.03);
+        z-index: 20;
+        border-width: 2px !important;
+        border-radius: 0.75rem;
+    }
+    `;
+    document.head.appendChild(style);
+}
+
 function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
@@ -583,25 +603,20 @@ function createDayCell(dayNum, dateStr, isToday) {
 
     let cellBgClass = isToday ? 'bg-warm-50' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
     
-    // 判斷是否為「當前選中」的格子，加上顯眼的外框與陰影
+    // 判斷是否為「當前選中」的格子，加上 AI 動畫外框樣式
     let isSelected = (dateStr === activeCellDate);
-    let activeRingClass = isSelected ? 'ring-2 ring-warm-500 shadow-md z-10 transition-all' : '';
+    let activeRingClass = isSelected ? 'ai-active-cell transition-all duration-300' : '';
 
     const cell = document.createElement('div');
     cell.className = `day-cell border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass} ${activeRingClass}`;
     
     // 點擊格子時，轉移外框並開啟該日行程
     cell.addEventListener('click', () => {
-        // 先移除所有格子的選取狀態
         document.querySelectorAll('.day-cell').forEach(c => {
-            c.classList.remove('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
+            c.classList.remove('ai-active-cell', 'transition-all', 'duration-300');
         });
-        // 為目前點擊的格子加上選取狀態
-        cell.classList.add('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
-        
-        // 更新全域變數，紀錄最後點擊的日期
+        cell.classList.add('ai-active-cell', 'transition-all', 'duration-300');
         activeCellDate = dateStr;
-        
         openDayModal(dateStr);
     });
     
@@ -613,13 +628,16 @@ function createDayCell(dayNum, dateStr, isToday) {
     dayEvents.forEach(evt => {
         const pollBadge = evt.isPoll ? ` <i class="fas fa-poll text-[9px]"></i>` : '';
         const el = document.createElement('div');
-        el.className = `${evt.color} text-white text-[9px] font-bold px-1 py-0.5 rounded truncate`;
+        
+        // ✨ 修改這裡：大幅放大電腦版的字體尺寸 (md:text-sm)，並增加留白空間
+        el.className = `${evt.color} text-white text-[11px] md:text-sm font-bold px-1.5 py-0.5 md:py-1 rounded md:rounded-md truncate shadow-sm transition-transform hover:scale-[1.02]`;
+        
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollBadge}`;
         el.addEventListener('click', (ev) => { 
             ev.stopPropagation(); 
-            // 點擊行程標籤時同樣將外框轉移過去
-            document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all'));
-            cell.classList.add('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
+            // 點擊行程標籤時同樣將 AI 框轉移過去
+            document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ai-active-cell', 'transition-all', 'duration-300'));
+            cell.classList.add('ai-active-cell', 'transition-all', 'duration-300');
             activeCellDate = dateStr;
             openViewModal(evt.id); 
         });
