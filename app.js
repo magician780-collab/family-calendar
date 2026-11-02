@@ -935,6 +935,7 @@ function openDayModal(dateStr, setGlobal = true) {
 }
 function closeDayModal() { document.getElementById('day-modal').classList.add('hidden'); }
 
+// 🌟 修復：左側摺疊頁「即將到來」字體與內距全面放大整合
 function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const empty = document.getElementById('no-upcoming');
@@ -957,7 +958,8 @@ function renderUpcoming() {
     empty.classList.toggle('hidden', upcoming.length > 0);
     upcoming.forEach(evt => {
         const el = document.createElement('div');
-        el.className = 'bg-white p-3 rounded-xl border shadow-sm cursor-pointer flex items-center gap-3';
+        // ✨ 放大卡片內距與間距
+        el.className = 'bg-white p-3 md:p-4 rounded-xl border shadow-sm cursor-pointer flex items-center gap-3 md:gap-4 hover:bg-warm-50 transition-colors';
         el.addEventListener('click', () => openViewModal(evt.id));
 
         const [sY, sM, sD] = evt.startDate.split('-').map(Number);
@@ -965,22 +967,23 @@ function renderUpcoming() {
         const diffDays = Math.round((startObj - todayObj) / (1000 * 60 * 60 * 24));
         
         let countdownHtml = '';
-        if (diffDays <= 0) countdownHtml = `<span class="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-extrabold animate-pulse">🎉 今天</span>`;
-        else if (diffDays === 1) countdownHtml = `<span class="px-2 py-0.5 bg-orange-500 text-white rounded-full text-[10px] font-bold">🔥 明天</span>`;
-        else if (diffDays <= 7) countdownHtml = `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold">⏳ 倒數 ${diffDays} 天</span>`;
-        else countdownHtml = `<span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">還有 ${diffDays} 天</span>`;
+        // ✨ 放大倒數標籤字體 (text-xs) 與內距
+        if (diffDays <= 0) countdownHtml = `<span class="px-2.5 py-1 bg-rose-500 text-white rounded-full text-xs font-extrabold animate-pulse">🎉 今天</span>`;
+        else if (diffDays === 1) countdownHtml = `<span class="px-2.5 py-1 bg-orange-500 text-white rounded-full text-xs font-bold">🔥 明天</span>`;
+        else if (diffDays <= 7) countdownHtml = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">⏳ 倒數 ${diffDays} 天</span>`;
+        else countdownHtml = `<span class="px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold">還有 ${diffDays} 天</span>`;
 
         const [y, m, d] = evt.startDate.split('-');
         el.innerHTML = `
-            <div class="${evt.color} text-white rounded-xl w-11 h-11 flex flex-col items-center justify-center shrink-0">
-                <span class="text-[9px]">${m}月</span><span class="text-sm font-bold">${d}</span>
+            <div class="${evt.color} text-white rounded-xl w-12 h-12 md:w-14 md:h-14 flex flex-col items-center justify-center shrink-0 shadow-sm">
+                <span class="text-[10px] md:text-xs">${m}月</span><span class="text-base md:text-xl font-bold">${d}</span>
             </div>
             <div class="flex-1 truncate">
-                <div class="flex justify-between items-center gap-1">
-                    <h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4>
+                <div class="flex justify-between items-center gap-2">
+                    <h4 class="font-bold text-gray-800 text-sm md:text-base truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4>
                     ${countdownHtml}
                 </div>
-                <span class="text-[10px] text-gray-400 mt-0.5 block">${evt.startDate}</span>
+                <span class="text-xs md:text-sm text-gray-500 mt-1 block">${evt.startDate}</span>
             </div>`;
         container.appendChild(el);
     });
