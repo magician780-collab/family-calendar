@@ -80,6 +80,12 @@ document.getElementById('btn-open-admin').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
+// 修復：綁定「新增活動」表單內的「管理成員」按鈕
+document.getElementById('btn-manage-members').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+
 /* 通用：點擊背景自動關閉 Modal (加入自動停止影片) */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
@@ -229,17 +235,122 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 /* ========================================================
-   📅 通用版 ICS 行事曆匯入 (支援 Google/Apple/Outlook 行事曆檔案)
+   📅 通用版：政府行事曆與國定假日 (動態推算年份 + 防重複與清除)
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
-    const parent = importGovBtn.parentNode;
+    // 透過 JS 動態將 HTML 上寫死的按鈕文字改成通用名稱
+    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     
-    const icsLabel = document.createElement('label');
-    icsLabel.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-    icsLabel.innerHTML = '<i class="fas fa-calendar-plus"></i> 匯入通用 ICS 行事曆檔案 (.ics)<input type="file" id="input-import-ics" accept=".ics" class="hidden">';
+    importGovBtn.addEventListener('click', async () => {
+        triggerHaptic();
+        
+        const defaultYear = currentDate.getFullYear();
+        const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
+        if (!yearStr) return;
+        
+        const targetYear = parseInt(yearStr, 10);
+        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) {
+            return alert('請輸入有效的西元年份 (例如：2025, 2026, 2027)！');
+        }
+
+        try {
+            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar(); // 春節
+            const eve = lunarJan1.next(-1); // 除夕
+            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar(); // 端午
+            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar(); // 中秋
+
+            const govHolidays = [
+                { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+                { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+                { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+                { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+                { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+                { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+                { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+            ];
+
+            let importedCount = 0;
+            for (const h of govHolidays) {
+                const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
+                if (!isExist) {
+                    await addDoc(eventsRef, h);
+                    importedCount++;
+                }
+            }
+            
+            if (importedCount > 0) {
+                alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
+            } else {
+                alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
+            }
+        } catch (err) {
+            console.error("節日推算或寫入失敗:", err);
+            alert('匯入失敗，請檢查網路連線或套件是否載入。');
+        }
+    });
+}
+
+// 動態加入「清除重複假日」按鈕
+if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
+    const cleanupBtn = document.createElement('button');
+    cleanupBtn.id = 'btn-cleanup-holidays';
+    cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+    cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
+    importGovBtn.parentNode.appendChild(cleanupBtn);
+
+    cleanupBtn.addEventListener('click', async () => {
+        if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
+        triggerHaptic();
+
+        try {
+            const govEvents = events.filter(e => e.author === '政府行事曆');
+            const seen = new Set();
+            const duplicates = [];
+
+            for (const evt of govEvents) {
+                const uniqueKey = `${evt.title}_${evt.startDate}`;
+                if (seen.has(uniqueKey)) {
+                    duplicates.push(evt.id); 
+                } else {
+                    seen.add(uniqueKey); 
+                }
+            }
+
+            if (duplicates.length === 0) {
+                return alert('✅ 太棒了！目前行事曆中沒有發現重複的假日。');
+            }
+
+            if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
+                for (const id of duplicates) {
+                    await deleteDoc(doc(eventsRef, id));
+                }
+                alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
+            }
+        } catch (err) {
+            alert('清除失敗，請檢查網路連線。');
+        }
+    });
+}
+
+// ========================================================
+// 📁 動態加入：通用 ICS 行事曆匯入按鈕
+// ========================================================
+if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
+    const icsContainer = document.createElement('div');
+    icsContainer.id = 'btn-import-ics-container';
+    icsContainer.className = 'mt-4 pt-4 border-t border-gray-200';
     
-    parent.replaceChild(icsLabel, importGovBtn);
+    icsContainer.innerHTML = `
+        <label class="block text-xs font-bold text-gray-700 mb-2">外部行事曆匯入</label>
+        <label class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95">
+            <i class="fas fa-calendar-plus"></i> 匯入通用 ICS 檔案 (.ics)
+            <input type="file" id="input-import-ics" accept=".ics" class="hidden">
+        </label>
+    `;
+    importGovBtn.parentNode.appendChild(icsContainer);
 
     document.getElementById('input-import-ics').addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -350,11 +461,11 @@ if (exportBtn && importInput) {
     if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份歷史紀錄 (隨時可還原)';
 
     exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
-    exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
+    exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
     
     const cloudRestoreBtn = document.createElement('button');
     cloudRestoreBtn.id = 'btn-cloud-restore';
-    cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
+    cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
     cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
     
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
@@ -419,7 +530,7 @@ if (exportBtn && importInput) {
                     year: 'numeric', month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute:'2-digit', second:'2-digit'
                 });
-                const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2">最新</span>' : '';
+                const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2 font-bold">最新</span>' : '';
                 
                 listHtml += `
                     <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
