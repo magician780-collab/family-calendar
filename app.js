@@ -158,7 +158,6 @@ if (searchInputEl) {
 
 /* ========================================================
    🎨 23 種多樣化主題風格設定 (修復對比度遮擋問題)
-   所有主題統一規範：50 是最淡背景色，900 是最深文字色
    ======================================================== */
 const themePalettes = {
     // 經典系列
@@ -337,6 +336,7 @@ document.getElementById('btn-close-member-modal').addEventListener('click', () =
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
+    // 透過 JS 動態將 HTML 上寫死的按鈕文字改成通用名稱
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     
     importGovBtn.addEventListener('click', async () => {
@@ -410,9 +410,9 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
             for (const evt of govEvents) {
                 const uniqueKey = `${evt.title}_${evt.startDate}`;
                 if (seen.has(uniqueKey)) {
-                    duplicates.push(evt.id); 
+                    duplicates.push(evt.id); // 已存在，列入刪除名單
                 } else {
-                    seen.add(uniqueKey); 
+                    seen.add(uniqueKey); // 第一筆，保留
                 }
             }
 
@@ -859,7 +859,6 @@ function addSharerRow(name = '', weight = 1) {
     updateUniqueSelects('sharers-container', '.sharer-name');
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
-
 
 /* 核心事件聆聽 */
 onSnapshot(eventsRef, (snapshot) => {
@@ -1486,49 +1485,127 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     }
 });
 
-// 🎵 動態加入背景音樂功能 (BGM Widget)
-function initBGM() {
-    if (document.getElementById('bgm-widget')) return;
+// ========================================================
+// 📻 動態加入：網路電台播放器 (Radio Widget - 全面同步版)
+// ========================================================
+function initRadioPlayer() {
+    if (document.getElementById('radio-widget')) return;
 
-    const bgmContainer = document.createElement('div');
-    bgmContainer.id = 'bgm-widget';
-    bgmContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 cursor-pointer hover:scale-105 transition-all select-none group';
+    // 🌟 全面同步電台清單 (包含 A-Line Radio 青春電台 FM 98.7)
+    const stations = [
+        { name: "🎵 輕鬆背景音", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📻 A-Line Radio (FM 98.7)", url: "https://stream.rcs.revma.com/39w4m82987zuv", type: "live" },
+        { name: "📻 中廣流行網", url: "https://stream.rcs.revma.com/awshrqaq098uv", type: "live" },
+        { name: "📻 飛碟電台", url: "https://stream.rcs.revma.com/ndz4y2b2x6zuv", type: "live" },
+        { name: "📻 News98 新聞網", url: "https://stream.rcs.revma.com/3w4850q7x6zuv", type: "live" },
+        { name: "📻 KISS Radio 大眾廣播", url: "https://bcr.stream.radionomy.com/KISS-Taiwan", type: "live" },
+        { name: "📻 城市廣播 (北部)", url: "https://fm901.cityfm.tw:8080/901.mp3", type: "live" },
+        { name: "📻 警察廣播電台 (全國)", url: "https://stream.rcs.revma.com/2q2xg48744zuv", type: "live" },
+        { name: "📻 台北愛樂 (古典樂)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
+        { name: "📻 Lofi Girl (放鬆學習)", url: "https://play.streamafrica.net/lofi", type: "live" },
+        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" }
+    ];
+    let currentStationIdx = 0;
+
+    const radioContainer = document.createElement('div');
+    radioContainer.id = 'radio-widget';
+    radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none';
     
-    bgmContainer.innerHTML = `
-        <div class="relative flex items-center justify-center w-6 h-6 md:w-8 md:h-8 rounded-full bg-warm-100 group-hover:bg-warm-200 transition-colors">
-            <i id="bgm-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
+    radioContainer.innerHTML = `
+        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 cursor-pointer transition-colors shrink-0">
+            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
         </div>
-        <span id="bgm-text" class="text-xs md:text-sm font-bold text-warm-700 pr-1">播放背景音樂</span>
-        <audio id="bgm-audio" loop preload="none">
-            <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
-        </audio>
+        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1">
+            <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
+            <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
+        </div>
+        <button id="btn-radio-next" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0" title="切換下一個頻道">
+            <i class="fas fa-step-forward text-[10px] md:text-xs"></i>
+        </button>
+        <audio id="radio-audio" preload="none"></audio>
     `;
     
-    document.body.appendChild(bgmContainer);
+    document.body.appendChild(radioContainer);
     
-    const audio = document.getElementById('bgm-audio');
-    const icon = document.getElementById('bgm-icon');
-    const text = document.getElementById('bgm-text');
+    const audio = document.getElementById('radio-audio');
+    const playBtn = document.getElementById('btn-radio-play');
+    const nextBtn = document.getElementById('btn-radio-next');
+    const icon = document.getElementById('radio-icon');
+    const text = document.getElementById('radio-text');
+    const statusText = document.getElementById('radio-status');
     let isPlaying = false;
 
-    bgmContainer.addEventListener('click', () => {
+    // 載入頻道
+    function loadStation(index) {
+        const station = stations[index];
+        audio.src = station.url;
+        audio.loop = (station.type === 'bgm'); // 只有背景音樂 mp3 需要重複播放，Live 電台不需要
+        text.innerText = station.name;
+    }
+
+    // 初始載入第一台
+    loadStation(0);
+
+    // 播放/暫停控制
+    playBtn.addEventListener('click', () => {
         triggerHaptic();
         if (isPlaying) {
             audio.pause();
             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
-            text.innerText = '播放背景音樂';
-            bgmContainer.classList.remove('ring-2', 'ring-warm-400');
+            statusText.innerText = '已暫停';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
         } else {
             audio.volume = 0.4; // 舒適的背景音量
-            audio.play().catch(e => console.log('Autoplay blocked:', e));
-            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-            text.innerText = '播放中...';
-            bgmContainer.classList.add('ring-2', 'ring-warm-400');
+            statusText.innerText = '連線中...';
+            
+            audio.play().then(() => {
+                icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+                statusText.innerText = '正在播放';
+                radioContainer.classList.add('ring-2', 'ring-warm-400');
+            }).catch(e => {
+                console.log('播放失敗:', e);
+                statusText.innerText = '連線失敗，請換台';
+                icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            });
         }
         isPlaying = !isPlaying;
     });
+
+    // 切換頻道
+    nextBtn.addEventListener('click', () => {
+        triggerHaptic();
+        currentStationIdx = (currentStationIdx + 1) % stations.length;
+        loadStation(currentStationIdx);
+        
+        if (isPlaying) {
+            statusText.innerText = '切換頻道連線中...';
+            icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
+            
+            audio.play().then(() => {
+                icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+                statusText.innerText = '正在播放';
+            }).catch(e => {
+                statusText.innerText = '頻道離線，請切換';
+                icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+                isPlaying = false;
+                radioContainer.classList.remove('ring-2', 'ring-warm-400');
+            });
+        } else {
+            statusText.innerText = '點擊播放';
+        }
+    });
+
+    // 處理直播中斷或錯誤
+    audio.addEventListener('error', () => {
+        if (isPlaying) {
+            statusText.innerText = '頻道無回應，請換台';
+            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+            isPlaying = false;
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+        }
+    });
 }
 
-// 啟動 BGM 小工具與 App
-initBGM();
+// 啟動 Radio 小工具與 App
+initRadioPlayer();
 renderApp();
