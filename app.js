@@ -229,104 +229,120 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 /* ========================================================
-   📅 通用版：政府行事曆與國定假日 (動態推算年份 + 防重複與清除)
+   📅 通用版 ICS 行事曆匯入 (支援 Google/Apple/Outlook 行事曆檔案)
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
-
 if (importGovBtn) {
-    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
+    const parent = importGovBtn.parentNode;
     
-    importGovBtn.addEventListener('click', async () => {
-        triggerHaptic();
-        
-        const defaultYear = currentDate.getFullYear();
-        const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
-        if (!yearStr) return;
-        
-        const targetYear = parseInt(yearStr, 10);
-        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) {
-            return alert('請輸入有效的西元年份 (例如：2025, 2026, 2027)！');
-        }
+    // 替換原本的按鈕為上傳檔案的 Label
+    const icsLabel = document.createElement('label');
+    icsLabel.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+    icsLabel.innerHTML = '<i class="fas fa-calendar-plus"></i> 匯入通用 ICS 行事曆檔案 (.ics)<input type="file" id="input-import-ics" accept=".ics" class="hidden">';
+    
+    parent.replaceChild(icsLabel, importGovBtn);
 
-        try {
-            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar(); // 春節
-            const eve = lunarJan1.next(-1); // 除夕
-            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar(); // 端午
-            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar(); // 中秋
-
-            const govHolidays = [
-                { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
-                { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
-                { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
-                { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
-                { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
-                { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
-                { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
-            ];
-
-            let importedCount = 0;
-            for (const h of govHolidays) {
-                const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
-                if (!isExist) {
-                    await addDoc(eventsRef, h);
-                    importedCount++;
-                }
-            }
+    // ICS 檔案上傳解析邏輯
+    document.getElementById('input-import-ics').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const icsData = event.target.result;
+            const parsedEvents = parseICS(icsData);
             
-            if (importedCount > 0) {
-                alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
-            } else {
-                alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
+            if (parsedEvents.length === 0) {
+                e.target.value = '';
+                return alert('找不到任何有效的行程資料，請確認這是一個標準的 ICS 檔案！');
             }
-        } catch (err) {
-            console.error("節日推算或寫入失敗:", err);
-            alert('匯入失敗，請檢查網路連線或套件是否載入。');
-        }
-    });
-}
 
-// 動態加入「清除重複假日」按鈕
-if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
-    const cleanupBtn = document.createElement('button');
-    cleanupBtn.id = 'btn-cleanup-holidays';
-    cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm';
-    cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
-    importGovBtn.parentNode.appendChild(cleanupBtn);
-
-    cleanupBtn.addEventListener('click', async () => {
-        if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
-        triggerHaptic();
-
-        try {
-            const govEvents = events.filter(e => e.author === '政府行事曆');
-            const seen = new Set();
-            const duplicates = [];
-
-            for (const evt of govEvents) {
-                const uniqueKey = `${evt.title}_${evt.startDate}`;
-                if (seen.has(uniqueKey)) {
-                    duplicates.push(evt.id); 
+            if (confirm(`成功從檔案解析出 ${parsedEvents.length} 筆行程，確定要匯入嗎？\n(系統將自動略過已經存在相同日期與名稱的重複行程)`)) {
+                triggerHaptic();
+                let importedCount = 0;
+                for (const ev of parsedEvents) {
+                    // 嚴格防重複檢查：名稱、開始日期
+                    const isExist = events.some(e => e.title === ev.title && e.startDate === ev.startDate);
+                    if (!isExist) {
+                        const newEvent = {
+                            title: ev.title || '未命名行程',
+                            startDate: ev.startDate,
+                            endDate: ev.endDate || ev.startDate,
+                            location: ev.location || '',
+                            author: 'ICS 匯入',
+                            color: 'bg-blue-500',
+                            icon: '🗓️',
+                            isChecklist: false, checklist: [],
+                            isPoll: false, pollOptions: [],
+                            isExpense: false, payers: [], sharers: []
+                        };
+                        await addDoc(eventsRef, newEvent);
+                        importedCount++;
+                    }
+                }
+                if (importedCount > 0) {
+                    alert(`🎉 成功匯入 ${importedCount} 筆新行程！`);
                 } else {
-                    seen.add(uniqueKey); 
+                    alert(`ℹ️ 這些行程已經存在行事曆中了，無須重複匯入！`);
                 }
+                document.getElementById('member-modal').classList.add('hidden');
             }
-
-            if (duplicates.length === 0) {
-                return alert('✅ 太棒了！目前行事曆中沒有發現重複的假日。');
-            }
-
-            if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                for (const id of duplicates) {
-                    await deleteDoc(doc(eventsRef, id));
-                }
-                alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
-            }
-        } catch (err) {
-            alert('清除失敗，請檢查網路連線。');
-        }
+            e.target.value = ''; // 清空 file input，允許重複上傳相同檔案
+        };
+        reader.readAsText(file);
     });
+
+    // 輕量的純前端 ICS 解析器
+    function parseICS(data) {
+        const parsed = [];
+        const lines = data.split(/\r?\n/);
+        let currentEvent = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            // 處理 ICS 格式的斷行延續 (下一行開頭是空白或 Tab)
+            while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
+                i++;
+                line += lines[i].substring(1);
+            }
+
+            if (line.startsWith('BEGIN:VEVENT')) {
+                currentEvent = {};
+            } else if (line.startsWith('END:VEVENT') && currentEvent) {
+                if (currentEvent.startDate) parsed.push(currentEvent);
+                currentEvent = null;
+            } else if (currentEvent) {
+                if (line.startsWith('SUMMARY:')) {
+                    currentEvent.title = line.substring(8).trim();
+                } else if (line.match(/^DTSTART/)) {
+                    const match = line.match(/:([0-9T]+Z?)/);
+                    if (match) currentEvent.startDate = formatICSDate(match[1]);
+                } else if (line.match(/^DTEND/)) {
+                    const match = line.match(/:([0-9T]+Z?)/);
+                    if (match) {
+                        let eDate = formatICSDate(match[1]);
+                        // ICS 規範：全天事件(8字元)的結束日期是不包含的 (Exclusive)
+                        if (match[1].length === 8 && eDate !== currentEvent.startDate) {
+                            const d = new Date(eDate);
+                            d.setDate(d.getDate() - 1);
+                            eDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                        }
+                        currentEvent.endDate = eDate;
+                    }
+                } else if (line.startsWith('LOCATION:')) {
+                    currentEvent.location = line.substring(9).trim();
+                }
+            }
+        }
+        return parsed;
+    }
+
+    function formatICSDate(icsDateStr) {
+        const clean = icsDateStr.replace(/[^0-9]/g, '');
+        if (clean.length >= 8) {
+            return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`;
+        }
+        return '';
+    }
 }
 /* ======================================================== */
 
@@ -1120,7 +1136,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         startDate: startVal,
         endDate: document.getElementById('event-end-date').value || startVal,
         isLunarRecurring: isRecurring,
-        lunarMonth: lMonth,
+        lMonth: lMonth,
         lunarDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
