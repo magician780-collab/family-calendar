@@ -229,41 +229,63 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 /* ========================================================
-   📅 政府行事曆與國定假日 (匯入與清除重複功能)
+   📅 通用版：政府行事曆與國定假日 (動態推算年份 + 防重複與清除)
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
-importGovBtn.addEventListener('click', async () => {
-    if (!confirm('確定要一鍵匯入 2026 年政府行事曆與國定假日嗎？')) return;
-    triggerHaptic();
 
-    const govHolidays = [
-        { title: '元旦', startDate: '2026-01-01', endDate: '2026-01-01', icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
-        { title: '農曆除夕', startDate: '2026-02-16', endDate: '2026-02-16', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-        { title: '春節', startDate: '2026-02-17', endDate: '2026-02-21', icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-        { title: '和平紀念日', startDate: '2026-02-28', endDate: '2026-02-28', icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
-        { title: '兒童節/民族掃墓節', startDate: '2026-04-04', endDate: '2026-04-05', icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
-        { title: '勞動節', startDate: '2026-05-01', endDate: '2026-05-01', icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
-        { title: '端午節', startDate: '2026-06-19', endDate: '2026-06-19', icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
-        { title: '中秋節', startDate: '2026-09-25', endDate: '2026-09-25', icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
-        { title: '國慶日', startDate: '2026-10-10', endDate: '2026-10-10', icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
-    ];
-
-    try {
-        let importedCount = 0;
-        for (const h of govHolidays) {
-            // 防重複檢查
-            const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
-            if (!isExist) {
-                await addDoc(eventsRef, h);
-                importedCount++;
-            }
+if (importGovBtn) {
+    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
+    
+    importGovBtn.addEventListener('click', async () => {
+        triggerHaptic();
+        
+        const defaultYear = currentDate.getFullYear();
+        const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
+        if (!yearStr) return;
+        
+        const targetYear = parseInt(yearStr, 10);
+        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) {
+            return alert('請輸入有效的西元年份 (例如：2025, 2026, 2027)！');
         }
-        if (importedCount > 0) alert(`🎉 成功新增 ${importedCount} 筆國定假日！`);
-        else alert('ℹ️ 行事曆中已經有這些國定假日了，無須重複匯入！');
-    } catch (err) {
-        alert('匯入失敗，請檢查網路連線。');
-    }
-});
+
+        try {
+            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar(); // 春節
+            const eve = lunarJan1.next(-1); // 除夕
+            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar(); // 端午
+            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar(); // 中秋
+
+            const govHolidays = [
+                { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+                { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+                { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+                { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+                { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+                { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+                { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+            ];
+
+            let importedCount = 0;
+            for (const h of govHolidays) {
+                const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
+                if (!isExist) {
+                    await addDoc(eventsRef, h);
+                    importedCount++;
+                }
+            }
+            
+            if (importedCount > 0) {
+                alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
+            } else {
+                alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
+            }
+        } catch (err) {
+            console.error("節日推算或寫入失敗:", err);
+            alert('匯入失敗，請檢查網路連線或套件是否載入。');
+        }
+    });
+}
 
 // 動態加入「清除重複假日」按鈕
 if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
@@ -285,9 +307,9 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
             for (const evt of govEvents) {
                 const uniqueKey = `${evt.title}_${evt.startDate}`;
                 if (seen.has(uniqueKey)) {
-                    duplicates.push(evt.id); // 已存在，列入刪除名單
+                    duplicates.push(evt.id); 
                 } else {
-                    seen.add(uniqueKey); // 第一筆，保留
+                    seen.add(uniqueKey); 
                 }
             }
 
@@ -306,7 +328,6 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
         }
     });
 }
-
 /* ======================================================== */
 
 /* 💾 JSON 備份與還原 */
