@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
@@ -235,14 +235,12 @@ const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     const parent = importGovBtn.parentNode;
     
-    // 替換原本的按鈕為上傳檔案的 Label
     const icsLabel = document.createElement('label');
     icsLabel.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
     icsLabel.innerHTML = '<i class="fas fa-calendar-plus"></i> 匯入通用 ICS 行事曆檔案 (.ics)<input type="file" id="input-import-ics" accept=".ics" class="hidden">';
     
     parent.replaceChild(icsLabel, importGovBtn);
 
-    // ICS 檔案上傳解析邏輯
     document.getElementById('input-import-ics').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -260,7 +258,6 @@ if (importGovBtn) {
                 triggerHaptic();
                 let importedCount = 0;
                 for (const ev of parsedEvents) {
-                    // 嚴格防重複檢查：名稱、開始日期
                     const isExist = events.some(e => e.title === ev.title && e.startDate === ev.startDate);
                     if (!isExist) {
                         const newEvent = {
@@ -291,7 +288,6 @@ if (importGovBtn) {
         reader.readAsText(file);
     });
 
-    // 輕量的純前端 ICS 解析器
     function parseICS(data) {
         const parsed = [];
         const lines = data.split(/\r?\n/);
@@ -299,7 +295,6 @@ if (importGovBtn) {
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            // 處理 ICS 格式的斷行延續
             while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
                 i++;
                 line += lines[i].substring(1);
@@ -345,35 +340,28 @@ if (importGovBtn) {
 }
 /* ======================================================== */
 
-/* ☁️ 雲端備份與還原 (替換原本的 JSON 下載功能) */
+/* ☁️ 雲端備份與還原 (支援多天歷史快照) */
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
 
 if (exportBtn && importInput) {
     const importLabel = importInput.parentElement;
-    
-    // 改寫標題
     const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
-    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端資料備份與還原';
+    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份歷史紀錄 (隨時可還原)';
 
-    // 重新設定「備份至雲端」按鈕
-    exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 備份至雲端';
+    exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
     exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
     
-    // 建立「從雲端還原」按鈕來取代原本的上傳框
     const cloudRestoreBtn = document.createElement('button');
     cloudRestoreBtn.id = 'btn-cloud-restore';
     cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
-    cloudRestoreBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 從雲端還原';
+    cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
     
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
 
-    // 綁定 Firebase 儲存節點
-    const backupRef = doc(db, 'familyBackups', 'latest');
-
-    // 備份事件
+    // 建立新備份
     exportBtn.addEventListener('click', async () => {
-        if(!confirm('確定要將目前的「所有行程」備份到雲端嗎？\n(這將會覆蓋前一次的雲端備份紀錄)')) return;
+        if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
         triggerHaptic();
         
         try {
@@ -384,59 +372,122 @@ if (exportBtn && importInput) {
                 exportDate: new Date().toISOString(),
                 events: events
             };
-            await setDoc(backupRef, backupData);
-            alert('🎉 雲端備份成功！現在您的行程已經安全存放在雲端了。');
+            
+            // 使用當下時間作為文件 ID，保留多份歷史紀錄
+            const backupId = Date.now().toString();
+            await setDoc(doc(db, 'familyBackups', backupId), backupData);
+            
+            alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
         } catch (err) {
             console.error(err);
             alert('備份失敗，請檢查網路連線。');
         } finally {
-            exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 備份至雲端';
+            exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
             exportBtn.disabled = false;
         }
     });
 
-    // 還原事件
+    // 從歷史清單還原
     cloudRestoreBtn.addEventListener('click', async () => {
         triggerHaptic();
         
         try {
-            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取中...';
+            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...';
             cloudRestoreBtn.disabled = true;
             
-            const snap = await getDoc(backupRef);
-            if (!snap.exists()) {
-                alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先執行備份。');
+            // 抓取雲端所有備份
+            const snap = await getDocs(collection(db, 'familyBackups'));
+            if (snap.empty) {
+                alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。');
                 return;
             }
             
-            const data = snap.data();
-            const backupTime = new Date(data.exportDate).toLocaleString();
+            const backupsList = [];
+            snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
             
-            if (confirm(`找到雲端備份 (備份時間：${backupTime})\n共包含 ${data.events.length} 筆行程。\n\n⚠️ 嚴重警告：\n還原將會【完全清除】您目前行事曆上的所有行程，並替換為這份備份的版本。\n您確定要繼續還原嗎？`)) {
+            // 依時間新到舊排序
+            backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
+
+            // 動態產生還原選單 UI
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
+            
+            let listHtml = '';
+            // 最多顯示最近 10 筆備份
+            backupsList.slice(0, 10).forEach((b, index) => {
+                const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute:'2-digit', second:'2-digit'
+                });
+                const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2">最新</span>' : '';
                 
-                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清除舊資料...';
-                
-                // 1. 先清空現有的 events
-                for (const evt of events) {
-                    await deleteDoc(doc(eventsRef, evt.id));
-                }
-                
-                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原備份中...';
-                
-                // 2. 寫入備份的 events
-                for (const ev of data.events) {
-                    delete ev.id; // 防止帶入舊 ID
-                    await addDoc(eventsRef, ev);
-                }
-                
-                alert('🎉 雲端還原大成功！');
-                document.getElementById('member-modal').classList.add('hidden');
-            }
+                listHtml += `
+                    <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
+                        <div>
+                            <div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div>
+                            <div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div>
+                        </div>
+                        <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
+                    </button>
+                `;
+            });
+
+            modal.innerHTML = `
+                <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+                    <div class="px-5 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                        <h3 class="font-bold text-amber-900 flex items-center gap-2"><i class="fas fa-history text-amber-500"></i> 選擇要還原的歷史備份</h3>
+                        <button id="btn-close-backup-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                    </div>
+                    <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">
+                        ${listHtml}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
+            modal.onclick = () => modal.remove();
+
+            // 綁定各版本的點擊還原事件
+            modal.querySelectorAll('button[data-id]').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const bId = btn.getAttribute('data-id');
+                    const selectedBackup = backupsList.find(b => b.id === bId);
+                    
+                    const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
+                    if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
+                        modal.remove();
+                        cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...';
+                        cloudRestoreBtn.disabled = true;
+                        
+                        try {
+                            // 1. 徹底清空目前所有行程
+                            for (const evt of events) {
+                                await deleteDoc(doc(eventsRef, evt.id));
+                            }
+                            
+                            // 2. 寫入所選版本的行程
+                            for (const ev of selectedBackup.events) {
+                                delete ev.id;
+                                await addDoc(eventsRef, ev);
+                            }
+                            
+                            alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
+                            document.getElementById('member-modal').classList.add('hidden');
+                        } catch (err) {
+                            console.error(err);
+                            alert('寫入資料失敗，請檢查網路。');
+                        }
+                    }
+                };
+            });
+            
         } catch (err) {
             console.error(err);
-            alert('還原失敗，請檢查網路連線。');
+            alert('讀取雲端歷史紀錄失敗，請檢查網路連線。');
         } finally {
-            cloudRestoreBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 從雲端還原';
+            cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
             cloudRestoreBtn.disabled = false;
         }
     });
