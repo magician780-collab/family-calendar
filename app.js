@@ -186,8 +186,11 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* 📅 2026 政府行事曆與國定假日 */
-document.getElementById('btn-import-gov-holidays').addEventListener('click', async () => {
+/* ========================================================
+   📅 政府行事曆與國定假日 (匯入與清除重複功能)
+   ======================================================== */
+const importGovBtn = document.getElementById('btn-import-gov-holidays');
+importGovBtn.addEventListener('click', async () => {
     if (!confirm('確定要一鍵匯入 2026 年政府行事曆與國定假日嗎？')) return;
     triggerHaptic();
 
@@ -204,14 +207,65 @@ document.getElementById('btn-import-gov-holidays').addEventListener('click', asy
     ];
 
     try {
+        let importedCount = 0;
         for (const h of govHolidays) {
-            await addDoc(eventsRef, h);
+            // 防重複檢查
+            const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
+            if (!isExist) {
+                await addDoc(eventsRef, h);
+                importedCount++;
+            }
         }
-        alert('🎉 2026 政府行事曆與國定假日已成功匯入！');
+        if (importedCount > 0) alert(`🎉 成功新增 ${importedCount} 筆國定假日！`);
+        else alert('ℹ️ 行事曆中已經有這些國定假日了，無須重複匯入！');
     } catch (err) {
         alert('匯入失敗，請檢查網路連線。');
     }
 });
+
+// 動態加入「清除重複假日」按鈕
+if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
+    const cleanupBtn = document.createElement('button');
+    cleanupBtn.id = 'btn-cleanup-holidays';
+    cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm';
+    cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
+    importGovBtn.parentNode.appendChild(cleanupBtn);
+
+    cleanupBtn.addEventListener('click', async () => {
+        if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
+        triggerHaptic();
+
+        try {
+            const govEvents = events.filter(e => e.author === '政府行事曆');
+            const seen = new Set();
+            const duplicates = [];
+
+            for (const evt of govEvents) {
+                const uniqueKey = `${evt.title}_${evt.startDate}`;
+                if (seen.has(uniqueKey)) {
+                    duplicates.push(evt.id); // 已存在，列入刪除名單
+                } else {
+                    seen.add(uniqueKey); // 第一筆，保留
+                }
+            }
+
+            if (duplicates.length === 0) {
+                return alert('✅ 太棒了！目前行事曆中沒有發現重複的假日。');
+            }
+
+            if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
+                for (const id of duplicates) {
+                    await deleteDoc(doc(eventsRef, id));
+                }
+                alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
+            }
+        } catch (err) {
+            alert('清除失敗，請檢查網路連線。');
+        }
+    });
+}
+
+/* ======================================================== */
 
 /* 💾 JSON 備份與還原 */
 document.getElementById('btn-export-json').addEventListener('click', () => {
