@@ -27,7 +27,6 @@ let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
 
-// 記錄目前選中的日期格子 (預設為今天)
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
@@ -41,7 +40,6 @@ function getDirectImageUrl(url) {
     return url;
 }
 
-// 動態載入 AI 呼吸燈動畫樣式
 if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
     style.id = 'ai-border-style';
@@ -65,7 +63,6 @@ function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
 
-// 🛑 核心防呆：關閉視窗時停止所有影片播放
 function stopViewVideo() {
     const vIframe = document.getElementById('view-video-iframe');
     const vVideo = document.getElementById('view-video-element');
@@ -90,13 +87,11 @@ document.getElementById('btn-open-admin').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-// 修復：綁定「新增活動」表單內的「管理成員」按鈕
 document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-/* 通用：點擊背景自動關閉 Modal */
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
         triggerHaptic();
@@ -109,7 +104,6 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     });
 });
 
-/* ⌨️ 電腦版功能：按下 ESC 鍵自動關閉所有開啟的視窗 */
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         const openModals = document.querySelectorAll('.modal-backdrop:not(.hidden)');
@@ -127,48 +121,26 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-/* 手機版：左右滑動切換月份 */
 let touchStartX = 0;
 let touchEndX = 0;
 const swipeContainer = document.getElementById('calendar-swipe-container');
 
 if (swipeContainer) {
-    swipeContainer.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-
-    swipeContainer.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipeGesture();
-    }, { passive: true });
+    swipeContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    swipeContainer.addEventListener('touchend', (e) => { touchEndX = e.changedTouches[0].screenX; handleSwipeGesture(); }, { passive: true });
 }
 
 function handleSwipeGesture() {
     const swipeThreshold = 50; 
-    if (touchEndX < touchStartX - swipeThreshold) {
-        triggerHaptic();
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    }
-    if (touchEndX > touchStartX + swipeThreshold) {
-        triggerHaptic();
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    }
+    if (touchEndX < touchStartX - swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
+    if (touchEndX > touchStartX + swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
 }
 
-/* 🔍 搜尋功能監聽 */
 const searchInputEl = document.getElementById('search-input');
 if (searchInputEl) {
-    searchInputEl.addEventListener('input', (e) => {
-        searchQuery = e.target.value.trim().toLowerCase();
-        renderApp();
-    });
+    searchInputEl.addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
 }
 
-/* ========================================================
-   🎨 23 種多樣化主題風格設定 
-   ======================================================== */
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
@@ -198,50 +170,23 @@ const themePalettes = {
 function initThemeSelectOptions() {
     const sel = document.getElementById('theme-select');
     if (!sel) return;
-    
     sel.innerHTML = '';
     const customThemes = [
-        { id: 'warm', name: '🍊 溫馨暖橘' },
-        { id: 'forest', name: '🌿 清新森林' },
-        { id: 'purple', name: '💜 浪漫柔紫' },
-        { id: 'ai_cyber', name: '🤖 AI 賽博藍' },
-        { id: 'ai_matrix', name: '🟩 AI 數位綠' },
-        { id: 'ai_neon', name: '🔮 AI 霓虹紫' },
-        { id: 'ai_quantum', name: '⚡ AI 量子紫藍' },
-        { id: 'ai_neural', name: '🧬 AI 神經紅' },
-        { id: 'macaron_pink', name: '🎀 馬卡龍粉' },
-        { id: 'macaron_blue', name: '🍼 馬卡龍藍' },
-        { id: 'macaron_purple', name: '🦄 馬卡龍紫' },
-        { id: 'macaron_yellow', name: '🐣 馬卡龍黃' },
-        { id: 'macaron_green', name: '🍈 馬卡龍綠' },
-        { id: 'cherry', name: '🌸 櫻花紛飛' },
-        { id: 'ocean', name: '🌊 蔚藍海洋' },
-        { id: 'sunset', name: '🌇 夕陽黃昏' },
-        { id: 'lavender', name: '🪻 薰衣草園' },
-        { id: 'coffee', name: '☕ 拿鐵咖啡' },
-        { id: 'galaxy', name: '🌌 深邃星空' },
-        { id: 'lemon', name: '🍋 萊姆檸檬' },
-        { id: 'peach', name: '🍑 甜美蜜桃' },
-        { id: 'matcha', name: '🍵 濃郁抹茶' },
+        { id: 'warm', name: '🍊 溫馨暖橘' }, { id: 'forest', name: '🌿 清新森林' }, { id: 'purple', name: '💜 浪漫柔紫' },
+        { id: 'ai_cyber', name: '🤖 AI 賽博藍' }, { id: 'ai_matrix', name: '🟩 AI 數位綠' }, { id: 'ai_neon', name: '🔮 AI 霓虹紫' },
+        { id: 'ai_quantum', name: '⚡ AI 量子紫藍' }, { id: 'ai_neural', name: '🧬 AI 神經紅' },
+        { id: 'macaron_pink', name: '🎀 馬卡龍粉' }, { id: 'macaron_blue', name: '🍼 馬卡龍藍' }, { id: 'macaron_purple', name: '🦄 馬卡龍紫' },
+        { id: 'macaron_yellow', name: '🐣 馬卡龍黃' }, { id: 'macaron_green', name: '🍈 馬卡龍綠' },
+        { id: 'cherry', name: '🌸 櫻花紛飛' }, { id: 'ocean', name: '🌊 蔚藍海洋' }, { id: 'sunset', name: '🌇 夕陽黃昏' },
+        { id: 'lavender', name: '🪻 薰衣草園' }, { id: 'coffee', name: '☕ 拿鐵咖啡' }, { id: 'galaxy', name: '🌌 深邃星空' },
+        { id: 'lemon', name: '🍋 萊姆檸檬' }, { id: 'peach', name: '🍑 甜美蜜桃' }, { id: 'matcha', name: '🍵 濃郁抹茶' },
         { id: 'arctic', name: '❄️ 北極冰川' }
     ];
-
-    customThemes.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.name;
-        sel.appendChild(opt);
-    });
-
+    customThemes.forEach(t => { const opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.name; sel.appendChild(opt); });
     const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
-    if (customThemes.some(t => t.id === savedTheme)) {
-        sel.value = savedTheme;
-    } else {
-        sel.value = 'warm';
-        setTheme('warm');
-    }
+    if (customThemes.some(t => t.id === savedTheme)) { sel.value = savedTheme; } 
+    else { sel.value = 'warm'; setTheme('warm'); }
 }
-
 function setTheme(name) {
     const palette = themePalettes[name] || themePalettes.warm;
     const root = document.documentElement;
@@ -250,7 +195,6 @@ function setTheme(name) {
     const sel = document.getElementById('theme-select');
     if (sel) sel.value = name;
 }
-
 initThemeSelectOptions();
 setTheme(localStorage.getItem('family_app_theme') || 'warm');
 
@@ -258,13 +202,9 @@ const themeSelectEl = document.getElementById('theme-select');
 if (themeSelectEl) {
     const newSelectEl = themeSelectEl.cloneNode(true);
     themeSelectEl.parentNode.replaceChild(newSelectEl, themeSelectEl);
-    newSelectEl.addEventListener('change', (e) => { 
-        triggerHaptic(); 
-        setTheme(e.target.value); 
-    });
+    newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
-/* 天氣 API */
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
@@ -277,32 +217,25 @@ async function fetchWeather() {
 }
 fetchWeather().then(() => renderCalendar());
 
-/* 便利貼 */
 const stickyNoteEl = document.getElementById('family-sticky-note');
 const noteStatusEl = document.getElementById('note-status');
 let noteTimeout = null;
-onSnapshot(noteRef, (docSnap) => {
-    if (docSnap.exists() && document.activeElement !== stickyNoteEl) stickyNoteEl.value = docSnap.data().content || '';
-});
+onSnapshot(noteRef, (docSnap) => { if (docSnap.exists() && document.activeElement !== stickyNoteEl) stickyNoteEl.value = docSnap.data().content || ''; });
 stickyNoteEl.addEventListener('input', () => {
-    noteStatusEl.textContent = '儲存中...';
-    noteStatusEl.classList.remove('opacity-0');
+    noteStatusEl.textContent = '儲存中...'; noteStatusEl.classList.remove('opacity-0');
     if (noteTimeout) clearTimeout(noteTimeout);
     noteTimeout = setTimeout(async () => {
         await setDoc(noteRef, { content: stickyNoteEl.value }, { merge: true });
-        noteStatusEl.textContent = '已同步';
-        setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
+        noteStatusEl.textContent = '已同步'; setTimeout(() => noteStatusEl.classList.add('opacity-0'), 2000);
     }, 1000);
 });
 
-/* 成員管理 */
 onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
     snapshot.forEach(doc => familyMembers.push({ id: doc.id, name: doc.data().name }));
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberManageList();
 });
-
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if (!container) return;
@@ -318,15 +251,11 @@ function renderMemberManageList() {
 document.getElementById('btn-add-member').addEventListener('click', async () => {
     const input = document.getElementById('new-member-name');
     if (input.value.trim() && !familyMembers.some(m => m.name === input.value.trim())) {
-        await addDoc(membersRef, { name: input.value.trim() });
-        input.value = '';
+        await addDoc(membersRef, { name: input.value.trim() }); input.value = '';
     }
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-/* ========================================================
-   📅 通用版：政府行事曆與國定假日
-   ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
@@ -337,13 +266,11 @@ if (importGovBtn) {
         if (!yearStr) return;
         const targetYear = parseInt(yearStr, 10);
         if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
-
         try {
             const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
             const eve = lunarJan1.next(-1);
             const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
             const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
-
             const govHolidays = [
                 { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
                 { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
@@ -355,20 +282,14 @@ if (importGovBtn) {
                 { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
                 { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
             ];
-
             let importedCount = 0;
             for (const h of govHolidays) {
                 const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
-                if (!isExist) {
-                    await addDoc(eventsRef, h);
-                    importedCount++;
-                }
+                if (!isExist) { await addDoc(eventsRef, h); importedCount++; }
             }
             if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
             else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
-        } catch (err) {
-            alert('匯入失敗，請檢查網路連線。');
-        }
+        } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
     });
 }
 
@@ -387,8 +308,7 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
             const duplicates = [];
             for (const evt of govEvents) {
                 const uniqueKey = `${evt.title}_${evt.startDate}`;
-                if (seen.has(uniqueKey)) duplicates.push(evt.id); 
-                else seen.add(uniqueKey); 
+                if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
             }
             if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
             if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
@@ -399,9 +319,6 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
     });
 }
 
-// ========================================================
-// 📁 動態加入：通用 ICS 行事曆匯入按鈕
-// ========================================================
 if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
     const icsContainer = document.createElement('div');
     icsContainer.id = 'btn-import-ics-container';
@@ -414,7 +331,6 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
         </label>
     `;
     importGovBtn.parentNode.appendChild(icsContainer);
-
     document.getElementById('input-import-ics').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -434,8 +350,7 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
                             location: ev.location || '', author: 'ICS 匯入', color: 'bg-blue-500', icon: '🗓️',
                             isChecklist: false, checklist: [], isPoll: false, pollOptions: [], isExpense: false, payers: [], sharers: []
                         };
-                        await addDoc(eventsRef, newEvent);
-                        importedCount++;
+                        await addDoc(eventsRef, newEvent); importedCount++;
                     }
                 }
                 if (importedCount > 0) alert(`🎉 成功匯入 ${importedCount} 筆新行程！`);
@@ -446,7 +361,6 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
         };
         reader.readAsText(file);
     });
-
     function parseICS(data) {
         const parsed = [];
         const lines = data.split(/\r?\n/);
@@ -456,13 +370,11 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
             while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) { i++; line += lines[i].substring(1); }
             if (line.startsWith('BEGIN:VEVENT')) currentEvent = {};
             else if (line.startsWith('END:VEVENT') && currentEvent) {
-                if (currentEvent.startDate) parsed.push(currentEvent);
-                currentEvent = null;
+                if (currentEvent.startDate) parsed.push(currentEvent); currentEvent = null;
             } else if (currentEvent) {
                 if (line.startsWith('SUMMARY:')) currentEvent.title = line.substring(8).trim();
                 else if (line.match(/^DTSTART/)) {
-                    const match = line.match(/:([0-9T]+Z?)/);
-                    if (match) currentEvent.startDate = formatICSDate(match[1]);
+                    const match = line.match(/:([0-9T]+Z?)/); if (match) currentEvent.startDate = formatICSDate(match[1]);
                 } else if (line.match(/^DTEND/)) {
                     const match = line.match(/:([0-9T]+Z?)/);
                     if (match) {
@@ -480,20 +392,16 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
     }
     function formatICSDate(icsDateStr) {
         const clean = icsDateStr.replace(/[^0-9]/g, '');
-        if (clean.length >= 8) return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`;
-        return '';
+        if (clean.length >= 8) return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`; return '';
     }
 }
 
-/* ☁️ 雲端備份與還原 */
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
-
 if (exportBtn && importInput) {
     const importLabel = importInput.parentElement;
     const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
     if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份歷史紀錄 (隨時可還原)';
-
     exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
     exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
     
@@ -501,15 +409,13 @@ if (exportBtn && importInput) {
     cloudRestoreBtn.id = 'btn-cloud-restore';
     cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
     cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
-    
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
 
     exportBtn.addEventListener('click', async () => {
         if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
         triggerHaptic();
         try {
-            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...';
-            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...'; exportBtn.disabled = true;
             const backupData = { exportDate: new Date().toISOString(), events: events };
             const backupId = Date.now().toString();
             await setDoc(doc(db, 'familyBackups', backupId), backupData);
@@ -521,18 +427,15 @@ if (exportBtn && importInput) {
     cloudRestoreBtn.addEventListener('click', async () => {
         triggerHaptic();
         try {
-            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...';
-            cloudRestoreBtn.disabled = true;
+            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...'; cloudRestoreBtn.disabled = true;
             const snap = await getDocs(collection(db, 'familyBackups'));
             if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
-            
             const backupsList = [];
             snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
             backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
 
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
-            
             let listHtml = '';
             backupsList.slice(0, 10).forEach((b, index) => {
                 const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
@@ -543,7 +446,6 @@ if (exportBtn && importInput) {
                         <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
                     </button>`;
             });
-
             modal.innerHTML = `
                 <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
                     <div class="px-5 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
@@ -564,9 +466,7 @@ if (exportBtn && importInput) {
                     const selectedBackup = backupsList.find(b => b.id === bId);
                     const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
                     if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
-                        modal.remove();
-                        cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...';
-                        cloudRestoreBtn.disabled = true;
+                        modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
                         try {
                             for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
                             for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
@@ -581,7 +481,6 @@ if (exportBtn && importInput) {
     });
 }
 
-/* 相片牆 (整合自動圖檔解析) */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
@@ -597,14 +496,13 @@ function renderGalleryGrid() {
     photoEvents.forEach(evt => {
         const item = document.createElement('div');
         item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
-        const imgUrl = getDirectImageUrl(evt.photoUrl); // 🌟 使用防破圖轉換引擎
+        const imgUrl = getDirectImageUrl(evt.photoUrl);
         item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
         item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
         container.appendChild(item);
     });
 }
 
-/* 下拉選單處理 */
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
     familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
@@ -624,14 +522,12 @@ function updateUniqueSelects(containerId, selectClass) {
         const currentValue = select.value;
         Array.from(select.options).forEach(option => {
             if (option.value === '') return;
-            if (selectedValues.includes(option.value) && option.value !== currentValue) {
-                option.disabled = true; option.textContent = `${option.value} (已選)`;
-            } else { option.disabled = false; option.textContent = option.value; }
+            if (selectedValues.includes(option.value) && option.value !== currentValue) { option.disabled = true; option.textContent = `${option.value} (已選)`; } 
+            else { option.disabled = false; option.textContent = option.value; }
         });
     });
 }
 
-/* 裝備/任務清單 */
 const checklistCheckbox = document.getElementById('event-is-checklist');
 const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
@@ -653,7 +549,6 @@ function addChecklistRow(text = '', assignee = '', done = false) {
 }
 document.getElementById('btn-add-checklist-item').addEventListener('click', () => addChecklistRow());
 
-/* 投票功能 */
 const pollCheckbox = document.getElementById('event-is-poll');
 const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
@@ -670,7 +565,6 @@ function addPollOptionRow(title = '') {
 }
 document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
 
-/* 代墊記帳與分帳 */
 const expenseCheckbox = document.getElementById('event-is-expense');
 const expenseFields = document.getElementById('expense-fields');
 const payersContainer = document.getElementById('payers-container');
@@ -713,7 +607,6 @@ function addSharerRow(name = '', weight = 1) {
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
 
-/* 核心事件聆聽 */
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((docSnap) => {
@@ -728,29 +621,15 @@ onSnapshot(eventsRef, (snapshot) => {
             } catch(e) {}
         }
         events.push({
-            id: docSnap.id,
-            title: data.title || '未命名活動',
-            icon: data.icon || '',
-            startDate: sDate,
-            endDate: eDate,
-            originalStart: data.startDate,
-            isLunarRecurring: data.isLunarRecurring || false,
-            lunarMonth: data.lunarMonth || null,
-            lunarDay: data.lunarDay || null,
-            author: data.author || '家族成員',
-            color: data.color || 'bg-rose-400',
-            photoUrl: data.photoUrl || null,
-            videoUrl: data.videoUrl || null,
-            fileUrl: data.fileUrl || null,
-            location: data.location || '',
-            mapUrl: data.mapUrl || '',
-            isChecklist: data.isChecklist || false,
-            checklist: data.checklist || [],
-            isPoll: data.isPoll || false,
-            pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
-            isExpense: data.isExpense || false,
-            payers: data.payers || [],
-            sharers: data.sharers || []
+            id: docSnap.id, title: data.title || '未命名活動', icon: data.icon || '',
+            startDate: sDate, endDate: eDate, originalStart: data.startDate,
+            isLunarRecurring: data.isLunarRecurring || false, lunarMonth: data.lunarMonth || null, lunarDay: data.lunarDay || null,
+            author: data.author || '家族成員', color: data.color || 'bg-rose-400',
+            photoUrl: data.photoUrl || null, videoUrl: data.videoUrl || null, fileUrl: data.fileUrl || null,
+            location: data.location || '', mapUrl: data.mapUrl || '',
+            isChecklist: data.isChecklist || false, checklist: data.checklist || [],
+            isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
+            isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || []
         });
     });
     renderApp();
@@ -787,15 +666,13 @@ function renderCalendar() {
 function createDayCell(dayNum, dateStr, isToday) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
-    
     const dayEvents = events.filter(e => {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
         if (!searchQuery) return true;
-        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
-        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
-        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
-        return tMatch || aMatch || lMatch;
+        return (e.title && e.title.toLowerCase().includes(searchQuery)) || 
+               (e.author && e.author.toLowerCase().includes(searchQuery)) || 
+               (e.location && e.location.toLowerCase().includes(searchQuery));
     });
 
     const isGovHoliday = dayEvents.some(e => e.author === '政府行事曆');
@@ -830,8 +707,7 @@ function createDayCell(dayNum, dateStr, isToday) {
             ev.stopPropagation(); 
             document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ai-active-cell', 'transition-all', 'duration-300'));
             cell.classList.add('ai-active-cell', 'transition-all', 'duration-300');
-            activeCellDate = dateStr;
-            openViewModal(evt.id); 
+            activeCellDate = dateStr; openViewModal(evt.id); 
         });
         container.appendChild(el);
     });
@@ -849,10 +725,9 @@ function openDayModal(dateStr, setGlobal = true) {
         const inRange = dateStr >= e.startDate && dateStr <= e.endDate;
         if (!inRange) return false;
         if (!searchQuery) return true;
-        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
-        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
-        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
-        return tMatch || aMatch || lMatch;
+        return (e.title && e.title.toLowerCase().includes(searchQuery)) || 
+               (e.author && e.author.toLowerCase().includes(searchQuery)) || 
+               (e.location && e.location.toLowerCase().includes(searchQuery));
     });
 
     if (dayEvts.length === 0) {
@@ -875,17 +750,15 @@ function renderUpcoming() {
     const container = document.getElementById('upcoming-events');
     const empty = document.getElementById('no-upcoming');
     container.innerHTML = '';
-    const todayObj = new Date();
-    todayObj.setHours(0, 0, 0, 0);
+    const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
     const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
     
     const upcoming = events.filter(e => {
         if (e.endDate < todayStr) return false;
         if (!searchQuery) return true;
-        const tMatch = e.title && e.title.toLowerCase().includes(searchQuery);
-        const aMatch = e.author && e.author.toLowerCase().includes(searchQuery);
-        const lMatch = e.location && e.location.toLowerCase().includes(searchQuery);
-        return tMatch || aMatch || lMatch;
+        return (e.title && e.title.toLowerCase().includes(searchQuery)) || 
+               (e.author && e.author.toLowerCase().includes(searchQuery)) || 
+               (e.location && e.location.toLowerCase().includes(searchQuery));
     }).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 5);
     
     empty.classList.toggle('hidden', upcoming.length > 0);
@@ -940,24 +813,17 @@ document.getElementById('btn-close-view').addEventListener('click', () => {
 document.getElementById('btn-edit-from-view').addEventListener('click', () => { 
     const id = currentViewingId; 
     document.getElementById('view-modal').classList.add('hidden'); 
-    stopViewVideo();
-    openModal(id); 
+    stopViewVideo(); openModal(id); 
 });
 
-// 🌟 新增行程時支援「即時預覽」與「刪除按鈕修復」
 const photoUrlInput = document.getElementById('event-photo-url');
 if(photoUrlInput) {
     photoUrlInput.addEventListener('input', (e) => {
         const val = e.target.value.trim();
         const previewBox = document.getElementById('photo-preview');
         const imgEl = previewBox.querySelector('img');
-        if (val) {
-            imgEl.src = getDirectImageUrl(val); // 套用防破圖引擎
-            previewBox.classList.remove('hidden');
-        } else {
-            previewBox.classList.add('hidden');
-            imgEl.src = '';
-        }
+        if (val) { imgEl.src = getDirectImageUrl(val); previewBox.classList.remove('hidden'); } 
+        else { previewBox.classList.add('hidden'); imgEl.src = ''; }
     });
     
     document.getElementById('btn-remove-photo').addEventListener('click', () => {
@@ -977,18 +843,9 @@ function openModal(id = null) {
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
     
-    checklistCheckbox.checked = false;
-    checklistFields.classList.add('hidden');
-    checklistContainer.innerHTML = '';
-    
-    pollCheckbox.checked = false;
-    pollFields.classList.add('hidden');
-    pollOptionsContainer.innerHTML = '';
-    
-    expenseCheckbox.checked = false;
-    expenseFields.classList.add('hidden');
-    payersContainer.innerHTML = '';
-    sharersContainer.innerHTML = '';
+    checklistCheckbox.checked = false; checklistFields.classList.add('hidden'); checklistContainer.innerHTML = '';
+    pollCheckbox.checked = false; pollFields.classList.add('hidden'); pollOptionsContainer.innerHTML = '';
+    expenseCheckbox.checked = false; expenseFields.classList.add('hidden'); payersContainer.innerHTML = ''; sharersContainer.innerHTML = '';
 
     currentEditingId = id;
     const authorSelect = document.getElementById('event-author');
@@ -1007,7 +864,7 @@ function openModal(id = null) {
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
             if (evt.photoUrl) {
                 document.getElementById('event-photo-url').value = evt.photoUrl;
-                document.querySelector('#photo-preview img').src = getDirectImageUrl(evt.photoUrl); // 🌟 套用防破圖引擎
+                document.querySelector('#photo-preview img').src = getDirectImageUrl(evt.photoUrl);
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
             if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl;
@@ -1016,25 +873,21 @@ function openModal(id = null) {
             if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
             
             if (evt.isChecklist && evt.checklist) {
-                checklistCheckbox.checked = true;
-                checklistFields.classList.remove('hidden');
+                checklistCheckbox.checked = true; checklistFields.classList.remove('hidden');
                 evt.checklist.forEach(item => addChecklistRow(item.text, item.assignee, item.done));
             }
             if (evt.isPoll && evt.pollOptions) {
-                pollCheckbox.checked = true;
-                pollFields.classList.remove('hidden');
+                pollCheckbox.checked = true; pollFields.classList.remove('hidden');
                 evt.pollOptions.forEach(o => addPollOptionRow(o.title));
             }
             if (evt.isExpense) {
-                expenseCheckbox.checked = true;
-                expenseFields.classList.remove('hidden');
+                expenseCheckbox.checked = true; expenseFields.classList.remove('hidden');
                 (evt.payers || []).forEach(p => addPayerRow(p.name, p.amount));
                 (evt.sharers || []).forEach(s => addSharerRow(s.name, s.weight));
             }
         }
     } else {
-        document.getElementById('modal-title').innerText = '新增活動';
-        document.getElementById('btn-delete').classList.add('hidden');
+        document.getElementById('modal-title').innerText = '新增活動'; document.getElementById('btn-delete').classList.add('hidden');
         document.getElementById('event-start-date').value = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
         authorSelect.innerHTML = getMemberOptions('', '請選擇建立者...');
     }
@@ -1051,52 +904,25 @@ function openViewModal(id) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author}`;
 
-    // 處理相片 (🌟 預覽彈出視窗套用防破圖引擎)
     const pBox = document.getElementById('view-photo-container');
-    if (evt.photoUrl) { 
-        pBox.classList.remove('hidden'); 
-        document.getElementById('view-photo').src = getDirectImageUrl(evt.photoUrl); 
-    } else {
-        pBox.classList.add('hidden');
-    }
+    if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = getDirectImageUrl(evt.photoUrl); } else pBox.classList.add('hidden');
 
     const vBox = document.getElementById('view-video-container');
     const vIframe = document.getElementById('view-video-iframe');
     const vElement = document.getElementById('view-video-element');
     if (evt.videoUrl) {
-        let url = evt.videoUrl.trim();
-        vIframe.classList.add('hidden');
-        vElement.classList.add('hidden');
-        
+        let url = evt.videoUrl.trim(); vIframe.classList.add('hidden'); vElement.classList.add('hidden');
         if (url.includes('youtube.com/watch?v=')) {
-            let vId = new URL(url).searchParams.get('v');
-            vIframe.src = `https://www.youtube.com/embed/${vId}`;
-            vIframe.classList.remove('hidden');
+            let vId = new URL(url).searchParams.get('v'); vIframe.src = `https://www.youtube.com/embed/${vId}`; vIframe.classList.remove('hidden');
         } else if (url.includes('youtu.be/')) {
-            let vId = url.split('youtu.be/')[1].split('?')[0];
-            vIframe.src = `https://www.youtube.com/embed/${vId}`;
-            vIframe.classList.remove('hidden');
+            let vId = url.split('youtu.be/')[1].split('?')[0]; vIframe.src = `https://www.youtube.com/embed/${vId}`; vIframe.classList.remove('hidden');
         } else if (url.includes('drive.google.com')) {
             let fileId = '';
-            if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
-            else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-            if (fileId) {
-                vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                vIframe.classList.remove('hidden');
-            } else {
-                vIframe.src = url;
-                vIframe.classList.remove('hidden');
-            }
-        } else {
-            vElement.src = url;
-            vElement.classList.remove('hidden');
-        }
+            if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0]; else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
+            if (fileId) { vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`; vIframe.classList.remove('hidden'); } else { vIframe.src = url; vIframe.classList.remove('hidden'); }
+        } else { vElement.src = url; vElement.classList.remove('hidden'); }
         vBox.classList.remove('hidden');
-    } else {
-        vBox.classList.add('hidden');
-        vIframe.src = '';
-        vElement.src = '';
-    }
+    } else { vBox.classList.add('hidden'); vIframe.src = ''; vElement.src = ''; }
 
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
@@ -1108,16 +934,13 @@ function openViewModal(id) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
-    } else {
-        mMapBox.classList.add('hidden');
-    }
+    } else { mMapBox.classList.add('hidden'); }
 
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItems = document.getElementById('view-checklist-items');
     const checkProgress = document.getElementById('view-checklist-progress');
     if (evt.isChecklist && evt.checklist && evt.checklist.length > 0) {
-        checkItems.innerHTML = '';
-        let doneCount = 0;
+        checkItems.innerHTML = ''; let doneCount = 0;
         evt.checklist.forEach((item, idx) => {
             if (item.done) doneCount++;
             const row = document.createElement('label');
@@ -1130,17 +953,13 @@ function openViewModal(id) {
                 <span class="text-[10px] bg-warm-50 text-warm-700 px-2 py-0.5 rounded-full font-bold">${item.assignee || '未認領'}</span>
             `;
             row.querySelector('input').addEventListener('change', async (e) => {
-                let updatedChecklist = [...evt.checklist];
-                updatedChecklist[idx].done = e.target.checked;
+                let updatedChecklist = [...evt.checklist]; updatedChecklist[idx].done = e.target.checked;
                 await updateDoc(doc(eventsRef, evt.id), { checklist: updatedChecklist });
             });
             checkItems.appendChild(row);
         });
-        checkProgress.innerText = `${doneCount}/${evt.checklist.length}`;
-        checkContainer.classList.remove('hidden');
-    } else {
-        checkContainer.classList.add('hidden');
-    }
+        checkProgress.innerText = `${doneCount}/${evt.checklist.length}`; checkContainer.classList.remove('hidden');
+    } else { checkContainer.classList.add('hidden'); }
 
     const pollContainer = document.getElementById('view-poll-container');
     const pollOptionsEl = document.getElementById('view-poll-options');
@@ -1159,18 +978,14 @@ function openViewModal(id) {
             const hasVoted = allVotedMembersArr.includes(m.name);
             const opt = document.createElement('option');
             opt.value = m.name;
-            if (hasVoted) { opt.disabled = true; opt.textContent = `${m.name} (已投票，不可再選)`; } 
-            else opt.textContent = m.name;
+            if (hasVoted) { opt.disabled = true; opt.textContent = `${m.name} (已投票，不可再選)`; } else opt.textContent = m.name;
             voterSelect.appendChild(opt);
         });
 
         const voter = voterSelect.value;
-        votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? 
-            `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : 
-            `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
+        votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
 
-        let maxVotes = -1;
-        evt.pollOptions.forEach(opt => { if (opt.voters.length > maxVotes) maxVotes = opt.voters.length; });
+        let maxVotes = -1; evt.pollOptions.forEach(opt => { if (opt.voters.length > maxVotes) maxVotes = opt.voters.length; });
 
         evt.pollOptions.forEach((opt, idx) => {
             const row = document.createElement('div');
@@ -1178,12 +993,8 @@ function openViewModal(id) {
             const isWinner = maxVotes > 0 && opt.voters.length === maxVotes;
             row.innerHTML = `
                 <div class="flex justify-between items-center">
-                    <span class="font-bold text-gray-800 flex items-center gap-1.5">
-                        ${opt.title} ${isWinner ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-extrabold">👑 最高票</span>' : ''}
-                    </span>
-                    <button class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm">
-                        投一票 (${opt.voters.length} 票)
-                    </button>
+                    <span class="font-bold text-gray-800 flex items-center gap-1.5">${opt.title} ${isWinner ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-extrabold">👑 最高票</span>' : ''}</span>
+                    <button class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm">投一票 (${opt.voters.length} 票)</button>
                 </div>`;
             row.querySelector('button').addEventListener('click', async () => {
                 const currentVoter = voterSelect.value;
@@ -1201,8 +1012,7 @@ function openViewModal(id) {
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
-                alert('🎉 已成功將最高票拍板定案！');
-                document.getElementById('view-modal').classList.add('hidden');
+                alert('🎉 已成功將最高票拍板定案！'); document.getElementById('view-modal').classList.add('hidden');
             }
         };
         pollContainer.classList.remove('hidden');
@@ -1220,30 +1030,24 @@ function openViewModal(id) {
             html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} 元</span></div>`;
         });
         html += `</div>`;
-        expenseDetails.innerHTML = html;
-        expenseContainer.classList.remove('hidden');
+        expenseDetails.innerHTML = html; expenseContainer.classList.remove('hidden');
     } else expenseContainer.classList.add('hidden');
 
-    document.getElementById('view-modal').classList.add('hidden');
-    document.getElementById('view-modal').classList.remove('hidden');
+    document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
 
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
-
     const titleVal = document.getElementById('event-title').value.trim();
     if (!titleVal) return alert('請輸入活動名稱！');
 
     const isRecurring = document.getElementById('event-is-lunar-recurring').checked;
-    let lMonth = null, lDay = null;
-    const startVal = document.getElementById('event-start-date').value;
-
+    let lMonth = null, lDay = null; const startVal = document.getElementById('event-start-date').value;
     if (isRecurring && startVal) {
         const [y, m, d] = startVal.split('-').map(Number);
         const lunar = Solar.fromYmd(y, m, d).getLunar();
-        lMonth = lunar.getMonth();
-        lDay = lunar.getDay();
+        lMonth = lunar.getMonth(); lDay = lunar.getDay();
     }
 
     let checklistArr = [];
@@ -1268,71 +1072,52 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         });
     }
 
-    let payersArr = [];
-    let sharersArr = [];
+    let payersArr = []; let sharersArr = [];
     if (expenseCheckbox.checked) {
         document.querySelectorAll('.payer-row').forEach(row => {
-            const name = row.querySelector('.payer-name').value.trim();
-            const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
+            const name = row.querySelector('.payer-name').value.trim(); const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
             if (name && amount > 0) payersArr.push({ name, amount });
         });
         document.querySelectorAll('.sharer-row').forEach(row => {
-            const name = row.querySelector('.sharer-name').value.trim();
-            const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
+            const name = row.querySelector('.sharer-name').value.trim(); const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
             if (name) sharersArr.push({ name, weight });
         });
     }
 
     const eventData = {
-        title: titleVal,
-        icon: document.getElementById('event-icon').value,
-        startDate: startVal,
-        endDate: document.getElementById('event-end-date').value || startVal,
-        isLunarRecurring: isRecurring,
-        lunarMonth: lMonth,
-        lunarDay: lDay,
+        title: titleVal, icon: document.getElementById('event-icon').value,
+        startDate: startVal, endDate: document.getElementById('event-end-date').value || startVal,
+        isLunarRecurring: isRecurring, lunarMonth: lMonth, lunarDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
-        videoUrl: document.getElementById('event-video-url').value.trim(), 
-        fileUrl: document.getElementById('event-file-url').value.trim(),
-        location: document.getElementById('event-location').value.trim(),
-        mapUrl: document.getElementById('event-map-url').value.trim(),
-        isChecklist: checklistCheckbox.checked && checklistArr.length > 0,
-        checklist: checklistArr,
-        isPoll: pollCheckbox.checked && pollOpts.length > 0,
-        pollOptions: pollOpts,
-        isExpense: expenseCheckbox.checked && payersArr.length > 0,
-        payers: payersArr,
-        sharers: sharersArr
+        videoUrl: document.getElementById('event-video-url').value.trim(), fileUrl: document.getElementById('event-file-url').value.trim(),
+        location: document.getElementById('event-location').value.trim(), mapUrl: document.getElementById('event-map-url').value.trim(),
+        isChecklist: checklistCheckbox.checked && checklistArr.length > 0, checklist: checklistArr,
+        isPoll: pollCheckbox.checked && pollOpts.length > 0, pollOptions: pollOpts,
+        isExpense: expenseCheckbox.checked && payersArr.length > 0, payers: payersArr, sharers: sharersArr
     };
 
-    if (currentEditingId) {
-        await updateDoc(doc(eventsRef, currentEditingId), eventData);
-    } else {
-        await addDoc(eventsRef, eventData);
-    }
+    if (currentEditingId) { await updateDoc(doc(eventsRef, currentEditingId), eventData); } 
+    else { await addDoc(eventsRef, eventData); }
     closeModal();
 });
 
 document.getElementById('btn-delete').addEventListener('click', async () => {
-    if (currentEditingId && confirm('確定要刪除嗎？')) {
-        await deleteDoc(doc(eventsRef, currentEditingId));
-        closeModal();
-    }
+    if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器
+// 📻 動態加入：網路電台播放器 (🌟 升級支援 YouTube 直播！)
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
     let stations = [
-        { name: "🎵 輕鬆背景音", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
-        { name: "📻 A-Line 青春電台 (98.7)", url: "https://stream.rcs.revma.com/39w4m82987zuv", type: "live" },
-        { name: "📻 台北愛樂 (古典樂)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" }
+        { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" }, // 替換為 LofiGirl 當測試源，您可自由更改
+        { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
+        { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
     ];
 
     try {
@@ -1347,6 +1132,7 @@ function initRadioPlayer() {
     radioContainer.id = 'radio-widget';
     radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-pointer hover:scale-105 transition-all';
     
+    // 🌟 在裡面加入隱藏的 YouTube 播放容器 (yt-radio-container)
     radioContainer.innerHTML = `
         <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0">
             <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
@@ -1359,6 +1145,7 @@ function initRadioPlayer() {
             <i class="fas fa-list-ul text-[10px] md:text-xs"></i>
         </button>
         <audio id="radio-audio" preload="none"></audio>
+        <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
     `;
     document.body.appendChild(radioContainer);
 
@@ -1368,6 +1155,7 @@ function initRadioPlayer() {
     document.body.appendChild(menuContainer);
     
     const audio = document.getElementById('radio-audio');
+    const ytContainer = document.getElementById('yt-radio-container'); // 取得隱藏的 YouTube 容器
     const playBtn = document.getElementById('btn-radio-play');
     const menuBtn = document.getElementById('btn-radio-menu');
     const icon = document.getElementById('radio-icon');
@@ -1405,6 +1193,7 @@ function initRadioPlayer() {
                         
                         if (currentStationIdx === idx) {
                             audio.pause();
+                            ytContainer.innerHTML = ''; // 清除 YT 播放器
                             if(hlsInstance) hlsInstance.destroy();
                             isPlaying = false;
                             currentStationIdx = 0;
@@ -1428,55 +1217,18 @@ function initRadioPlayer() {
             menuContainer.appendChild(item);
         });
 
-        const searchBtn = document.createElement('button');
-        searchBtn.className = 'w-full mt-1 px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs md:text-sm font-bold border border-dashed border-blue-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm';
-        searchBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台';
-        searchBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const keyword = prompt('🔍 搜尋電台關鍵字 (例如：KISS, 飛碟, Jazz, Pop, Japan)：');
-            if (!keyword) return;
-            
-            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> API 抓取網址中...';
-            try {
-                const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(keyword)}&limit=8&hidebroken=true`);
-                const data = await res.json();
-                if (data.length === 0) return alert('找不到相關電台，請換個關鍵字試試。');
-
-                let msg = '請輸入要加入的電台編號：\n\n';
-                data.forEach((s, i) => { msg += `[${i + 1}] ${s.name} (${s.countryCode})\n`; });
-                
-                const choice = prompt(msg);
-                if (!choice) return;
-                
-                const selectedIdx = parseInt(choice) - 1;
-                if (selectedIdx >= 0 && selectedIdx < data.length) {
-                    const selected = data[selectedIdx];
-                    const newStation = { name: '📻 ' + selected.name.trim(), url: selected.url, type: 'live' };
-                    stations.push(newStation);
-                    
-                    const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
-                    custom.push(newStation);
-                    localStorage.setItem('my_custom_stations', JSON.stringify(custom));
-                    
-                    alert('🎉 成功新增電台！請在選單中點選播放。');
-                    renderMenu();
-                } else alert('輸入的編號無效。');
-            } catch (err) { alert('自動抓取失敗，請檢查網路。'); } 
-            finally { searchBtn.innerHTML = '<i class="fas fa-search"></i> 搜尋並自動抓取全球電台'; }
-        });
-        menuContainer.appendChild(searchBtn);
-
         const addBtn = document.createElement('button');
         addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
-        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入自訂網址';
+        // 🌟 更新提示文字
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
         addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const newName = prompt('請輸入電台名稱：');
+            const newName = prompt('請輸入電台名稱 (例如：飛碟聯播網)：');
             if (!newName) return;
-            const newUrl = prompt('請貼上電台串流網址 (支援 .mp3 或 .m3u8 結尾)：');
+            const newUrl = prompt('請貼上網址 (支援 YouTube 直播連結、.mp3 或 .m3u8)：\n例如：https://www.youtube.com/watch?v=...');
             if (!newUrl) return;
             
-            const newStation = { name: '📻 ' + newName, url: newUrl, type: 'live' };
+            const newStation = { name: '📺 ' + newName, url: newUrl, type: 'live' };
             stations.push(newStation);
             
             const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
@@ -1492,15 +1244,11 @@ function initRadioPlayer() {
     renderMenu();
 
     menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        triggerHaptic();
-        menuContainer.classList.toggle('hidden');
+        e.stopPropagation(); triggerHaptic(); menuContainer.classList.toggle('hidden');
     });
 
     document.addEventListener('click', (e) => {
-        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) {
-            menuContainer.classList.add('hidden');
-        }
+        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) menuContainer.classList.add('hidden');
     });
 
     function loadAndPlayStation(index) {
@@ -1511,10 +1259,11 @@ function initRadioPlayer() {
         icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
         isPlaying = true;
 
-        if (hlsInstance) {
-            hlsInstance.destroy();
-            hlsInstance = null;
-        }
+        // 停止標準音檔
+        audio.pause();
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        // 停止 YouTube 聲音
+        ytContainer.innerHTML = '';
 
         const onPlaySuccess = () => {
             icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
@@ -1530,7 +1279,23 @@ function initRadioPlayer() {
             isPlaying = false;
         };
 
-        if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        // 🌟 判斷是否為 YouTube 網址，並擷取 Video ID
+        let isYouTube = false;
+        let ytId = '';
+        if (station.url.includes('youtube.com/watch?v=')) {
+            isYouTube = true;
+            ytId = new URL(station.url).searchParams.get('v');
+        } else if (station.url.includes('youtu.be/')) {
+            isYouTube = true;
+            ytId = station.url.split('youtu.be/')[1].split('?')[0];
+        }
+
+        if (isYouTube && ytId) {
+            // 利用隱藏的 iframe 自動播放 YouTube (因為使用者有按按鈕，所以 autoplay=1 可以順利觸發)
+            ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
+            // iframe 比較難捕捉播放事件，我們給它一點緩衝時間後直接顯示播放成功
+            setTimeout(onPlaySuccess, 1500); 
+        } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
             hlsInstance = new Hls();
             hlsInstance.loadSource(station.url);
             hlsInstance.attachMedia(audio);
@@ -1553,6 +1318,7 @@ function initRadioPlayer() {
         
         if (isPlaying) {
             audio.pause();
+            ytContainer.innerHTML = ''; // 點擊暫停時，直接清空 iframe 停止 YouTube 聲音
             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
             statusText.innerText = '已暫停';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
