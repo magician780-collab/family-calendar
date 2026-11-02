@@ -1466,18 +1466,16 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器 (升級支援 HLS .m3u8 解析)
+// 📻 動態加入：網路電台播放器 (支援 HLS 解析與手動新增電台)
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
-    // 🌟 基礎預設電台清單 (可手動加入任何 mp3 / m3u8 直播源)
+    // 🌟 基礎預設電台清單 (已刪除 ICRT 與 Lofi)
     let stations = [
         { name: "🎵 輕鬆背景音", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
         { name: "📻 台北愛樂 (古典樂)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 ICRT 國際社區廣播", url: "https://live.leanstream.co/ICRTFM-MP3", type: "live" },
-        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" },
-        { name: "📻 Lofi Girl (放鬆學習)", url: "https://play.streamafrica.net/lofi", type: "live" }
+        { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" }
     ];
 
     // 從瀏覽器記憶體載入使用者自訂的電台
@@ -1489,6 +1487,7 @@ function initRadioPlayer() {
     let currentStationIdx = 0;
     let hlsInstance = null; // 用來儲存 HLS 解析引擎
 
+    // 建立主播放按鈕
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
     radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-pointer hover:scale-105 transition-all';
@@ -1509,6 +1508,7 @@ function initRadioPlayer() {
     
     document.body.appendChild(radioContainer);
 
+    // 建立彈出式電台選單
     const menuContainer = document.createElement('div');
     menuContainer.id = 'radio-menu';
     menuContainer.className = 'fixed bottom-16 md:bottom-20 right-4 md:right-6 z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
@@ -1522,6 +1522,7 @@ function initRadioPlayer() {
     const statusText = document.getElementById('radio-status');
     let isPlaying = false;
 
+    // 重新渲染選單 (支援新增與刪除)
     function renderMenu() {
         menuContainer.innerHTML = '';
         stations.forEach((station, idx) => {
@@ -1529,8 +1530,8 @@ function initRadioPlayer() {
             const isActive = (idx === currentStationIdx);
             item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
             
-            // 預設電台有 5 個，第 6 個以後的都可以刪除
-            const isCustom = idx >= 5; 
+            // 更新：因為預設清單只剩 3 個，第 4 個 (idx >= 3) 以後的才是自訂可刪除電台
+            const isCustom = idx >= 3; 
             const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
 
             item.innerHTML = `
@@ -1546,12 +1547,14 @@ function initRadioPlayer() {
             item.addEventListener('click', (e) => {
                 e.stopPropagation(); 
                 
+                // 如果點擊的是刪除按鈕
                 if (e.target.dataset.delete) {
                     if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
                         stations.splice(idx, 1);
-                        const customStations = stations.slice(5);
+                        const customStations = stations.slice(3); // 扣除前 3 個預設
                         localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
                         
+                        // 若刪除的是正在播放的電台，強制停止
                         if (currentStationIdx === idx) {
                             audio.pause();
                             if(hlsInstance) hlsInstance.destroy();
@@ -1575,18 +1578,19 @@ function initRadioPlayer() {
                 loadAndPlayStation(idx);
                 menuContainer.classList.add('hidden');
             });
+            
             menuContainer.appendChild(item);
         });
 
+        // 加入自訂按鈕
         const addBtn = document.createElement('button');
         addBtn.className = 'w-full mt-1 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
-        addBtn.innerHTML = '<i class="fas fa-plus"></i> 新增自訂電台 (支援 m3u8)';
-        
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> 新增自訂電台串流';
         addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const newName = prompt('請輸入電台名稱 (例如：A-Line Radio)：');
+            const newName = prompt('請輸入電台名稱 (例如：KISS Radio)：');
             if (!newName) return;
-            const newUrl = prompt('請貼上電台串流網址 (現在已支援 .m3u8 及 .mp3 結尾)：');
+            const newUrl = prompt('請貼上電台的線上串流網址 (支援 .mp3 或 .m3u8 結尾)：');
             if (!newUrl) return;
             
             const newStation = { name: '📻 ' + newName, url: newUrl, type: 'live' };
@@ -1604,19 +1608,21 @@ function initRadioPlayer() {
 
     renderMenu();
 
+    // 開關電台選單
     menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerHaptic();
         menuContainer.classList.toggle('hidden');
     });
 
+    // 點擊空白處關閉選單
     document.addEventListener('click', (e) => {
         if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) {
             menuContainer.classList.add('hidden');
         }
     });
 
-    // 🌟 核心：HLS 智能解碼播放器
+    // 🌟 核心：HLS 智能解碼與載入強制播放頻道
     function loadAndPlayStation(index) {
         const station = stations[index];
         text.innerText = station.name;
@@ -1666,6 +1672,7 @@ function initRadioPlayer() {
         }
     }
 
+    // 播放/暫停控制 (點擊左側圖示區塊)
     playBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerHaptic();
@@ -1681,9 +1688,10 @@ function initRadioPlayer() {
         isPlaying = !isPlaying;
     });
 
+    // 處理直播中斷或錯誤
     audio.addEventListener('error', () => {
         if (isPlaying) {
-            statusText.innerText = '電台斷線或失效';
+            statusText.innerText = '電台斷線，請換台';
             icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             isPlaying = false;
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
