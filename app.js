@@ -30,7 +30,6 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
-// 🌟 核心小工具：自動轉換 Google Drive 圖片為直連網址 (繞過 403 阻擋)
 function getDirectImageUrl(url) {
     if (!url) return '';
     if (url.includes('drive.google.com/file/d/')) {
@@ -895,6 +894,9 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
+// ========================================================
+// 🌟 影片視窗智慧優化引擎 (滿版防切邊、全螢幕解鎖、Shorts 支援)
+// ========================================================
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -910,19 +912,53 @@ function openViewModal(id) {
     const vBox = document.getElementById('view-video-container');
     const vIframe = document.getElementById('view-video-iframe');
     const vElement = document.getElementById('view-video-element');
+    
     if (evt.videoUrl) {
-        let url = evt.videoUrl.trim(); vIframe.classList.add('hidden'); vElement.classList.add('hidden');
+        let url = evt.videoUrl.trim(); 
+        vIframe.classList.add('hidden'); 
+        vElement.classList.add('hidden');
+        
+        // 核心修正 1：動態注入 CSS 確保 16:9 滿版不會被切邊
+        vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden; margin-top: 0.75rem; position: relative;";
+        vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;";
+        // 核心修正 2：強制解鎖 iframe 放大全螢幕權限
+        vIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+        vIframe.setAttribute('allowfullscreen', 'true');
+        vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none;";
+        vElement.setAttribute('controls', 'true');
+        
+        let ytId = '';
         if (url.includes('youtube.com/watch?v=')) {
-            let vId = new URL(url).searchParams.get('v'); vIframe.src = `https://www.youtube.com/embed/${vId}`; vIframe.classList.remove('hidden');
+            ytId = new URL(url).searchParams.get('v');
         } else if (url.includes('youtu.be/')) {
-            let vId = url.split('youtu.be/')[1].split('?')[0]; vIframe.src = `https://www.youtube.com/embed/${vId}`; vIframe.classList.remove('hidden');
+            ytId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('youtube.com/shorts/')) {
+            // 核心修正 3：精準捕捉 Shorts 短影音網址
+            ytId = url.split('youtube.com/shorts/')[1].split('?')[0];
+            // Shorts 專屬 9:16 直立式比例，防擠壓變形
+            vBox.style.cssText = "width: 100%; max-width: 320px; aspect-ratio: 9/16; background: #000; border-radius: 0.75rem; overflow: hidden; margin: 0.75rem auto; position: relative;";
+        }
+
+        if (ytId) {
+            vIframe.src = `https://www.youtube.com/embed/${ytId}?rel=0&playsinline=1`;
+            vIframe.classList.remove('hidden');
         } else if (url.includes('drive.google.com')) {
             let fileId = '';
-            if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0]; else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-            if (fileId) { vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`; vIframe.classList.remove('hidden'); } else { vIframe.src = url; vIframe.classList.remove('hidden'); }
-        } else { vElement.src = url; vElement.classList.remove('hidden'); }
+            if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
+            else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
+            if (fileId) { vIframe.src = `https://drive.google.com/file/d/${fileId}/preview`; vIframe.classList.remove('hidden'); } 
+            else { vIframe.src = url; vIframe.classList.remove('hidden'); }
+        } else {
+            vElement.src = url; 
+            vElement.classList.remove('hidden');
+        }
         vBox.classList.remove('hidden');
-    } else { vBox.classList.add('hidden'); vIframe.src = ''; vElement.src = ''; }
+    } else { 
+        vBox.classList.add('hidden'); 
+        vIframe.src = ''; 
+        vElement.src = '';
+        vBox.style.cssText = ""; // 關閉時復原樣式
+    }
 
     const fBox = document.getElementById('view-file-container');
     if (evt.fileUrl) { fBox.classList.remove('hidden'); document.getElementById('view-file-link').href = evt.fileUrl; } else fBox.classList.add('hidden');
@@ -1108,14 +1144,14 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器 (🌟 升級支援 YouTube 直播！)
+// 📻 動態加入：網路電台播放器 (YouTube 隱藏播放支援)
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
     let stations = [
         { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
-        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" }, // 替換為 LofiGirl 當測試源，您可自由更改
+        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
         { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
         { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
     ];
@@ -1132,7 +1168,6 @@ function initRadioPlayer() {
     radioContainer.id = 'radio-widget';
     radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-pointer hover:scale-105 transition-all';
     
-    // 🌟 在裡面加入隱藏的 YouTube 播放容器 (yt-radio-container)
     radioContainer.innerHTML = `
         <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0">
             <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
@@ -1155,7 +1190,7 @@ function initRadioPlayer() {
     document.body.appendChild(menuContainer);
     
     const audio = document.getElementById('radio-audio');
-    const ytContainer = document.getElementById('yt-radio-container'); // 取得隱藏的 YouTube 容器
+    const ytContainer = document.getElementById('yt-radio-container');
     const playBtn = document.getElementById('btn-radio-play');
     const menuBtn = document.getElementById('btn-radio-menu');
     const icon = document.getElementById('radio-icon');
@@ -1193,7 +1228,7 @@ function initRadioPlayer() {
                         
                         if (currentStationIdx === idx) {
                             audio.pause();
-                            ytContainer.innerHTML = ''; // 清除 YT 播放器
+                            ytContainer.innerHTML = '';
                             if(hlsInstance) hlsInstance.destroy();
                             isPlaying = false;
                             currentStationIdx = 0;
@@ -1219,7 +1254,6 @@ function initRadioPlayer() {
 
         const addBtn = document.createElement('button');
         addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
-        // 🌟 更新提示文字
         addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
         addBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1259,10 +1293,8 @@ function initRadioPlayer() {
         icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
         isPlaying = true;
 
-        // 停止標準音檔
         audio.pause();
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-        // 停止 YouTube 聲音
         ytContainer.innerHTML = '';
 
         const onPlaySuccess = () => {
@@ -1279,7 +1311,6 @@ function initRadioPlayer() {
             isPlaying = false;
         };
 
-        // 🌟 判斷是否為 YouTube 網址，並擷取 Video ID
         let isYouTube = false;
         let ytId = '';
         if (station.url.includes('youtube.com/watch?v=')) {
@@ -1291,9 +1322,7 @@ function initRadioPlayer() {
         }
 
         if (isYouTube && ytId) {
-            // 利用隱藏的 iframe 自動播放 YouTube (因為使用者有按按鈕，所以 autoplay=1 可以順利觸發)
             ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
-            // iframe 比較難捕捉播放事件，我們給它一點緩衝時間後直接顯示播放成功
             setTimeout(onPlaySuccess, 1500); 
         } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
             hlsInstance = new Hls();
@@ -1318,7 +1347,7 @@ function initRadioPlayer() {
         
         if (isPlaying) {
             audio.pause();
-            ytContainer.innerHTML = ''; // 點擊暫停時，直接清空 iframe 停止 YouTube 聲音
+            ytContainer.innerHTML = ''; 
             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
             statusText.innerText = '已暫停';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
