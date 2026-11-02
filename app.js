@@ -31,17 +31,6 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
-// 🌟 核心小工具：自動轉換 Google Drive 圖片為直連網址
-function getDirectImageUrl(url) {
-    if (!url) return '';
-    if (url.includes('drive.google.com/file/d/')) {
-        const fileId = url.split('/d/')[1].split('/')[0];
-        // 透過 Google Drive Thumbnail API 取得直連圖檔 (不被 CORS 阻擋)
-        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-    }
-    return url;
-}
-
 // 動態載入 AI 呼吸燈動畫樣式
 if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
@@ -91,6 +80,7 @@ document.getElementById('btn-open-admin').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
+// 修復：綁定「新增活動」表單內的「管理成員」按鈕
 document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
@@ -263,7 +253,6 @@ if (themeSelectEl) {
         setTheme(e.target.value); 
     });
 }
-/* ======================================================== */
 
 /* 天氣 API */
 async function fetchWeather() {
@@ -486,7 +475,7 @@ if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
     }
 }
 
-/* ☁️ 雲端備份與還原 (支援多天歷史快照) */
+/* ☁️ 雲端備份與還原 */
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
 
@@ -581,9 +570,8 @@ if (exportBtn && importInput) {
         finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
     });
 }
-/* ======================================================== */
 
-/* 相片牆 (整合 Google Drive 圖檔解析) */
+/* 相片牆 */
 const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
@@ -599,33 +587,28 @@ function renderGalleryGrid() {
     photoEvents.forEach(evt => {
         const item = document.createElement('div');
         item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
-        // 套用轉換後的直連圖片網址
-        const imgUrl = getDirectImageUrl(evt.photoUrl);
-        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
+        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${evt.photoUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
         item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
         container.appendChild(item);
     });
 }
 
-/* ================= 下拉選單處理 ================= */
+/* 下拉選單處理 */
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
     familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
     return html;
 }
-
 function getChecklistMemberOptions(selected = '') {
     let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
     familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
     return html;
 }
-
 function updateUniqueSelects(containerId, selectClass) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const selects = Array.from(container.querySelectorAll(selectClass));
     const selectedValues = selects.map(s => s.value).filter(v => v !== '');
-
     selects.forEach(select => {
         const currentValue = select.value;
         Array.from(select.options).forEach(option => {
@@ -950,28 +933,6 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
     openModal(id); 
 });
 
-// 新增行程時支援即時預覽圖檔轉換
-const photoUrlInput = document.getElementById('event-photo-url');
-if(photoUrlInput) {
-    photoUrlInput.addEventListener('input', (e) => {
-        const val = e.target.value.trim();
-        const previewBox = document.getElementById('photo-preview');
-        const imgEl = previewBox.querySelector('img');
-        if (val) {
-            imgEl.src = getDirectImageUrl(val);
-            previewBox.classList.remove('hidden');
-        } else {
-            previewBox.classList.add('hidden');
-            imgEl.src = '';
-        }
-    });
-    document.getElementById('btn-remove-photo').addEventListener('click', () => {
-        document.getElementById('event-photo-url').value = '';
-        document.getElementById('photo-preview').classList.add('hidden');
-        document.querySelector('#photo-preview img').src = '';
-    });
-}
-
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
@@ -1011,8 +972,7 @@ function openModal(id = null) {
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
             if (evt.photoUrl) {
                 document.getElementById('event-photo-url').value = evt.photoUrl;
-                // 套用直連圖片轉換
-                document.querySelector('#photo-preview img').src = getDirectImageUrl(evt.photoUrl);
+                document.querySelector('#photo-preview img').src = evt.photoUrl;
                 document.getElementById('photo-preview').classList.remove('hidden');
             }
             if (evt.videoUrl) document.getElementById('event-video-url').value = evt.videoUrl;
@@ -1056,14 +1016,9 @@ function openViewModal(id) {
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
     document.getElementById('view-author').innerText = `建立者：${evt.author}`;
 
-    // 處理相片顯示 (套用轉換函數)
+    // 處理相片
     const pBox = document.getElementById('view-photo-container');
-    if (evt.photoUrl) { 
-        pBox.classList.remove('hidden'); 
-        document.getElementById('view-photo').src = getDirectImageUrl(evt.photoUrl); 
-    } else {
-        pBox.classList.add('hidden');
-    }
+    if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = evt.photoUrl; } else pBox.classList.add('hidden');
 
     const vBox = document.getElementById('view-video-container');
     const vIframe = document.getElementById('view-video-iframe');
@@ -1294,8 +1249,8 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         startDate: startVal,
         endDate: document.getElementById('event-end-date').value || startVal,
         isLunarRecurring: isRecurring,
-        lunarMonth: lMonth,
-        lunarDay: lDay,
+        lMonth: lMonth,
+        lDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
         photoUrl: document.getElementById('event-photo-url').value.trim(),
@@ -1328,16 +1283,16 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
 });
 
 // ========================================================
-// 📻 動態加入：網路電台播放器 (支援 API 自動搜尋與手動擴充，預設加入 A-Line)
+// 📻 動態加入：網路電台播放器 (支援 API 自動抓取與搜尋)
 // ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
+    // 🌟 基礎預設電台清單 (已加入 A-Line)
     let stations = [
         { name: "🎵 輕鬆背景音", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
         { name: "📻 A-Line 青春電台 (98.7)", url: "https://stream.rcs.revma.com/39w4m82987zuv", type: "live" },
         { name: "📻 台北愛樂 (古典樂)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 ICRT 國際社區廣播", url: "https://live.leanstream.co/ICRTFM-MP3", type: "live" },
         { name: "📻 K-POP 流行音樂", url: "https://listen.moe/kpop/fallback", type: "live" }
     ];
 
@@ -1347,7 +1302,7 @@ function initRadioPlayer() {
     } catch (e) {}
 
     let currentStationIdx = 0;
-    let hlsInstance = null; 
+    let hlsInstance = null; // HLS 解碼引擎
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
@@ -1366,6 +1321,7 @@ function initRadioPlayer() {
         </button>
         <audio id="radio-audio" preload="none"></audio>
     `;
+    
     document.body.appendChild(radioContainer);
 
     const menuContainer = document.createElement('div');
@@ -1388,8 +1344,8 @@ function initRadioPlayer() {
             const isActive = (idx === currentStationIdx);
             item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
             
-            // 預設電台 5 個，索引 5 以後的才可以刪除
-            const isCustom = idx >= 5; 
+            // 預設電台 4 個，索引 4 以後的才可以刪除
+            const isCustom = idx >= 4; 
             const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
 
             item.innerHTML = `
@@ -1407,7 +1363,7 @@ function initRadioPlayer() {
                 if (e.target.dataset.delete) {
                     if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
                         stations.splice(idx, 1);
-                        const customStations = stations.slice(5);
+                        const customStations = stations.slice(4);
                         localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
                         
                         if (currentStationIdx === idx) {
