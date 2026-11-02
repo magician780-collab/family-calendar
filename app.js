@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
@@ -286,7 +286,7 @@ if (importGovBtn) {
                 }
                 document.getElementById('member-modal').classList.add('hidden');
             }
-            e.target.value = ''; // 清空 file input，允許重複上傳相同檔案
+            e.target.value = ''; 
         };
         reader.readAsText(file);
     });
@@ -299,7 +299,7 @@ if (importGovBtn) {
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            // 處理 ICS 格式的斷行延續 (下一行開頭是空白或 Tab)
+            // 處理 ICS 格式的斷行延續
             while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
                 i++;
                 line += lines[i].substring(1);
@@ -320,7 +320,6 @@ if (importGovBtn) {
                     const match = line.match(/:([0-9T]+Z?)/);
                     if (match) {
                         let eDate = formatICSDate(match[1]);
-                        // ICS 規範：全天事件(8字元)的結束日期是不包含的 (Exclusive)
                         if (match[1].length === 8 && eDate !== currentEvent.startDate) {
                             const d = new Date(eDate);
                             d.setDate(d.getDate() - 1);
@@ -346,47 +345,103 @@ if (importGovBtn) {
 }
 /* ======================================================== */
 
-/* 💾 JSON 備份與還原 */
-document.getElementById('btn-export-json').addEventListener('click', () => {
-    triggerHaptic();
-    const backupData = {
-        exportDate: new Date().toISOString(),
-        events: events
-    };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `family_calendar_backup_${new Date().toISOString().slice(0,10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-});
+/* ☁️ 雲端備份與還原 (替換原本的 JSON 下載功能) */
+const exportBtn = document.getElementById('btn-export-json');
+const importInput = document.getElementById('input-import-json');
 
-document.getElementById('input-import-json').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
+if (exportBtn && importInput) {
+    const importLabel = importInput.parentElement;
+    
+    // 改寫標題
+    const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
+    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端資料備份與還原';
+
+    // 重新設定「備份至雲端」按鈕
+    exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 備份至雲端';
+    exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
+    
+    // 建立「從雲端還原」按鈕來取代原本的上傳框
+    const cloudRestoreBtn = document.createElement('button');
+    cloudRestoreBtn.id = 'btn-cloud-restore';
+    cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95';
+    cloudRestoreBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 從雲端還原';
+    
+    importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
+
+    // 綁定 Firebase 儲存節點
+    const backupRef = doc(db, 'familyBackups', 'latest');
+
+    // 備份事件
+    exportBtn.addEventListener('click', async () => {
+        if(!confirm('確定要將目前的「所有行程」備份到雲端嗎？\n(這將會覆蓋前一次的雲端備份紀錄)')) return;
+        triggerHaptic();
+        
         try {
-            const json = JSON.parse(event.target.result);
-            if (json.events && Array.isArray(json.events)) {
-                if (confirm(`確定要還原 ${json.events.length} 筆行程資料嗎？這將會匯入至您的行事曆中。`)) {
-                    for (const ev of json.events) {
-                        delete ev.id; 
-                        await addDoc(eventsRef, ev);
-                    }
-                    alert('🎉 資料還原與匯入成功！');
-                    document.getElementById('member-modal').classList.add('hidden');
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...';
+            exportBtn.disabled = true;
+            
+            const backupData = {
+                exportDate: new Date().toISOString(),
+                events: events
+            };
+            await setDoc(backupRef, backupData);
+            alert('🎉 雲端備份成功！現在您的行程已經安全存放在雲端了。');
+        } catch (err) {
+            console.error(err);
+            alert('備份失敗，請檢查網路連線。');
+        } finally {
+            exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 備份至雲端';
+            exportBtn.disabled = false;
+        }
+    });
+
+    // 還原事件
+    cloudRestoreBtn.addEventListener('click', async () => {
+        triggerHaptic();
+        
+        try {
+            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取中...';
+            cloudRestoreBtn.disabled = true;
+            
+            const snap = await getDoc(backupRef);
+            if (!snap.exists()) {
+                alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先執行備份。');
+                return;
+            }
+            
+            const data = snap.data();
+            const backupTime = new Date(data.exportDate).toLocaleString();
+            
+            if (confirm(`找到雲端備份 (備份時間：${backupTime})\n共包含 ${data.events.length} 筆行程。\n\n⚠️ 嚴重警告：\n還原將會【完全清除】您目前行事曆上的所有行程，並替換為這份備份的版本。\n您確定要繼續還原嗎？`)) {
+                
+                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清除舊資料...';
+                
+                // 1. 先清空現有的 events
+                for (const evt of events) {
+                    await deleteDoc(doc(eventsRef, evt.id));
                 }
-            } else {
-                alert('檔案格式錯誤，找不到有效的行程資料。');
+                
+                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原備份中...';
+                
+                // 2. 寫入備份的 events
+                for (const ev of data.events) {
+                    delete ev.id; // 防止帶入舊 ID
+                    await addDoc(eventsRef, ev);
+                }
+                
+                alert('🎉 雲端還原大成功！');
+                document.getElementById('member-modal').classList.add('hidden');
             }
         } catch (err) {
-            alert('解析 JSON 檔案失敗，請確認檔案格式。');
+            console.error(err);
+            alert('還原失敗，請檢查網路連線。');
+        } finally {
+            cloudRestoreBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 從雲端還原';
+            cloudRestoreBtn.disabled = false;
         }
-    };
-    reader.readAsText(file);
-});
+    });
+}
+/* ======================================================== */
 
 /* 相片牆 */
 const galleryModal = document.getElementById('gallery-modal');
@@ -1136,7 +1191,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         startDate: startVal,
         endDate: document.getElementById('event-end-date').value || startVal,
         isLunarRecurring: isRecurring,
-        lMonth: lMonth,
+        lunarMonth: lMonth,
         lunarDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,
