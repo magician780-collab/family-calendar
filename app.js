@@ -31,18 +31,18 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
-// 動態載入 AI 呼吸燈動畫樣式
+// 動態載入 AI 呼吸燈動畫樣式 (修正為支援主題變數，且不遮擋內容)
 if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
     style.id = 'ai-border-style';
     style.innerHTML = `
     @keyframes ai-glow {
-        0%, 100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.2); border-color: #8b5cf6; }
-        50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(168, 85, 247, 0.5); border-color: #3b82f6; }
+        0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); }
+        50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); }
     }
     .ai-active-cell {
         animation: ai-glow 2s infinite alternate;
-        transform: scale(1.03);
+        transform: scale(1.02);
         z-index: 20;
         border-width: 2px !important;
         border-radius: 0.75rem;
@@ -157,7 +157,8 @@ if (searchInputEl) {
 }
 
 /* ========================================================
-   🎨 20 種以上多樣化主題風格設定 (含 AI 風格、馬卡龍色系，並刪除暗黑)
+   🎨 23 種多樣化主題風格設定 (修復對比度遮擋問題)
+   所有主題統一規範：50 是最淡背景色，900 是最深文字色
    ======================================================== */
 const themePalettes = {
     // 經典系列
@@ -165,12 +166,12 @@ const themePalettes = {
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
     purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
     
-    // 🤖 AI 與科技風系列
-    ai_cyber: { 50: '#090d16', 100: '#111827', 200: '#1f2937', 300: '#374151', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
-    ai_matrix: { 50: '#022c22', 100: '#064e3b', 200: '#047857', 300: '#10b981', 400: '#34d399', 500: '#059669', 600: '#047857', 700: '#065f46', 800: '#064e3b', 900: '#022c22' },
-    ai_neon: { 50: '#2e1065', 100: '#4c1d95', 200: '#5b21b6', 300: '#7c3aed', 400: '#8b5cf6', 500: '#a855f7', 600: '#c084fc', 700: '#d8b4fe', 800: '#e9d5ff', 900: '#f3e8ff' },
-    ai_quantum: { 50: '#082f49', 100: '#0369a1', 200: '#0284c7', 300: '#38bdf8', 400: '#7dd3fc', 500: '#0284c7', 600: '#0369a1', 700: '#075985', 800: '#0c4a6e', 900: '#082f49' },
-    ai_neural: { 50: '#4c0519', 100: '#881337', 200: '#9f1239', 300: '#be123c', 400: '#e11d48', 500: '#f43f5e', 600: '#fb7185', 700: '#fecdd3', 800: '#ffe4e6', 900: '#fff1f2' },
+    // 🤖 AI 與科技風系列 (修正為淺色底、深色字，保持超高對比不遮擋)
+    ai_cyber: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+    ai_matrix: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' },
+    ai_neon: { 50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe', 300: '#f0abfc', 400: '#e879f9', 500: '#d946ef', 600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75' },
+    ai_quantum: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' },
+    ai_neural: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#881337', 900: '#4c0519' },
 
     // 🎀 馬卡龍 (Macaron) 粉嫩系列
     macaron_pink: { 50: '#fff0f5', 100: '#ffe4e1', 200: '#ffc0cb', 300: '#ffb6c1', 400: '#ff69b4', 500: '#ff9eb5', 600: '#ff7b9c', 700: '#ff5c8a', 800: '#d84a72', 900: '#b03a5b' },
@@ -185,7 +186,7 @@ const themePalettes = {
     sunset: { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f' },
     lavender: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95' },
     coffee: { 50: '#fdf8f6', 100: '#f2e8e5', 200: '#eaddd7', 300: '#e0cec7', 400: '#d2b48c', 500: '#bc8f8f', 600: '#8b4513', 700: '#654321', 800: '#4a2e18', 900: '#331a00' },
-    galaxy: { 50: '#0f172a', 100: '#1e293b', 200: '#334155', 300: '#475569', 400: '#64748b', 500: '#4f46e5', 600: '#4338ca', 700: '#3730a3', 800: '#312e81', 900: '#1e1b4b' },
+    galaxy: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
     lemon: { 50: '#fefce8', 100: '#fef9c3', 200: '#fef08a', 300: '#fde047', 400: '#facc15', 500: '#eab308', 600: '#ca8a04', 700: '#a16207', 800: '#854d0e', 900: '#713f12' },
     peach: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#ff7f50', 600: '#fa8072', 700: '#e9967a', 800: '#cd5c5c', 900: '#8b0000' },
     matcha: { 50: '#f4f6f0', 100: '#e3e8d7', 200: '#c8d3b2', 300: '#a7b889', 400: '#829762', 500: '#657945', 600: '#506035', 700: '#3f4c29', 800: '#303a1f', 900: '#232a17' },
@@ -197,25 +198,25 @@ function initThemeSelectOptions() {
     const sel = document.getElementById('theme-select');
     if (!sel) return;
     
-    // 清空舊選項 (順便徹底移除暗黑)
+    // 清空舊選項
     sel.innerHTML = '';
 
     const customThemes = [
         { id: 'warm', name: '🍊 溫馨暖橘' },
         { id: 'forest', name: '🌿 清新森林' },
         { id: 'purple', name: '💜 浪漫柔紫' },
+        // AI 科技風
+        { id: 'ai_cyber', name: '🤖 AI 賽博藍' },
+        { id: 'ai_matrix', name: '🟩 AI 數位綠' },
+        { id: 'ai_neon', name: '🔮 AI 霓虹紫' },
+        { id: 'ai_quantum', name: '⚡ AI 量子紫藍' },
+        { id: 'ai_neural', name: '🧬 AI 神經紅' },
         // 馬卡龍色系
         { id: 'macaron_pink', name: '🎀 馬卡龍粉' },
         { id: 'macaron_blue', name: '🍼 馬卡龍藍' },
         { id: 'macaron_purple', name: '🦄 馬卡龍紫' },
         { id: 'macaron_yellow', name: '🐣 馬卡龍黃' },
         { id: 'macaron_green', name: '🍈 馬卡龍綠' },
-        // AI 科技風
-        { id: 'ai_cyber', name: '🤖 AI 賽博龐克' },
-        { id: 'ai_matrix', name: '🟩 AI 數位矩陣' },
-        { id: 'ai_neon', name: '🔮 AI 極光霓虹' },
-        { id: 'ai_quantum', name: '⚡ AI 量子科技' },
-        { id: 'ai_neural', name: '🧬 AI 神經網絡' },
         // 自然與生活
         { id: 'cherry', name: '🌸 櫻花紛飛' },
         { id: 'ocean', name: '🌊 蔚藍海洋' },
@@ -1485,4 +1486,49 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     }
 });
 
+// 🎵 動態加入背景音樂功能 (BGM Widget)
+function initBGM() {
+    if (document.getElementById('bgm-widget')) return;
+
+    const bgmContainer = document.createElement('div');
+    bgmContainer.id = 'bgm-widget';
+    bgmContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 cursor-pointer hover:scale-105 transition-all select-none group';
+    
+    bgmContainer.innerHTML = `
+        <div class="relative flex items-center justify-center w-6 h-6 md:w-8 md:h-8 rounded-full bg-warm-100 group-hover:bg-warm-200 transition-colors">
+            <i id="bgm-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
+        </div>
+        <span id="bgm-text" class="text-xs md:text-sm font-bold text-warm-700 pr-1">播放背景音樂</span>
+        <audio id="bgm-audio" loop preload="none">
+            <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+        </audio>
+    `;
+    
+    document.body.appendChild(bgmContainer);
+    
+    const audio = document.getElementById('bgm-audio');
+    const icon = document.getElementById('bgm-icon');
+    const text = document.getElementById('bgm-text');
+    let isPlaying = false;
+
+    bgmContainer.addEventListener('click', () => {
+        triggerHaptic();
+        if (isPlaying) {
+            audio.pause();
+            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+            text.innerText = '播放背景音樂';
+            bgmContainer.classList.remove('ring-2', 'ring-warm-400');
+        } else {
+            audio.volume = 0.4; // 舒適的背景音量
+            audio.play().catch(e => console.log('Autoplay blocked:', e));
+            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+            text.innerText = '播放中...';
+            bgmContainer.classList.add('ring-2', 'ring-warm-400');
+        }
+        isPlaying = !isPlaying;
+    });
+}
+
+// 啟動 BGM 小工具與 App
+initBGM();
 renderApp();
