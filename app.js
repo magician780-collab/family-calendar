@@ -156,13 +156,96 @@ if (searchInputEl) {
     });
 }
 
-/* 主題風格 */
+/* ========================================================
+   🎨 20 種以上多樣化主題風格設定 (含 AI 風格、馬卡龍色系，並刪除暗黑)
+   ======================================================== */
 const themePalettes = {
+    // 經典系列
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
     purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
-    dark: { 50: '#18181b', 100: '#27272a', 200: '#3f3f46', 300: '#52525b', 400: '#71717a', 500: '#a1a1aa', 600: '#d4d4d8', 700: '#e4e4e7', 800: '#f4f4f5', 900: '#fafafa' }
+    
+    // 🤖 AI 與科技風系列
+    ai_cyber: { 50: '#090d16', 100: '#111827', 200: '#1f2937', 300: '#374151', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+    ai_matrix: { 50: '#022c22', 100: '#064e3b', 200: '#047857', 300: '#10b981', 400: '#34d399', 500: '#059669', 600: '#047857', 700: '#065f46', 800: '#064e3b', 900: '#022c22' },
+    ai_neon: { 50: '#2e1065', 100: '#4c1d95', 200: '#5b21b6', 300: '#7c3aed', 400: '#8b5cf6', 500: '#a855f7', 600: '#c084fc', 700: '#d8b4fe', 800: '#e9d5ff', 900: '#f3e8ff' },
+    ai_quantum: { 50: '#082f49', 100: '#0369a1', 200: '#0284c7', 300: '#38bdf8', 400: '#7dd3fc', 500: '#0284c7', 600: '#0369a1', 700: '#075985', 800: '#0c4a6e', 900: '#082f49' },
+    ai_neural: { 50: '#4c0519', 100: '#881337', 200: '#9f1239', 300: '#be123c', 400: '#e11d48', 500: '#f43f5e', 600: '#fb7185', 700: '#fecdd3', 800: '#ffe4e6', 900: '#fff1f2' },
+
+    // 🎀 馬卡龍 (Macaron) 粉嫩系列
+    macaron_pink: { 50: '#fff0f5', 100: '#ffe4e1', 200: '#ffc0cb', 300: '#ffb6c1', 400: '#ff69b4', 500: '#ff9eb5', 600: '#ff7b9c', 700: '#ff5c8a', 800: '#d84a72', 900: '#b03a5b' },
+    macaron_blue: { 50: '#f0f8ff', 100: '#e6f2ff', 200: '#cce5ff', 300: '#99ccff', 400: '#66b2ff', 500: '#a2d2ff', 600: '#7ebdf6', 700: '#5aa8ec', 800: '#3993e2', 900: '#1a7dd8' },
+    macaron_purple: { 50: '#f8f4ff', 100: '#f3e8ff', 200: '#e6ccff', 300: '#d9b3ff', 400: '#cc99ff', 500: '#cdb4db', 600: '#b892c9', 700: '#a370b7', 800: '#8e4ea5', 900: '#792c93' },
+    macaron_yellow: { 50: '#fffff0', 100: '#ffffe0', 200: '#fffacd', 300: '#fff68f', 400: '#ffebcd', 500: '#fcf6bd', 600: '#e9e29c', 700: '#d6ce7b', 800: '#c3ba5a', 900: '#b0a639' },
+    macaron_green: { 50: '#f0fff0', 100: '#e0ffe0', 200: '#ccffcc', 300: '#b3ffb3', 400: '#99ff99', 500: '#d0f4de', 600: '#addcb8', 700: '#8ac492', 800: '#67ac6c', 900: '#449446' },
+
+    // 🌸 自然與生活感系列
+    cherry: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#881337', 900: '#4c0519' },
+    ocean: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+    sunset: { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f' },
+    lavender: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95' },
+    coffee: { 50: '#fdf8f6', 100: '#f2e8e5', 200: '#eaddd7', 300: '#e0cec7', 400: '#d2b48c', 500: '#bc8f8f', 600: '#8b4513', 700: '#654321', 800: '#4a2e18', 900: '#331a00' },
+    galaxy: { 50: '#0f172a', 100: '#1e293b', 200: '#334155', 300: '#475569', 400: '#64748b', 500: '#4f46e5', 600: '#4338ca', 700: '#3730a3', 800: '#312e81', 900: '#1e1b4b' },
+    lemon: { 50: '#fefce8', 100: '#fef9c3', 200: '#fef08a', 300: '#fde047', 400: '#facc15', 500: '#eab308', 600: '#ca8a04', 700: '#a16207', 800: '#854d0e', 900: '#713f12' },
+    peach: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#ff7f50', 600: '#fa8072', 700: '#e9967a', 800: '#cd5c5c', 900: '#8b0000' },
+    matcha: { 50: '#f4f6f0', 100: '#e3e8d7', 200: '#c8d3b2', 300: '#a7b889', 400: '#829762', 500: '#657945', 600: '#506035', 700: '#3f4c29', 800: '#303a1f', 900: '#232a17' },
+    arctic: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' }
 };
+
+// 動態覆蓋 index.html 寫死的下拉選項，提供完整 23 種風格
+function initThemeSelectOptions() {
+    const sel = document.getElementById('theme-select');
+    if (!sel) return;
+    
+    // 清空舊選項 (順便徹底移除暗黑)
+    sel.innerHTML = '';
+
+    const customThemes = [
+        { id: 'warm', name: '🍊 溫馨暖橘' },
+        { id: 'forest', name: '🌿 清新森林' },
+        { id: 'purple', name: '💜 浪漫柔紫' },
+        // 馬卡龍色系
+        { id: 'macaron_pink', name: '🎀 馬卡龍粉' },
+        { id: 'macaron_blue', name: '🍼 馬卡龍藍' },
+        { id: 'macaron_purple', name: '🦄 馬卡龍紫' },
+        { id: 'macaron_yellow', name: '🐣 馬卡龍黃' },
+        { id: 'macaron_green', name: '🍈 馬卡龍綠' },
+        // AI 科技風
+        { id: 'ai_cyber', name: '🤖 AI 賽博龐克' },
+        { id: 'ai_matrix', name: '🟩 AI 數位矩陣' },
+        { id: 'ai_neon', name: '🔮 AI 極光霓虹' },
+        { id: 'ai_quantum', name: '⚡ AI 量子科技' },
+        { id: 'ai_neural', name: '🧬 AI 神經網絡' },
+        // 自然與生活
+        { id: 'cherry', name: '🌸 櫻花紛飛' },
+        { id: 'ocean', name: '🌊 蔚藍海洋' },
+        { id: 'sunset', name: '🌇 夕陽黃昏' },
+        { id: 'lavender', name: '🪻 薰衣草園' },
+        { id: 'coffee', name: '☕ 拿鐵咖啡' },
+        { id: 'galaxy', name: '🌌 深邃星空' },
+        { id: 'lemon', name: '🍋 萊姆檸檬' },
+        { id: 'peach', name: '🍑 甜美蜜桃' },
+        { id: 'matcha', name: '🍵 濃郁抹茶' },
+        { id: 'arctic', name: '❄️ 北極冰川' }
+    ];
+
+    customThemes.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+    });
+
+    const savedTheme = localStorage.getItem('family_app_theme') || 'warm';
+    // 防呆：如果之前的紀錄是已經被刪除的 dark，就重置回預設的暖橘色
+    if (customThemes.some(t => t.id === savedTheme)) {
+        sel.value = savedTheme;
+    } else {
+        sel.value = 'warm';
+        setTheme('warm');
+    }
+}
+
 function setTheme(name) {
     const palette = themePalettes[name] || themePalettes.warm;
     const root = document.documentElement;
@@ -171,8 +254,22 @@ function setTheme(name) {
     const sel = document.getElementById('theme-select');
     if (sel) sel.value = name;
 }
+
+// 啟動時先將自訂的 23 種清單注入畫面的 select，再讀取使用者的主題偏好
+initThemeSelectOptions();
 setTheme(localStorage.getItem('family_app_theme') || 'warm');
-document.getElementById('theme-select').addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
+
+const themeSelectEl = document.getElementById('theme-select');
+if (themeSelectEl) {
+    // 覆蓋原本在底下的簡單監聽，以避免衝突
+    const newSelectEl = themeSelectEl.cloneNode(true);
+    themeSelectEl.parentNode.replaceChild(newSelectEl, themeSelectEl);
+    newSelectEl.addEventListener('change', (e) => { 
+        triggerHaptic(); 
+        setTheme(e.target.value); 
+    });
+}
+/* ======================================================== */
 
 /* 天氣 API */
 async function fetchWeather() {
@@ -239,7 +336,6 @@ document.getElementById('btn-close-member-modal').addEventListener('click', () =
    ======================================================== */
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
-    // 透過 JS 動態將 HTML 上寫死的按鈕文字改成通用名稱
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     
     importGovBtn.addEventListener('click', async () => {
