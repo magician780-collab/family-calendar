@@ -27,6 +27,10 @@ let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
 
+// 記錄目前選中的日期格子 (預設為今天)
+const initDate = new Date();
+let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
+
 function triggerHaptic() {
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
 }
@@ -67,6 +71,24 @@ document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
             stopViewVideo(); 
         }
     });
+});
+
+/* ⌨️ 電腦版功能：按下 ESC 鍵自動關閉所有開啟的視窗 */
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const openModals = document.querySelectorAll('.modal-backdrop:not(.hidden)');
+        if (openModals.length > 0) {
+            triggerHaptic();
+            openModals.forEach(modal => {
+                modal.classList.add('hidden');
+                if (modal.id === 'day-modal') selectedDateForModal = null;
+                if (modal.id === 'view-modal') {
+                    currentViewingId = null;
+                    stopViewVideo(); 
+                }
+            });
+        }
+    }
 });
 
 /* 手機版：左右滑動切換月份 */
@@ -559,11 +581,29 @@ function createDayCell(dayNum, dateStr, isToday) {
     const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
     const isRedDay = isWeekend || isGovHoliday;
 
-    let cellBgClass = isToday ? 'bg-warm-50 ring-2 ring-warm-400' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
+    let cellBgClass = isToday ? 'bg-warm-50' : (isRedDay ? 'bg-rose-50/80 border-rose-200' : 'bg-white');
+    
+    // 判斷是否為「當前選中」的格子，加上顯眼的外框與陰影
+    let isSelected = (dateStr === activeCellDate);
+    let activeRingClass = isSelected ? 'ring-2 ring-warm-500 shadow-md z-10 transition-all' : '';
 
     const cell = document.createElement('div');
-    cell.className = `border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass}`;
-    cell.addEventListener('click', () => openDayModal(dateStr));
+    cell.className = `day-cell border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass} ${activeRingClass}`;
+    
+    // 點擊格子時，轉移外框並開啟該日行程
+    cell.addEventListener('click', () => {
+        // 先移除所有格子的選取狀態
+        document.querySelectorAll('.day-cell').forEach(c => {
+            c.classList.remove('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
+        });
+        // 為目前點擊的格子加上選取狀態
+        cell.classList.add('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
+        
+        // 更新全域變數，紀錄最後點擊的日期
+        activeCellDate = dateStr;
+        
+        openDayModal(dateStr);
+    });
     
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
     cell.innerHTML = `<div class="flex justify-between items-center px-0.5"><span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span><span class="text-[9px] text-blue-500">${weatherData[dateStr] || ''}</span></div>`;
@@ -575,7 +615,14 @@ function createDayCell(dayNum, dateStr, isToday) {
         const el = document.createElement('div');
         el.className = `${evt.color} text-white text-[9px] font-bold px-1 py-0.5 rounded truncate`;
         el.innerHTML = `${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollBadge}`;
-        el.addEventListener('click', (ev) => { ev.stopPropagation(); openViewModal(evt.id); });
+        el.addEventListener('click', (ev) => { 
+            ev.stopPropagation(); 
+            // 點擊行程標籤時同樣將外框轉移過去
+            document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all'));
+            cell.classList.add('ring-2', 'ring-warm-500', 'shadow-md', 'z-10', 'transition-all');
+            activeCellDate = dateStr;
+            openViewModal(evt.id); 
+        });
         container.appendChild(el);
     });
     cell.appendChild(container);
