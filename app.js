@@ -146,7 +146,7 @@ function openManualModal() {
                 <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
-                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。</li>
+                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
                     <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
                 </ul>
             </section>
@@ -948,7 +948,6 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-
 const twLocations = {
     "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
     "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
@@ -1137,6 +1136,12 @@ function openViewModal(id) {
             row.querySelector('input').addEventListener('change', async (e) => {
                 let updatedChecklist = [...evt.checklist]; updatedChecklist[idx].done = e.target.checked;
                 await updateDoc(doc(eventsRef, evt.id), { checklist: updatedChecklist });
+                
+                // 🌟 彩蛋：裝備/任務 100% 達成全螢幕煙火！
+                const newDoneCount = updatedChecklist.filter(i => i.done).length;
+                if (newDoneCount === evt.checklist.length && window.confetti) {
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
+                }
             });
             checkItems.appendChild(row);
         });
@@ -1194,7 +1199,10 @@ function openViewModal(id) {
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
-                alert('🎉 已成功將最高票拍板定案！'); document.getElementById('view-modal').classList.add('hidden');
+                alert('🎉 已成功將最高票拍板定案！'); 
+                document.getElementById('view-modal').classList.add('hidden');
+                // 🌟 彩蛋：拍板定案煙火秀！
+                if (window.confetti) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, zIndex: 9999 });
             }
         };
         pollContainer.classList.remove('hidden');
@@ -1289,7 +1297,6 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
-// 🌟 全新模組：支援懸浮拖曳與位置記憶的音樂播放器
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
@@ -1310,10 +1317,8 @@ function initRadioPlayer() {
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
-    // 移除 fixed bottom/right，改由 JS 動態控制位置，並加入 cursor-grab
     radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
     
-    // 自動讀取上次拖放儲存的位置
     const savedPos = localStorage.getItem('radio_widget_pos');
     if (savedPos) {
         try {
@@ -1348,7 +1353,6 @@ function initRadioPlayer() {
 
     const menuContainer = document.createElement('div');
     menuContainer.id = 'radio-menu';
-    // 移除選單固定的 bottom/right，讓它能跟著播放器跑
     menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
     document.body.appendChild(menuContainer);
     
@@ -1361,7 +1365,6 @@ function initRadioPlayer() {
     const statusText = document.getElementById('radio-status');
     let isPlaying = false;
 
-    // 🌟 全新拖曳系統邏輯
     let isDragging = false;
     let hasDragged = false;
     let dragStartX = 0, dragStartY = 0;
@@ -1386,12 +1389,12 @@ function initRadioPlayer() {
         radioContainer.style.right = 'auto';
         radioContainer.style.left = initialLeft + 'px';
         radioContainer.style.top = initialTop + 'px';
-        radioContainer.style.transition = 'none'; // 取消動畫以實現順暢拖曳
+        radioContainer.style.transition = 'none';
     };
 
     const onDragMove = (e) => {
         if (!isDragging) return;
-        e.preventDefault(); // 防止手機畫面跟著滑動
+        e.preventDefault();
 
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
@@ -1404,7 +1407,6 @@ function initRadioPlayer() {
         let newLeft = initialLeft + dx;
         let newTop = initialTop + dy;
 
-        // 螢幕邊界限制防呆
         const rect = radioContainer.getBoundingClientRect();
         if (newLeft < 0) newLeft = 0;
         if (newTop < 0) newTop = 0;
@@ -1433,7 +1435,6 @@ function initRadioPlayer() {
     document.addEventListener('touchmove', onDragMove, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 
-    // 攔截拖曳後的點擊事件，避免誤觸播放或選單
     radioContainer.addEventListener('click', (e) => {
         if (hasDragged) {
             e.preventDefault();
@@ -1526,14 +1527,13 @@ function initRadioPlayer() {
         triggerHaptic();
         if (hasDragged) { hasDragged = false; return; }
         
-        // 🌟 智慧選單定位：展開時自動跟隨播放器目前的位置
         if (menuContainer.classList.contains('hidden')) {
             const rect = radioContainer.getBoundingClientRect();
-            let menuTop = rect.top - 260; // 預估選單高度
-            if (menuTop < 10) menuTop = rect.bottom + 10; // 頂部空間不夠時改在下方展開
+            let menuTop = rect.top - 260;
+            if (menuTop < 10) menuTop = rect.bottom + 10;
             
-            let menuLeft = rect.right - 256; // 靠右對齊
-            if (menuLeft < 10) menuLeft = 10; // 左邊界防溢出
+            let menuLeft = rect.right - 256;
+            if (menuLeft < 10) menuLeft = 10;
             
             menuContainer.style.top = menuTop + 'px';
             menuContainer.style.left = menuLeft + 'px';
@@ -1631,79 +1631,67 @@ function initRadioPlayer() {
 initRadioPlayer();
 
 // ========================================================
-// 🚐 趣味彩蛋：活潑露營車與狗狗巡邏動畫
+// 🌟 終極互動彩蛋：微光點擊、專屬座駕隨機出沒！
 // ========================================================
-function initCamperAnimation() {
-    if (document.getElementById('camper-animation-style')) return;
+function initFunAnimations() {
+    if (document.getElementById('fun-animation-style')) return;
+    
+    // 引入全螢幕煙火函式庫 (Canvas Confetti)
+    if (!window.confetti) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+        document.head.appendChild(script);
+    }
     
     const style = document.createElement('style');
-    style.id = 'camper-animation-style';
+    style.id = 'fun-animation-style';
     style.innerHTML = `
-    @keyframes driveCamper {
-        0% { transform: translateX(120vw); }
-        100% { transform: translateX(-30vw); }
-    }
-    @keyframes bounceCamper {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        50% { transform: translateY(-3px) rotate(-2deg); }
-    }
-    @keyframes runDog {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        25% { transform: translateY(-5px) rotate(5deg); }
-        75% { transform: translateY(2px) rotate(-5deg); }
-    }
-    @keyframes exhaust {
-        0% { opacity: 0.8; transform: scale(0.5) translate(0, 0); }
-        100% { opacity: 0; transform: scale(1.5) translate(15px, -15px); }
-    }
-    .camper-wrapper {
-        position: fixed;
-        bottom: 90px;
-        left: 0;
-        z-index: 15;
-        pointer-events: none;
-        display: flex;
-        align-items: flex-end;
-        animation: driveCamper 30s linear infinite;
-        opacity: 0.85;
-    }
-    .camper-body {
-        font-size: 3.5rem;
-        animation: bounceCamper 0.8s ease-in-out infinite;
-        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
-        position: relative;
-        z-index: 2;
-    }
-    .camper-smoke {
-        font-size: 1.5rem;
-        position: absolute;
-        right: -10px;
-        bottom: 5px;
-        animation: exhaust 1.2s linear infinite;
-        z-index: 1;
-    }
-    .camper-dog {
-        font-size: 2rem;
-        margin-left: 20px;
-        margin-bottom: 2px;
-        animation: runDog 0.5s infinite;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
+    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
+    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
+    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
+    
+    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
+    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
+    
+    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
+    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
+    
+    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
+    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
     `;
     document.head.appendChild(style);
 
-    const camperDiv = document.createElement('div');
-    camperDiv.className = 'camper-wrapper';
-    camperDiv.innerHTML = `
-        <div style="position: relative;">
-            <div class="camper-body">🚐</div>
-            <div class="camper-smoke">💨</div>
-            <div class="camper-smoke" style="animation-delay: 0.6s; right: -20px;">💨</div>
-        </div>
-        <div class="camper-dog">🐕</div>
-    `;
-    document.body.appendChild(camperDiv);
+    // 隨機交通工具：有時是露營車與小狗，有時是帥氣電動車
+    const vehicleDiv = document.createElement('div');
+    vehicleDiv.className = 'vehicle-wrapper';
+    const isTesla = Math.random() > 0.5;
+    if (isTesla) {
+        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
+    } else {
+        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
+    }
+    document.body.appendChild(vehicleDiv);
+
+    // 隨機出沒的空拍機 (只有 30% 機率會出現，避免畫面太亂)
+    if (Math.random() > 0.7) {
+        const droneDiv = document.createElement('div');
+        droneDiv.className = 'drone-wrapper';
+        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
+        document.body.appendChild(droneDiv);
+    }
+
+    // ✨ 滑鼠/螢幕點擊 水波紋光效
+    document.addEventListener('click', function(e) {
+        // 避免在播放器拖曳時觸發
+        if (e.target.closest('#radio-widget')) return;
+        let ripple = document.createElement('div');
+        ripple.className = 'click-ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 500);
+    });
 }
 
-initCamperAnimation();
+initFunAnimations();
 renderApp();
