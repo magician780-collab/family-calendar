@@ -304,7 +304,6 @@ if (themeSelectEl) {
     newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
-// 🌟 天氣API升級：解鎖 16 天極限預測與 7 天歷史紀錄
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
@@ -940,8 +939,6 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-
-// 🌟 全新防呆升級：內建台灣常見地名與景點座標庫
 const twLocations = {
     "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
     "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
@@ -952,6 +949,7 @@ const twLocations = {
     "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
 };
 
+// 🌟 全新升級：字體放大、動態判斷「下雨變色警示」
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1022,18 +1020,18 @@ function openViewModal(id) {
     if (!weatherBox) {
         weatherBox = document.createElement('div');
         weatherBox.id = 'view-weather-box';
-        weatherBox.className = 'w-full py-2 bg-sky-50 text-sky-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2';
+        // 預設樣式放大，文字加粗
+        weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
         mMapBox.appendChild(weatherBox);
     }
     weatherBox.classList.add('hidden');
-    weatherBox.className = 'w-full py-2 bg-sky-50 text-sky-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
+    weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
 
     if (evt.mapUrl || evt.location) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
 
-        // 🌟 升級版天氣驗證與提示邏輯
         if (evt.location && evt.startDate) {
             weatherBox.classList.remove('hidden');
             weatherBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在為您查詢當地氣象...';
@@ -1041,7 +1039,6 @@ function openViewModal(id) {
             let foundCoord = null;
             let foundName = evt.location;
             
-            // 掃描是否有內建地名
             for (const [key, coords] of Object.entries(twLocations)) {
                 if (evt.location.includes(key)) {
                     foundCoord = coords;
@@ -1051,11 +1048,9 @@ function openViewModal(id) {
             }
 
             const weatherFetchPromise = foundCoord 
-                // 如果有內建，直接發送座標，省去地名查不到的錯誤
                 ? fetch(`https://api.open-meteo.com/v1/forecast?latitude=${foundCoord.lat}&longitude=${foundCoord.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
                     .then(r => r.json())
                     .then(wData => ({ wData, locName: foundName }))
-                // 如果沒內建，依賴 Open-Meteo 查詢
                 : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
                     .then(r => r.json())
                     .then(geo => {
@@ -1073,27 +1068,49 @@ function openViewModal(id) {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
                         const wCode = wData.daily.weathercode[idx];
+                        // 天氣圖示分類
                         const icon = [0].includes(wCode) ? '☀️' : [1,2].includes(wCode) ? '⛅' : [3].includes(wCode) ? '☁️' : [45,48].includes(wCode) ? '🌫️' : [51,53,55,61,63,65,80,81,82].includes(wCode) ? '🌧️' : [71,73,75,85,86].includes(wCode) ? '❄️' : '⛈️';
+                        
+                        // 🌟 下雨警報判定：如果是雨天或暴雷，變色並加入震動提示
+                        const isRainy = [51,53,55,61,63,65,80,81,82,95].includes(wCode);
+                        
+                        if (isRainy) {
+                            // 下雨警報樣式 (靛藍色+閃爍框)
+                            weatherBox.className = 'w-full py-2.5 bg-indigo-100 text-indigo-900 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md mt-2 px-2 text-center ring-2 ring-indigo-400 animate-pulse transition-all';
+                        } else {
+                            // 晴朗好天氣樣式 (天空藍色)
+                            weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
+                        }
+
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
-                        weatherBox.innerHTML = `<i class="fas fa-map-marker-alt text-sky-500"></i> 成功定位 [${locName}]：${icon} ${min}~${max}°C`;
+                        
+                        let weatherDesc = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
+                        
+                        // 字體放大
+                        weatherBox.innerHTML = `
+                            <div class="flex flex-col items-center">
+                                <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
+                                <div class="text-base mt-0.5">${icon} 溫度 ${min}~${max}°C</div>
+                                <div class="text-[11px] opacity-80 mt-0.5">${weatherDesc}</div>
+                            </div>
+                        `;
                     } else {
-                        // 日期判定防呆機制
                         const tDate = new Date(evt.startDate);
                         const nDate = new Date();
                         const diff = Math.ceil((tDate - nDate) / (1000 * 60 * 60 * 24));
                         if (diff > 14) {
-                            weatherBox.innerHTML = `<i class="fas fa-calendar-check text-sky-500"></i> 已定位 [${locName}]：氣象預報僅支援14天內，快出發時再來看喔！`;
+                            weatherBox.innerHTML = `<i class="fas fa-calendar-check text-sky-600"></i> 已定位 [${locName}]：預報僅支援14天內，快出發時再來看！`;
                         } else if (diff < -7) {
-                            weatherBox.innerHTML = `<i class="fas fa-history text-sky-500"></i> 已定位 [${locName}]：這是過去的行程囉。`;
+                            weatherBox.innerHTML = `<i class="fas fa-history text-sky-600"></i> 已定位 [${locName}]：這是過去的行程囉。`;
                         } else {
-                            weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-500"></i> 已定位 [${locName}]：當日無氣象資料。`;
+                            weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-600"></i> 已定位 [${locName}]：當日無氣象資料。`;
                         }
                     }
                 })
                 .catch(() => {
-                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-500"></i> 氣象站查無此私人地點，請改填「縣市區」(如:南投)`;
-                    weatherBox.className = 'w-full py-2 bg-amber-50 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
+                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-600"></i> 氣象站查無此私人地點，請改填「縣市區」(如:南投)`;
+                    weatherBox.className = 'w-full py-2.5 bg-amber-50 text-amber-800 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
                 });
         }
     } else { 
@@ -1191,7 +1208,7 @@ function openViewModal(id) {
         let html = `<div class="font-bold border-b border-amber-200 pb-1 mb-1">總支出：$${totalExpense.toLocaleString()} 元</div><div class="space-y-1">`;
         (evt.sharers || []).forEach(s => {
             let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
-            html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} float()} 元</span></div>`;
+            html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} 元</span></div>`;
         });
         html += `</div>`;
         expenseDetails.innerHTML = html; expenseContainer.classList.remove('hidden');
