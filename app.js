@@ -478,63 +478,49 @@ if (exportBtn && importInput) {
     gridContainer.className = 'flex flex-col gap-2'; 
     gridContainer.insertBefore(cloudRestoreBtn, importLabel);
 
-    // Remove the cursor-pointer and label behavior from the wrapper so we can intercept the click
-    const importBtn = document.createElement('button');
-    importBtn.id = 'btn-local-import';
-    importBtn.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-blue-200';
-    importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入';
-    
-    importLabel.parentNode.replaceChild(importBtn, importLabel);
-    // Keep the hidden input in the DOM but outside the button
-    importBtn.parentNode.appendChild(importInput);
+    importLabel.className = 'py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-200 transition-all active:scale-95';
+    importLabel.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入 <input type="file" id="input-import-json" accept=".json" class="hidden">';
 
-    importBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerHaptic();
-        requestAdminAccess(() => {
-            // Password correct, now trigger the file picker
-            importInput.click();
-        });
-    });
-
-    importInput.addEventListener('change', (e) => {
+    document.getElementById('input-import-json').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!confirm('⚠️ 警告：匯入手機檔案將會【完全覆蓋】目前行事曆上的所有行程！確定要繼續嗎？')) {
-            e.target.value = '';
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 匯入中...';
-                importBtn.style.pointerEvents = 'none';
-
-                const importedData = JSON.parse(event.target.result);
-                const eventsToImport = importedData.events || importedData;
-
-                for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
-                for (const ev of eventsToImport) {
-                    delete ev.id;
-                    await addDoc(eventsRef, ev);
-                }
-
-                alert('🎉 檔案匯入成功！已成功載入您上傳的紀錄。');
-                document.getElementById('member-modal').classList.add('hidden');
-            } catch (err) {
-                alert('讀取檔案失敗，請確認是否為正確的 JSON 備份檔。');
-            } finally {
-                importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入';
-                importBtn.style.pointerEvents = 'auto';
+        requestAdminAccess(async () => {
+            if (!confirm('⚠️ 警告：匯入手機檔案將會【完全覆蓋】目前行事曆上的所有行程！確定要繼續嗎？')) {
                 e.target.value = '';
+                return;
             }
-        };
-        reader.readAsText(file);
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    importLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 匯入中...';
+                    importLabel.style.pointerEvents = 'none';
+
+                    const importedData = JSON.parse(event.target.result);
+                    const eventsToImport = importedData.events || importedData;
+
+                    for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
+                    for (const ev of eventsToImport) {
+                        delete ev.id;
+                        await addDoc(eventsRef, ev);
+                    }
+
+                    alert('🎉 檔案匯入成功！已成功載入您上傳的紀錄。');
+                    document.getElementById('member-modal').classList.add('hidden');
+                } catch (err) {
+                    alert('讀取檔案失敗，請確認是否為正確的 JSON 備份檔。');
+                } finally {
+                    importLabel.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入 <input type="file" id="input-import-json" accept=".json" class="hidden">';
+                    importLabel.style.pointerEvents = 'auto';
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
     });
 
-    exportBtn.addEventListener('click', () => {exportBtn.addEventListener('click', () => {
+    exportBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
             if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
             triggerHaptic();
@@ -1318,39 +1304,61 @@ function openViewModal(id) {
         pollContainer.classList.remove('hidden');
     } else pollContainer.classList.add('hidden');
 
-        const expenseContainer = document.getElementById('view-expense-container');
+const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
     if (evt.isExpense && evt.payers && evt.payers.length > 0) {
         let totalExpense = evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
         let perWeightAmount = totalExpense / totalWeight;
         
-        let mainPayer = evt.payers[0].name;
+        // 1. 計算每個人的淨額 (Net Balance)
+        let balances = {};
+        
+        // 扣除已經代墊的錢 (別人欠他，記為負數)
+        evt.payers.forEach(p => {
+            balances[p.name] = (balances[p.name] || 0) - (parseFloat(p.amount) || 0);
+        });
+        
+        // 加上應該分攤的錢 (他欠別人，記為正數)
+        (evt.sharers || []).forEach(s => {
+            let shareAmt = perWeightAmount * (parseFloat(s.weight) || 1);
+            balances[s.name] = (balances[s.name] || 0) + shareAmt;
+        });
 
+        // 2. 渲染結算明細
         let html = `<div class="font-bold border-b border-amber-200 pb-2 mb-2 flex justify-between items-center">
                         <span>總支出：$${totalExpense.toLocaleString()}</span>
-                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">收款人：${mainPayer}</span>
+                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">每 1 份：$${Math.round(perWeightAmount).toLocaleString()}</span>
                     </div>
                     <div class="space-y-2">`;
                     
-        (evt.sharers || []).forEach(s => {
-            let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
+        Object.keys(balances).forEach(name => {
+            let netAmt = Math.round(balances[name]);
+            if (netAmt === 0) return; // 剛好結清不顯示
+            
+            let isOwe = netAmt > 0; // 大於 0 代表要拿錢出來給別人
+            let statusText = isOwe ? '應付款' : '應收款';
+            let colorClass = isOwe ? 'text-rose-600' : 'text-emerald-600';
+            let bgClass = isOwe ? 'bg-rose-50' : 'bg-emerald-50';
+            let icon = isOwe ? 'fa-arrow-up' : 'fa-arrow-down';
+            
             html += `
                 <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-100 shadow-sm">
                     <div class="flex flex-col">
-                        <span class="font-bold text-sm text-gray-800">👤 ${s.name}</span>
-                        <span class="text-[10px] text-gray-400">分攤 ${s.weight} 份</span>
+                        <span class="font-bold text-sm text-gray-800">👤 ${name}</span>
+                        <span class="text-[10px] text-gray-400">多退少補結算</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-amber-600 mr-1">$${shareAmt.toLocaleString()}</span>
+                        <span class="text-[10px] ${bgClass} ${colorClass} px-1.5 py-0.5 rounded font-bold"><i class="fas ${icon}"></i> ${statusText}</span>
+                        <span class="font-extrabold ${colorClass} mr-1">$${Math.abs(netAmt).toLocaleString()}</span>
                         
-                        <button onclick="navigator.clipboard.writeText('【家族行程分帳】${s.name} 應轉帳給 ${mainPayer} $${shareAmt} 元').then(()=>alert('已複製金額與明細！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額明細">
+                        ${isOwe ? `
+                        <button onclick="navigator.clipboard.writeText('【家族分帳】${name} 尚需付款 $${Math.abs(netAmt)} 元').then(()=>alert('已複製結算金額！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額">
                             <i class="far fa-copy text-xs"></i>
                         </button>
-                        
                         <a href="line://pay/transfer" class="w-7 h-7 bg-[#06C755]/10 hover:bg-[#06C755]/20 text-[#06C755] rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Pay 轉帳">
                             <i class="fab fa-line text-base"></i>
-                        </a>
+                        </a>` : ''}
                     </div>
                 </div>`;
         });
