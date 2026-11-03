@@ -74,19 +74,28 @@ if (!document.getElementById('ai-border-style')) {
     style.innerHTML = `
     @keyframes ai-glow { 0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); } 50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); } }
     .ai-active-cell { animation: ai-glow 2s infinite alternate; transform: scale(1.02); z-index: 20; border-width: 2px !important; border-radius: 0.75rem; }
+    
+    /* 🌟 修復：鎖死網頁 X 軸，徹底防止版面被影片 iframe 或廣播工具撐開產生橫向位移 */
+    html, body { max-width: 100vw; overflow-x: hidden; }
+    iframe, video { max-width: 100% !important; box-sizing: border-box; }
+
     @media screen and (max-height: 600px) and (orientation: landscape) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
     }
-    .masonry-gallery { column-count: 2; column-gap: 12px; }
-    @media (min-width: 768px) { .masonry-gallery { column-count: 3; column-gap: 16px; } }
-    @media (min-width: 1024px) { .masonry-gallery { column-count: 4; column-gap: 16px; } }
-    .masonry-item { break-inside: avoid; margin-bottom: 12px; position: relative; border-radius: 12px; overflow: hidden; background: #f3f4f6; }
+    
+    /* 🌟 修復：手機版預設為 1 欄，避免擠壓影片導致破版；螢幕較大時才擴充欄位 */
+    .masonry-gallery { column-count: 1; column-gap: 16px; padding-bottom: 80px; }
+    @media (min-width: 640px) { .masonry-gallery { column-count: 2; } }
+    @media (min-width: 768px) { .masonry-gallery { column-count: 3; } }
+    @media (min-width: 1024px) { .masonry-gallery { column-count: 4; } }
+    
+    .masonry-item { break-inside: avoid; margin-bottom: 16px; position: relative; border-radius: 12px; overflow: hidden; background: #111827; width: 100%; box-sizing: border-box; }
     .masonry-item img.masonry-thumb { width: 100%; display: block; transition: transform 0.5s ease; }
-    .masonry-item:hover img.masonry-thumb { transform: scale(1.08); }
-    .masonry-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%); opacity: 0; transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; color: white; }
+    .masonry-item:hover img.masonry-thumb { transform: scale(1.05); }
+    .masonry-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%); opacity: 0; transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; color: white; pointer-events: none; }
     .masonry-item:hover .masonry-overlay { opacity: 1; }
     `;
     document.head.appendChild(style);
@@ -176,7 +185,7 @@ function openVideoGallery() {
                 <h2 class="text-lg md:text-xl font-extrabold text-indigo-800 flex items-center gap-2"><i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳</h2>
                 <button id="btn-close-video-gallery" class="w-8 h-8 md:w-10 md:h-10 bg-warm-100 text-warm-600 rounded-full flex items-center justify-center hover:bg-warm-200 transition-colors"><i class="fas fa-times text-lg"></i></button>
             </div>
-            <div id="video-grid-container" class="p-4 masonry-gallery bg-gray-900 flex-1 overflow-y-auto"></div>
+            <div id="video-grid-container" class="p-4 masonry-gallery bg-gray-900 flex-1 overflow-y-auto w-full"></div>
         `;
         document.body.appendChild(modal);
         document.getElementById('btn-close-video-gallery').addEventListener('click', () => {
@@ -199,7 +208,7 @@ function openVideoGallery() {
     } else {
         videoEvents.forEach(evt => {
             const item = document.createElement('div');
-            item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group cursor-pointer';
+            item.className = 'masonry-item shadow-lg border border-gray-800 bg-gray-950 group cursor-pointer w-full';
             
             let ytId = '';
             let url = evt.videoUrl.trim();
@@ -237,14 +246,14 @@ function openVideoGallery() {
                 
                 let embedHtml = '';
                 if (ytId && ytId.length > 5) {
-                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe style="width: 100%; aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0; max-width: 100%;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
                 } else if (url.includes('drive.google.com')) {
                     let fileId = '';
                     if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
                     else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe style="width: 100%; aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0; max-width: 100%;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
                 } else {
-                    embedHtml = `<video src="${url}" controls autoplay playsinline class="w-full" style="border-radius: 12px 12px 0 0;"></video>`;
+                    embedHtml = `<video src="${url}" controls autoplay playsinline style="width: 100%; max-width: 100%; border-radius: 12px 12px 0 0;"></video>`;
                 }
                 
                 item.innerHTML = `
@@ -345,7 +354,7 @@ function openManualModal() {
                 <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
-                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有煙火驚喜喔！</li>
+                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
                     <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
                 </ul>
             </section>
@@ -353,6 +362,7 @@ function openManualModal() {
                 <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
+                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
                     <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 相簿牆 或 🎬 影片大廳</b>，以絕美瀑布流重溫美好回憶。</li>
                     <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
@@ -420,6 +430,7 @@ document.addEventListener('keydown', (e) => {
                 }
             });
         }
+        
         const videoModal = document.getElementById('video-gallery-modal');
         if (videoModal && !videoModal.classList.contains('hidden')) {
             videoModal.classList.add('translate-x-full');
@@ -579,105 +590,6 @@ function requestAdminAccess(callback) {
     }
 }
 
-// 🌟 Apple Watch 同步匯出按鈕：直接在此處綁定，避免 setTimeout 遺失
-const importGovBtn = document.getElementById('btn-import-gov-holidays');
-if (importGovBtn) {
-    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
-    importGovBtn.addEventListener('click', () => {
-        triggerHaptic();
-        requestAdminAccess(async () => {
-            const defaultYear = currentDate.getFullYear();
-            const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
-            if (!yearStr) return;
-            const targetYear = parseInt(yearStr, 10);
-            if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
-            try {
-                const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
-                const eve = lunarJan1.next(-1);
-                const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
-                const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
-                const govHolidays = [
-                    { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
-                    { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                    { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                    { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
-                    { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
-                    { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
-                    { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
-                    { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
-                    { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
-                ];
-                let importedCount = 0;
-                for (const h of govHolidays) {
-                    const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
-                    if (!isExist) { await addDoc(eventsRef, h); importedCount++; }
-                }
-                if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
-                else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
-            } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
-        });
-    });
-
-    if (!document.getElementById('btn-cleanup-holidays')) {
-        const cleanupBtn = document.createElement('button');
-        cleanupBtn.id = 'btn-cleanup-holidays';
-        cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-        cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
-        importGovBtn.parentNode.appendChild(cleanupBtn);
-        cleanupBtn.addEventListener('click', () => {
-            requestAdminAccess(async () => {
-                if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
-                triggerHaptic();
-                try {
-                    const govEvents = events.filter(e => e.author === '政府行事曆');
-                    const seen = new Set();
-                    const duplicates = [];
-                    for (const evt of govEvents) {
-                        const uniqueKey = `${evt.title}_${evt.startDate}`;
-                        if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
-                    }
-                    if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
-                    if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                        for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
-                        alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
-                    }
-                } catch (err) { alert('清除失敗，請檢查網路連線。'); }
-            });
-        });
-
-        // 綁定 Apple Watch 匯出按鈕
-        const appleBtn = document.createElement('button');
-        appleBtn.id = 'btn-export-apple';
-        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
-        importGovBtn.parentNode.appendChild(appleBtn);
-        
-        appleBtn.addEventListener('click', () => {
-            const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
-            if (pwd !== ADMIN_PASSWORD) return alert('❌ 密碼錯誤！');
-            if (events.length === 0) return alert('目前沒有任何行程喔！');
-            
-            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
-            events.forEach(e => {
-                const s = e.startDate.replace(/-/g, '');
-                let ed = new Date(e.endDate || e.startDate);
-                ed.setDate(ed.getDate() + 1);
-                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
-                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
-                if (e.location) ics += "LOCATION:" + e.location + "\n";
-                ics += "END:VEVENT\n";
-            });
-            ics += "END:VCALENDAR";
-            
-            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'family_events.ics';
-            link.click();
-        });
-    }
-}
-
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
 if (exportBtn && importInput) {
@@ -788,7 +700,7 @@ function renderGalleryGrid() {
         item.className = 'masonry-item shadow-sm border border-gray-200';
         const imgUrl = getDirectImageUrl(evt.photoUrl);
         item.innerHTML = `
-            <img src="${imgUrl}" loading="lazy" alt="Family Memory">
+            <img src="${imgUrl}" loading="lazy" alt="Family Memory" class="masonry-thumb">
             <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
             <div class="masonry-overlay">
                 <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
@@ -1325,10 +1237,10 @@ function openViewModal(id) {
         vElement.classList.add('hidden');
         
         vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden; margin-top: 0.75rem; position: relative;";
-        vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;";
+        vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; max-width: 100%;";
         vIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
         vIframe.setAttribute('allowfullscreen', 'true');
-        vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none;";
+        vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none; max-width: 100%;";
         vElement.setAttribute('controls', 'true');
         
         let ytId = '';
