@@ -18,7 +18,6 @@ const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
 const noteRef = doc(db, 'familyNotes', 'mainNote'); 
 
-// 🌟 安全設定：管理員專屬密碼 (在此修改)
 const ADMIN_PASSWORD = "2026"; 
 
 let currentDate = new Date();
@@ -119,6 +118,7 @@ function openManualModal() {
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
+    // 🌟 更新說明書文字：強調天氣是根據「地點名稱」抓取的
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
         
@@ -148,7 +148,7 @@ function openManualModal() {
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
                     <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
                     <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
-                    <li><b>智慧導航與天氣：</b> 輸入地點名稱並儲存後，系統不僅能一鍵地圖導航，還會自動算出活動當天該地點的天氣預報！</li>
+                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來自動抓取天氣的喔！只要在「地點名稱」欄位輸入清楚的地名（例如：阿里山、墾丁），系統不僅能一鍵地圖導航，還會自動算出活動當天當地的天氣預報！</li>
                 </ul>
             </section>
 
@@ -305,7 +305,6 @@ if (themeSelectEl) {
     newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
-// 日曆預設天氣 (目前預設為台南市經緯度)
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
@@ -937,6 +936,7 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
+// 🌟 全新升級：獨立顯示天氣區塊
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1003,51 +1003,51 @@ function openViewModal(id) {
     const mMapLink = document.getElementById('view-map-link');
     const mLocText = document.getElementById('view-location-text');
     
-    // 🌟 核心：建立行程專屬的動態天氣小標籤
-    let weatherSpan = document.getElementById('dynamic-event-weather');
-    if (!weatherSpan) {
-        weatherSpan = document.createElement('span');
-        weatherSpan.id = 'dynamic-event-weather';
-        weatherSpan.className = 'ml-1.5 px-2 py-0.5 bg-white/60 text-rose-800 rounded-full text-[11px] font-extrabold shadow-sm hidden inline-flex items-center gap-1';
-        mMapLink.appendChild(weatherSpan);
+    // 🌟 獨立顯示的天氣專區
+    let weatherBox = document.getElementById('view-weather-box');
+    if (!weatherBox) {
+        weatherBox = document.createElement('div');
+        weatherBox.id = 'view-weather-box';
+        weatherBox.className = 'w-full py-2 bg-sky-50 text-sky-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2';
+        mMapBox.appendChild(weatherBox);
     }
-    weatherSpan.classList.add('hidden');
+    weatherBox.classList.add('hidden');
 
     if (evt.mapUrl || evt.location) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
 
-        // 🌟 智慧判斷目的地天氣 (使用 Open-Meteo 免費經緯度查詢)
+        // 🌟 查詢目的地天氣
         if (evt.location && evt.startDate) {
-            weatherSpan.classList.remove('hidden');
-            weatherSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 即時氣象...';
+            weatherBox.classList.remove('hidden');
+            weatherBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在為您查詢當地氣象...';
             
             fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
                 .then(r => r.json())
                 .then(geo => {
                     if(geo.results && geo.results.length > 0) {
-                        const { latitude, longitude } = geo.results[0];
-                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei`);
+                        const { latitude, longitude, name } = geo.results[0];
+                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei`)
+                            .then(r => r.json())
+                            .then(wData => ({ wData, locName: name }));
                     }
                     throw new Error('找不到地點');
                 })
-                .then(r => r.json())
-                .then(wData => {
+                .then(({ wData, locName }) => {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1) {
                         const wCode = wData.daily.weathercode[idx];
-                        // 天氣圖示智慧對應
                         const icon = [0].includes(wCode) ? '☀️' : [1,2].includes(wCode) ? '⛅' : [3].includes(wCode) ? '☁️' : [45,48].includes(wCode) ? '🌫️' : [51,53,55,61,63,65,80,81,82].includes(wCode) ? '🌧️' : [71,73,75,85,86].includes(wCode) ? '❄️' : '⛈️';
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
-                        weatherSpan.innerHTML = `${icon} ${min}~${max}°C`;
+                        weatherBox.innerHTML = `<i class="fas fa-cloud-sun text-sky-500 text-sm"></i> ${evt.startDate} [${locName}] 天氣：${icon} ${min}~${max}°C`;
                     } else {
-                        weatherSpan.innerHTML = '<i class="fas fa-info-circle"></i> 無當日預報';
+                        weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-500"></i> 無法取得 ${evt.startDate} 的預報 (已過期或超過預測範圍)`;
                     }
                 })
                 .catch(() => {
-                    weatherSpan.classList.add('hidden'); // 若地名太偏門查不到經緯度，就安靜地隱藏不打擾
+                    weatherBox.classList.add('hidden');
                 });
         }
     } else { 
