@@ -49,6 +49,16 @@ const weatherDescMap = {
     85: '❄️ 陣雪', 86: '❄️ 大陣雪', 95: '⛈️ 雷陣雨'
 };
 
+const twLocations = {
+    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
+    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
+    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
+    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
+    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
+    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
+    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
+};
+
 function getDirectImageUrl(url) {
     if (!url) return '';
     if (url.includes('drive.google.com/file/d/')) {
@@ -62,64 +72,22 @@ if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
     style.id = 'ai-border-style';
     style.innerHTML = `
-    @keyframes ai-glow {
-        0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); }
-        50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); }
-    }
-    .ai-active-cell {
-        animation: ai-glow 2s infinite alternate;
-        transform: scale(1.02);
-        z-index: 20;
-        border-width: 2px !important;
-        border-radius: 0.75rem;
-    }
+    @keyframes ai-glow { 0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); } 50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); } }
+    .ai-active-cell { animation: ai-glow 2s infinite alternate; transform: scale(1.02); z-index: 20; border-width: 2px !important; border-radius: 0.75rem; }
     @media screen and (max-height: 600px) and (orientation: landscape) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
     }
-    .masonry-gallery {
-        column-count: 2;
-        column-gap: 12px;
-    }
-    @media (min-width: 768px) {
-        .masonry-gallery { column-count: 3; column-gap: 16px; }
-    }
-    @media (min-width: 1024px) {
-        .masonry-gallery { column-count: 4; column-gap: 16px; }
-    }
-    .masonry-item {
-        break-inside: avoid;
-        margin-bottom: 12px;
-        position: relative;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #f3f4f6;
-    }
-    .masonry-item img.masonry-thumb {
-        width: 100%;
-        display: block;
-        transition: transform 0.5s ease;
-    }
-    .masonry-item:hover img.masonry-thumb {
-        transform: scale(1.08);
-    }
-    .masonry-overlay {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        padding: 12px;
-        color: white;
-    }
-    .masonry-item:hover .masonry-overlay {
-        opacity: 1;
-    }
+    .masonry-gallery { column-count: 2; column-gap: 12px; }
+    @media (min-width: 768px) { .masonry-gallery { column-count: 3; column-gap: 16px; } }
+    @media (min-width: 1024px) { .masonry-gallery { column-count: 4; column-gap: 16px; } }
+    .masonry-item { break-inside: avoid; margin-bottom: 12px; position: relative; border-radius: 12px; overflow: hidden; background: #f3f4f6; }
+    .masonry-item img.masonry-thumb { width: 100%; display: block; transition: transform 0.5s ease; }
+    .masonry-item:hover img.masonry-thumb { transform: scale(1.08); }
+    .masonry-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%); opacity: 0; transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; color: white; }
+    .masonry-item:hover .masonry-overlay { opacity: 1; }
     `;
     document.head.appendChild(style);
 }
@@ -197,7 +165,6 @@ if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
     });
 }
 
-// 🌟 升級版：影片大廳原位無縫播放 (Inline Playback)
 function openVideoGallery() {
     let modal = document.getElementById('video-gallery-modal');
     if (!modal) {
@@ -205,7 +172,7 @@ function openVideoGallery() {
         modal.id = 'video-gallery-modal';
         modal.className = 'fixed inset-0 bg-warm-50 z-[150] flex flex-col hidden transition-transform transform translate-x-full duration-300';
         modal.innerHTML = `
-            <div class="px-4 py-4 md:px-6 md:py-5 bg-white border-b border-warm-200 flex justify-between items-center shadow-sm shrink-0">
+            <div class="px-4 py-4 md:px-6 md:py-5 bg-white border-b border-warm-200 flex justify-between items-center shadow-sm shrink-0 z-50">
                 <h2 class="text-lg md:text-xl font-extrabold text-indigo-800 flex items-center gap-2"><i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳</h2>
                 <button id="btn-close-video-gallery" class="w-8 h-8 md:w-10 md:h-10 bg-warm-100 text-warm-600 rounded-full flex items-center justify-center hover:bg-warm-200 transition-colors"><i class="fas fa-times text-lg"></i></button>
             </div>
@@ -215,7 +182,10 @@ function openVideoGallery() {
         document.getElementById('btn-close-video-gallery').addEventListener('click', () => {
             triggerHaptic();
             modal.classList.add('translate-x-full');
-            setTimeout(() => modal.classList.add('hidden'), 300);
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('video-grid-container').innerHTML = ''; 
+            }, 300);
         });
     }
 
@@ -235,16 +205,10 @@ function openVideoGallery() {
             let url = evt.videoUrl.trim();
             
             try {
-                if (url.includes('v=')) {
-                    ytId = url.split('v=')[1].split('&')[0];
-                } else if (url.includes('youtu.be/')) {
-                    ytId = url.split('youtu.be/')[1].split('?')[0];
-                } else if (url.includes('shorts/')) {
-                    ytId = url.split('shorts/')[1].split('?')[0];
-                }
-            } catch (e) {
-                console.error("網址解析略過：", url);
-            }
+                if (url.includes('v=')) ytId = url.split('v=')[1].split('&')[0];
+                else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].split('?')[0];
+                else if (url.includes('shorts/')) ytId = url.split('shorts/')[1].split('?')[0];
+            } catch (e) {}
             
             let thumbHtml = '';
             if (ytId && ytId.length > 5) {
@@ -258,46 +222,45 @@ function openVideoGallery() {
                 <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
                     <i class="fas fa-play text-white text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-75 group-hover:scale-100 transition-transform"></i>
                 </div>
-                <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1"><i class="fas fa-video"></i> ${evt.startDate}</div>
+                <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 pointer-events-none"><i class="fas fa-video"></i> ${evt.startDate}</div>
                 <div class="masonry-overlay z-10 pt-16 pointer-events-none">
                     <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
                     <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊直接播放</p>
                 </div>
             `;
             
-            // 點擊後直接置換成 iframe，實現無縫原位播放
-            item.addEventListener('click', function onClick(e) { 
+            item.addEventListener('click', function onClick(e) {
                 e.stopPropagation();
-                triggerHaptic(); 
-                item.removeEventListener('click', onClick); // 防止重複點擊
-                item.classList.remove('cursor-pointer', 'group'); // 移除 hover 特效
-
+                triggerHaptic();
+                item.removeEventListener('click', onClick);
+                item.classList.remove('cursor-pointer', 'group');
+                
                 let embedHtml = '';
                 if (ytId && ytId.length > 5) {
-                    embedHtml = `<iframe width="100%" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
                 } else if (url.includes('drive.google.com')) {
                     let fileId = '';
                     if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
                     else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-                    embedHtml = `<iframe width="100%" src="https://drive.google.com/file/d/${fileId}/preview" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
                 } else {
-                    embedHtml = `<video src="${url}" controls autoplay playsinline style="width: 100%; border-radius: 12px 12px 0 0;"></video>`;
+                    embedHtml = `<video src="${url}" controls autoplay playsinline class="w-full" style="border-radius: 12px 12px 0 0;"></video>`;
                 }
                 
                 item.innerHTML = `
                     ${embedHtml}
-                    <button class="w-full py-2 bg-indigo-900 hover:bg-indigo-800 text-white text-[11px] font-bold mt-[-4px] transition-colors flex items-center justify-center gap-1">
-                        <i class="fas fa-external-link-alt"></i> 查看行程明細
+                    <button class="w-full py-2.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-100 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded-b-xl border-t border-indigo-900">
+                        <i class="fas fa-external-link-alt"></i> 查看完整行程明細
                     </button>
                 `;
-
-                // 綁定「查看行程明細」按鈕事件
+                
                 item.querySelector('button').addEventListener('click', (ev) => {
                     ev.stopPropagation();
                     triggerHaptic();
                     modal.classList.add('translate-x-full');
                     setTimeout(() => {
                         modal.classList.add('hidden');
+                        document.getElementById('video-grid-container').innerHTML = '';
                         openViewModal(evt.id); 
                     }, 300);
                 });
@@ -382,7 +345,7 @@ function openManualModal() {
                 <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
-                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
+                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有煙火驚喜喔！</li>
                     <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
                 </ul>
             </section>
@@ -390,8 +353,7 @@ function openManualModal() {
                 <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
-                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
-                    <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家族相簿/影片牆</b>，以絕美瀑布流重溫美好回憶。</li>
+                    <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 相簿牆 或 🎬 影片大廳</b>，以絕美瀑布流重溫美好回憶。</li>
                     <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
             </section>
@@ -405,7 +367,7 @@ function openManualModal() {
             </section>
             <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
                 <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
-                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
+                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」等高權限功能。</p>
             </section>
         </div>
     `;
@@ -458,11 +420,13 @@ document.addEventListener('keydown', (e) => {
                 }
             });
         }
-        
         const videoModal = document.getElementById('video-gallery-modal');
         if (videoModal && !videoModal.classList.contains('hidden')) {
             videoModal.classList.add('translate-x-full');
-            setTimeout(() => videoModal.classList.add('hidden'), 300);
+            setTimeout(() => {
+                videoModal.classList.add('hidden');
+                document.getElementById('video-grid-container').innerHTML = '';
+            }, 300);
         }
     }
 });
@@ -606,7 +570,7 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 function requestAdminAccess(callback) {
-    const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
+    const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
     if (pwd === null) return; 
     if (pwd === ADMIN_PASSWORD) {
         callback();
@@ -615,7 +579,7 @@ function requestAdminAccess(callback) {
     }
 }
 
-// 🌟 Apple Watch 按鈕移出 setTimeout，保證穩定載入
+// 🌟 Apple Watch 同步匯出按鈕：直接在此處綁定，避免 setTimeout 遺失
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
@@ -680,8 +644,8 @@ if (importGovBtn) {
                 } catch (err) { alert('清除失敗，請檢查網路連線。'); }
             });
         });
-        
-        // 🌟 Apple Watch 匯出按鈕：直接綁定在清除按鈕下方，保證載入
+
+        // 綁定 Apple Watch 匯出按鈕
         const appleBtn = document.createElement('button');
         appleBtn.id = 'btn-export-apple';
         appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
@@ -713,7 +677,6 @@ if (importGovBtn) {
         });
     }
 }
-
 
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
@@ -802,6 +765,142 @@ if (exportBtn && importInput) {
             finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
         });
     });
+}
+
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    
+    container.className = 'p-4 masonry-gallery bg-gray-50 flex-1 overflow-y-auto'; 
+    
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (photoEvents.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400"><i class="far fa-images text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何相片記錄喔！</p></div>`;
+        return;
+    }
+    
+    photoEvents.forEach((evt, idx) => {
+        const item = document.createElement('div');
+        item.className = 'masonry-item shadow-sm border border-gray-200';
+        const imgUrl = getDirectImageUrl(evt.photoUrl);
+        item.innerHTML = `
+            <img src="${imgUrl}" loading="lazy" alt="Family Memory">
+            <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
+            <div class="masonry-overlay">
+                <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
+                <p class="text-[10px] text-gray-200 mt-1 font-bold"><i class="fas fa-search-plus"></i> 點擊放大觀賞</p>
+            </div>
+        `;
+        item.addEventListener('click', () => { 
+            triggerHaptic(); 
+            openLightbox(photoEvents, idx); 
+        });
+        container.appendChild(item);
+    });
+}
+
+let lightboxInterval = null;
+function openLightbox(photoEvents, startIndex) {
+    let currentIndex = startIndex;
+    let modal = document.getElementById('photo-lightbox-modal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'photo-lightbox-modal';
+        modal.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center opacity-0 transition-opacity duration-300';
+        modal.innerHTML = `
+            <button id="lb-close" class="absolute top-4 right-4 text-white p-4 text-2xl hover:text-rose-400 z-50 transition-colors"><i class="fas fa-times"></i></button>
+            <button id="lb-prev" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-left"></i></button>
+            <button id="lb-next" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-right"></i></button>
+            
+            <div class="relative w-full max-w-6xl px-12 md:px-24 flex-1 flex items-center justify-center">
+                <img id="lb-img" class="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl transition-all duration-300 opacity-0 scale-95">
+            </div>
+            
+            <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-50">
+                <div id="lb-title" class="text-white font-extrabold text-lg md:text-2xl drop-shadow-lg tracking-wide"></div>
+                <div class="flex items-center gap-4">
+                    <button id="lb-play" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10"><i class="fas fa-play"></i> 電子相框輪播</button>
+                    <button id="lb-goto" class="px-5 py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-warm-500/30"><i class="fas fa-calendar-day"></i> 開啟行程明細</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('lb-close').onclick = closeLB;
+        document.getElementById('lb-prev').onclick = () => showIdx(currentIndex - 1);
+        document.getElementById('lb-next').onclick = () => showIdx(currentIndex + 1);
+        
+        document.addEventListener('keydown', (e) => {
+            if (modal.classList.contains('hidden')) return;
+            if (e.key === 'ArrowLeft') showIdx(currentIndex - 1);
+            if (e.key === 'ArrowRight') showIdx(currentIndex + 1);
+            if (e.key === 'Escape') closeLB();
+        });
+    }
+    
+    modal.classList.remove('hidden');
+    void modal.offsetWidth; 
+    modal.classList.replace('opacity-0', 'opacity-100');
+    
+    let isPlaying = false;
+    const playBtn = document.getElementById('lb-play');
+    playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+    playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+    if(lightboxInterval) clearInterval(lightboxInterval);
+    
+    function showIdx(idx) {
+        if (idx < 0) idx = photoEvents.length - 1;
+        if (idx >= photoEvents.length) idx = 0;
+        currentIndex = idx;
+        const evt = photoEvents[idx];
+        
+        const img = document.getElementById('lb-img');
+        img.classList.remove('opacity-100', 'scale-100');
+        img.classList.add('opacity-0', 'scale-95');
+        
+        setTimeout(() => {
+            img.src = getDirectImageUrl(evt.photoUrl);
+            img.onload = () => {
+                img.classList.remove('opacity-0', 'scale-95');
+                img.classList.add('opacity-100', 'scale-100');
+            };
+        }, 150);
+        
+        document.getElementById('lb-title').innerText = `${evt.startDate} | ${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
+        
+        document.getElementById('lb-goto').onclick = () => {
+            closeLB();
+            document.getElementById('gallery-modal').classList.add('hidden');
+            openViewModal(evt.id);
+        };
+    }
+    
+    function closeLB() {
+        modal.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+        if(lightboxInterval) clearInterval(lightboxInterval);
+        isPlaying = false;
+    }
+    
+    playBtn.onclick = () => {
+        isPlaying = !isPlaying;
+        if(isPlaying) {
+            playBtn.innerHTML = '<i class="fas fa-pause"></i> 停止輪播';
+            playBtn.className = 'px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/30';
+            lightboxInterval = setInterval(() => showIdx(currentIndex + 1), 3500);
+        } else {
+            playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+            playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+            clearInterval(lightboxInterval);
+        }
+    };
+    
+    showIdx(startIndex);
 }
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
@@ -1204,16 +1303,6 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-const twLocations = {
-    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
-    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
-    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
-    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
-    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
-    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
-    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
-};
-
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1475,191 +1564,3 @@ function openViewModal(id) {
 
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
-
-// 🌟 全新升級：防彈級獨立播放引擎 (Inline Video Playback)
-function openVideoGallery() {
-    let modal = document.getElementById('video-gallery-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'video-gallery-modal';
-        modal.className = 'fixed inset-0 bg-warm-50 z-[150] flex flex-col hidden transition-transform transform translate-x-full duration-300';
-        modal.innerHTML = `
-            <div class="px-4 py-4 md:px-6 md:py-5 bg-white border-b border-warm-200 flex justify-between items-center shadow-sm shrink-0 z-50">
-                <h2 class="text-lg md:text-xl font-extrabold text-indigo-800 flex items-center gap-2"><i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳</h2>
-                <button id="btn-close-video-gallery" class="w-8 h-8 md:w-10 md:h-10 bg-warm-100 text-warm-600 rounded-full flex items-center justify-center hover:bg-warm-200 transition-colors"><i class="fas fa-times text-lg"></i></button>
-            </div>
-            <div id="video-grid-container" class="p-4 masonry-gallery bg-gray-900 flex-1 overflow-y-auto"></div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById('btn-close-video-gallery').addEventListener('click', () => {
-            triggerHaptic();
-            modal.classList.add('translate-x-full');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                document.getElementById('video-grid-container').innerHTML = ''; // 關閉時清空，停止所有播放中的影片
-            }, 300);
-        });
-    }
-
-    const container = document.getElementById('video-grid-container');
-    container.innerHTML = '';
-    
-    const videoEvents = events.filter(e => e.videoUrl && e.videoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    
-    if (videoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500"><i class="fas fa-video-slash text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何影片記錄喔！</p></div>`;
-    } else {
-        videoEvents.forEach(evt => {
-            const item = document.createElement('div');
-            item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group cursor-pointer';
-            
-            let ytId = '';
-            let url = evt.videoUrl.trim();
-            
-            try {
-                if (url.includes('v=')) {
-                    ytId = url.split('v=')[1].split('&')[0];
-                } else if (url.includes('youtu.be/')) {
-                    ytId = url.split('youtu.be/')[1].split('?')[0];
-                } else if (url.includes('shorts/')) {
-                    ytId = url.split('shorts/')[1].split('?')[0];
-                }
-            } catch (e) {}
-            
-            let thumbHtml = '';
-            if (ytId && ytId.length > 5) {
-                thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="masonry-thumb w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
-            } else {
-                thumbHtml = `<div class="w-full aspect-video bg-gradient-to-br from-indigo-900 to-gray-900 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-all duration-500"></div>`;
-            }
-
-            item.innerHTML = `
-                ${thumbHtml}
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
-                    <i class="fas fa-play text-white text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-75 group-hover:scale-100 transition-transform"></i>
-                </div>
-                <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 pointer-events-none"><i class="fas fa-video"></i> ${evt.startDate}</div>
-                <div class="masonry-overlay z-10 pt-16 pointer-events-none">
-                    <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
-                    <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊直接播放</p>
-                </div>
-            `;
-            
-            item.addEventListener('click', function onClick(e) {
-                e.stopPropagation();
-                triggerHaptic();
-                // 點擊後解除綁定，避免重複注入
-                item.removeEventListener('click', onClick);
-                item.classList.remove('cursor-pointer', 'group');
-                
-                let embedHtml = '';
-                if (ytId && ytId.length > 5) {
-                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-                } else if (url.includes('drive.google.com')) {
-                    let fileId = '';
-                    if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
-                    else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-                } else {
-                    embedHtml = `<video src="${url}" controls autoplay playsinline class="w-full" style="border-radius: 12px 12px 0 0;"></video>`;
-                }
-                
-                // 原位取代為播放器，並附加「查看行程明細」按鈕
-                item.innerHTML = `
-                    ${embedHtml}
-                    <button class="w-full py-2.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-100 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded-b-xl border-t border-indigo-900">
-                        <i class="fas fa-external-link-alt"></i> 查看完整行程明細
-                    </button>
-                `;
-                
-                item.querySelector('button').addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    triggerHaptic();
-                    modal.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        modal.classList.add('hidden');
-                        document.getElementById('video-grid-container').innerHTML = '';
-                        openViewModal(evt.id); 
-                    }, 300);
-                });
-            });
-            
-            container.appendChild(item);
-        });
-    }
-    
-    modal.classList.remove('hidden');
-    void modal.offsetWidth;
-    modal.classList.remove('translate-x-full');
-}
-
-document.getElementById('event-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    triggerHaptic();
-    const titleVal = document.getElementById('event-title').value.trim();
-    if (!titleVal) return alert('請輸入活動名稱！');
-
-    const isRecurring = document.getElementById('event-is-lunar-recurring').checked;
-    let lMonth = null, lDay = null; const startVal = document.getElementById('event-start-date').value;
-    if (isRecurring && startVal) {
-        const [y, m, d] = startVal.split('-').map(Number);
-        const lunar = Solar.fromYmd(y, m, d).getLunar();
-        lMonth = lunar.getMonth(); lDay = lunar.getDay();
-    }
-
-    let checklistArr = [];
-    if (checklistCheckbox.checked) {
-        document.querySelectorAll('.checklist-row').forEach(row => {
-            const text = row.querySelector('.checklist-text').value.trim();
-            const assignee = row.querySelector('.checklist-assignee').value.trim();
-            const done = row.dataset.done === 'true';
-            if (text) checklistArr.push({ text, assignee, done });
-        });
-    }
-
-    let pollOpts = [];
-    if (pollCheckbox.checked) {
-        const existing = events.find(ev => ev.id === currentEditingId);
-        document.querySelectorAll('.poll-row').forEach((row, idx) => {
-            const t = row.querySelector('.poll-option-title').value.trim();
-            if (t) {
-                let voters = (existing && existing.pollOptions && existing.pollOptions[idx] && existing.pollOptions[idx].title === t) ? existing.pollOptions[idx].voters : [];
-                pollOpts.push({ title: t, voters: voters });
-            }
-        });
-    }
-
-    let payersArr = []; let sharersArr = [];
-    if (expenseCheckbox.checked) {
-        document.querySelectorAll('.payer-row').forEach(row => {
-            const name = row.querySelector('.payer-name').value.trim(); const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            if (name && amount > 0) payersArr.push({ name, amount });
-        });
-        document.querySelectorAll('.sharer-row').forEach(row => {
-            const name = row.querySelector('.sharer-name').value.trim(); const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
-            if (name) sharersArr.push({ name, weight });
-        });
-    }
-
-    const eventData = {
-        title: titleVal, icon: document.getElementById('event-icon').value,
-        startDate: startVal, endDate: document.getElementById('event-end-date').value || startVal,
-        isLunarRecurring: isRecurring, lunarMonth: lMonth, lunarDay: lDay,
-        author: document.getElementById('event-author').value.trim() || '家族成員',
-        color: document.querySelector('input[name="event-color"]:checked').value,
-        photoUrl: document.getElementById('event-photo-url').value.trim(),
-        videoUrl: document.getElementById('event-video-url').value.trim(), fileUrl: document.getElementById('event-file-url').value.trim(),
-        location: document.getElementById('event-location').value.trim(), mapUrl: document.getElementById('event-map-url').value.trim(),
-        isChecklist: checklistCheckbox.checked && checklistArr.length > 0, checklist: checklistArr,
-        isPoll: pollCheckbox.checked && pollOpts.length > 0, pollOptions: pollOpts,
-        isExpense: expenseCheckbox.checked && payersArr.length > 0, payers: payersArr, sharers: sharersArr
-    };
-
-    if (currentEditingId) { await updateDoc(doc(eventsRef, currentEditingId), eventData); } 
-    else { await addDoc(eventsRef, eventData); }
-    closeModal();
-});
-
-document.getElementById('btn-delete').addEventListener('click', async () => {
-    if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
-});
