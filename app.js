@@ -95,15 +95,14 @@ if (!document.getElementById('ai-border-style')) {
         position: relative;
         border-radius: 12px;
         overflow: hidden;
-        cursor: pointer;
         background: #f3f4f6;
     }
-    .masonry-item img {
+    .masonry-item img.masonry-thumb {
         width: 100%;
         display: block;
         transition: transform 0.5s ease;
     }
-    .masonry-item:hover img {
+    .masonry-item:hover img.masonry-thumb {
         transform: scale(1.08);
     }
     .masonry-overlay {
@@ -198,6 +197,7 @@ if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
     });
 }
 
+// 🌟 升級版：影片大廳原位無縫播放 (Inline Playback)
 function openVideoGallery() {
     let modal = document.getElementById('video-gallery-modal');
     if (!modal) {
@@ -229,7 +229,7 @@ function openVideoGallery() {
     } else {
         videoEvents.forEach(evt => {
             const item = document.createElement('div');
-            item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group';
+            item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group cursor-pointer';
             
             let ytId = '';
             let url = evt.videoUrl.trim();
@@ -248,7 +248,7 @@ function openVideoGallery() {
             
             let thumbHtml = '';
             if (ytId && ytId.length > 5) {
-                thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
+                thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="masonry-thumb w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
             } else {
                 thumbHtml = `<div class="w-full aspect-video bg-gradient-to-br from-indigo-900 to-gray-900 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-all duration-500"></div>`;
             }
@@ -259,20 +259,48 @@ function openVideoGallery() {
                     <i class="fas fa-play text-white text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-75 group-hover:scale-100 transition-transform"></i>
                 </div>
                 <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1"><i class="fas fa-video"></i> ${evt.startDate}</div>
-                <div class="masonry-overlay z-10 pt-16">
+                <div class="masonry-overlay z-10 pt-16 pointer-events-none">
                     <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
-                    <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊播放</p>
+                    <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊直接播放</p>
                 </div>
             `;
             
-            // 🌟 修復點：點擊時先滑動關閉大廳視窗，再打開影片視窗
-            item.addEventListener('click', () => { 
+            // 點擊後直接置換成 iframe，實現無縫原位播放
+            item.addEventListener('click', function onClick(e) { 
+                e.stopPropagation();
                 triggerHaptic(); 
-                modal.classList.add('translate-x-full');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    openViewModal(evt.id); 
-                }, 300);
+                item.removeEventListener('click', onClick); // 防止重複點擊
+                item.classList.remove('cursor-pointer', 'group'); // 移除 hover 特效
+
+                let embedHtml = '';
+                if (ytId && ytId.length > 5) {
+                    embedHtml = `<iframe width="100%" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                } else if (url.includes('drive.google.com')) {
+                    let fileId = '';
+                    if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
+                    else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
+                    embedHtml = `<iframe width="100%" src="https://drive.google.com/file/d/${fileId}/preview" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                } else {
+                    embedHtml = `<video src="${url}" controls autoplay playsinline style="width: 100%; border-radius: 12px 12px 0 0;"></video>`;
+                }
+                
+                item.innerHTML = `
+                    ${embedHtml}
+                    <button class="w-full py-2 bg-indigo-900 hover:bg-indigo-800 text-white text-[11px] font-bold mt-[-4px] transition-colors flex items-center justify-center gap-1">
+                        <i class="fas fa-external-link-alt"></i> 查看行程明細
+                    </button>
+                `;
+
+                // 綁定「查看行程明細」按鈕事件
+                item.querySelector('button').addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    triggerHaptic();
+                    modal.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        openViewModal(evt.id); 
+                    }, 300);
+                });
             });
             container.appendChild(item);
         });
@@ -587,6 +615,7 @@ function requestAdminAccess(callback) {
     }
 }
 
+// 🌟 Apple Watch 按鈕移出 setTimeout，保證穩定載入
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
@@ -624,35 +653,67 @@ if (importGovBtn) {
             } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
         });
     });
+
+    if (!document.getElementById('btn-cleanup-holidays')) {
+        const cleanupBtn = document.createElement('button');
+        cleanupBtn.id = 'btn-cleanup-holidays';
+        cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+        cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
+        importGovBtn.parentNode.appendChild(cleanupBtn);
+        cleanupBtn.addEventListener('click', () => {
+            requestAdminAccess(async () => {
+                if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
+                triggerHaptic();
+                try {
+                    const govEvents = events.filter(e => e.author === '政府行事曆');
+                    const seen = new Set();
+                    const duplicates = [];
+                    for (const evt of govEvents) {
+                        const uniqueKey = `${evt.title}_${evt.startDate}`;
+                        if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
+                    }
+                    if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
+                    if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
+                        for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
+                        alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
+                    }
+                } catch (err) { alert('清除失敗，請檢查網路連線。'); }
+            });
+        });
+        
+        // 🌟 Apple Watch 匯出按鈕：直接綁定在清除按鈕下方，保證載入
+        const appleBtn = document.createElement('button');
+        appleBtn.id = 'btn-export-apple';
+        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
+        importGovBtn.parentNode.appendChild(appleBtn);
+        
+        appleBtn.addEventListener('click', () => {
+            const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
+            if (pwd !== ADMIN_PASSWORD) return alert('❌ 密碼錯誤！');
+            if (events.length === 0) return alert('目前沒有任何行程喔！');
+            
+            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
+            events.forEach(e => {
+                const s = e.startDate.replace(/-/g, '');
+                let ed = new Date(e.endDate || e.startDate);
+                ed.setDate(ed.getDate() + 1);
+                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
+                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
+                if (e.location) ics += "LOCATION:" + e.location + "\n";
+                ics += "END:VEVENT\n";
+            });
+            ics += "END:VCALENDAR";
+            
+            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'family_events.ics';
+            link.click();
+        });
+    }
 }
 
-if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
-    const cleanupBtn = document.createElement('button');
-    cleanupBtn.id = 'btn-cleanup-holidays';
-    cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-    cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
-    importGovBtn.parentNode.appendChild(cleanupBtn);
-    cleanupBtn.addEventListener('click', () => {
-        requestAdminAccess(async () => {
-            if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
-            triggerHaptic();
-            try {
-                const govEvents = events.filter(e => e.author === '政府行事曆');
-                const seen = new Set();
-                const duplicates = [];
-                for (const evt of govEvents) {
-                    const uniqueKey = `${evt.title}_${evt.startDate}`;
-                    if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
-                }
-                if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
-                if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                    for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
-                    alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
-                }
-            } catch (err) { alert('清除失敗，請檢查網路連線。'); }
-        });
-    });
-}
 
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
@@ -743,142 +804,6 @@ if (exportBtn && importInput) {
     });
 }
 
-const galleryModal = document.getElementById('gallery-modal');
-document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
-document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
-
-function renderGalleryGrid() {
-    const container = document.getElementById('gallery-grid-container');
-    container.innerHTML = '';
-    
-    container.className = 'p-4 masonry-gallery bg-gray-50 flex-1 overflow-y-auto'; 
-    
-    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    if (photoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400"><i class="far fa-images text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何相片記錄喔！</p></div>`;
-        return;
-    }
-    
-    photoEvents.forEach((evt, idx) => {
-        const item = document.createElement('div');
-        item.className = 'masonry-item shadow-sm border border-gray-200';
-        const imgUrl = getDirectImageUrl(evt.photoUrl);
-        item.innerHTML = `
-            <img src="${imgUrl}" loading="lazy" alt="Family Memory">
-            <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
-            <div class="masonry-overlay">
-                <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
-                <p class="text-[10px] text-gray-200 mt-1 font-bold"><i class="fas fa-search-plus"></i> 點擊放大觀賞</p>
-            </div>
-        `;
-        item.addEventListener('click', () => { 
-            triggerHaptic(); 
-            openLightbox(photoEvents, idx); 
-        });
-        container.appendChild(item);
-    });
-}
-
-let lightboxInterval = null;
-function openLightbox(photoEvents, startIndex) {
-    let currentIndex = startIndex;
-    let modal = document.getElementById('photo-lightbox-modal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'photo-lightbox-modal';
-        modal.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center opacity-0 transition-opacity duration-300';
-        modal.innerHTML = `
-            <button id="lb-close" class="absolute top-4 right-4 text-white p-4 text-2xl hover:text-rose-400 z-50 transition-colors"><i class="fas fa-times"></i></button>
-            <button id="lb-prev" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-left"></i></button>
-            <button id="lb-next" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-right"></i></button>
-            
-            <div class="relative w-full max-w-6xl px-12 md:px-24 flex-1 flex items-center justify-center">
-                <img id="lb-img" class="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl transition-all duration-300 opacity-0 scale-95">
-            </div>
-            
-            <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-50">
-                <div id="lb-title" class="text-white font-extrabold text-lg md:text-2xl drop-shadow-lg tracking-wide"></div>
-                <div class="flex items-center gap-4">
-                    <button id="lb-play" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10"><i class="fas fa-play"></i> 電子相框輪播</button>
-                    <button id="lb-goto" class="px-5 py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-warm-500/30"><i class="fas fa-calendar-day"></i> 開啟行程明細</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('lb-close').onclick = closeLB;
-        document.getElementById('lb-prev').onclick = () => showIdx(currentIndex - 1);
-        document.getElementById('lb-next').onclick = () => showIdx(currentIndex + 1);
-        
-        document.addEventListener('keydown', (e) => {
-            if (modal.classList.contains('hidden')) return;
-            if (e.key === 'ArrowLeft') showIdx(currentIndex - 1);
-            if (e.key === 'ArrowRight') showIdx(currentIndex + 1);
-            if (e.key === 'Escape') closeLB();
-        });
-    }
-    
-    modal.classList.remove('hidden');
-    void modal.offsetWidth; 
-    modal.classList.replace('opacity-0', 'opacity-100');
-    
-    let isPlaying = false;
-    const playBtn = document.getElementById('lb-play');
-    playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
-    playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
-    if(lightboxInterval) clearInterval(lightboxInterval);
-    
-    function showIdx(idx) {
-        if (idx < 0) idx = photoEvents.length - 1;
-        if (idx >= photoEvents.length) idx = 0;
-        currentIndex = idx;
-        const evt = photoEvents[idx];
-        
-        const img = document.getElementById('lb-img');
-        img.classList.remove('opacity-100', 'scale-100');
-        img.classList.add('opacity-0', 'scale-95');
-        
-        setTimeout(() => {
-            img.src = getDirectImageUrl(evt.photoUrl);
-            img.onload = () => {
-                img.classList.remove('opacity-0', 'scale-95');
-                img.classList.add('opacity-100', 'scale-100');
-            };
-        }, 150);
-        
-        document.getElementById('lb-title').innerText = `${evt.startDate} | ${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
-        
-        document.getElementById('lb-goto').onclick = () => {
-            closeLB();
-            document.getElementById('gallery-modal').classList.add('hidden');
-            openViewModal(evt.id);
-        };
-    }
-    
-    function closeLB() {
-        modal.classList.replace('opacity-100', 'opacity-0');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-        if(lightboxInterval) clearInterval(lightboxInterval);
-        isPlaying = false;
-    }
-    
-    playBtn.onclick = () => {
-        isPlaying = !isPlaying;
-        if(isPlaying) {
-            playBtn.innerHTML = '<i class="fas fa-pause"></i> 停止輪播';
-            playBtn.className = 'px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/30';
-            lightboxInterval = setInterval(() => showIdx(currentIndex + 1), 3500);
-        } else {
-            playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
-            playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
-            clearInterval(lightboxInterval);
-        }
-    };
-    
-    showIdx(startIndex);
-}
-
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
     familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
@@ -909,7 +834,7 @@ const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
 checklistCheckbox.addEventListener('change', (e) => {
     checklistFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && checklistContainer.length === 0) addChecklistRow();
+    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
 });
 function addChecklistRow(text = '', assignee = '', done = false) {
     const row = document.createElement('div');
@@ -930,7 +855,7 @@ const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
 pollCheckbox.addEventListener('change', (e) => {
     pollFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && pollOptionsContainer.length === 0) addPollOptionRow();
+    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
 });
 function addPollOptionRow(title = '') {
     const row = document.createElement('div');
@@ -1551,6 +1476,123 @@ function openViewModal(id) {
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
 
+// 🌟 全新升級：防彈級獨立播放引擎 (Inline Video Playback)
+function openVideoGallery() {
+    let modal = document.getElementById('video-gallery-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'video-gallery-modal';
+        modal.className = 'fixed inset-0 bg-warm-50 z-[150] flex flex-col hidden transition-transform transform translate-x-full duration-300';
+        modal.innerHTML = `
+            <div class="px-4 py-4 md:px-6 md:py-5 bg-white border-b border-warm-200 flex justify-between items-center shadow-sm shrink-0 z-50">
+                <h2 class="text-lg md:text-xl font-extrabold text-indigo-800 flex items-center gap-2"><i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳</h2>
+                <button id="btn-close-video-gallery" class="w-8 h-8 md:w-10 md:h-10 bg-warm-100 text-warm-600 rounded-full flex items-center justify-center hover:bg-warm-200 transition-colors"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div id="video-grid-container" class="p-4 masonry-gallery bg-gray-900 flex-1 overflow-y-auto"></div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('btn-close-video-gallery').addEventListener('click', () => {
+            triggerHaptic();
+            modal.classList.add('translate-x-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('video-grid-container').innerHTML = ''; // 關閉時清空，停止所有播放中的影片
+            }, 300);
+        });
+    }
+
+    const container = document.getElementById('video-grid-container');
+    container.innerHTML = '';
+    
+    const videoEvents = events.filter(e => e.videoUrl && e.videoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    
+    if (videoEvents.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500"><i class="fas fa-video-slash text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何影片記錄喔！</p></div>`;
+    } else {
+        videoEvents.forEach(evt => {
+            const item = document.createElement('div');
+            item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group cursor-pointer';
+            
+            let ytId = '';
+            let url = evt.videoUrl.trim();
+            
+            try {
+                if (url.includes('v=')) {
+                    ytId = url.split('v=')[1].split('&')[0];
+                } else if (url.includes('youtu.be/')) {
+                    ytId = url.split('youtu.be/')[1].split('?')[0];
+                } else if (url.includes('shorts/')) {
+                    ytId = url.split('shorts/')[1].split('?')[0];
+                }
+            } catch (e) {}
+            
+            let thumbHtml = '';
+            if (ytId && ytId.length > 5) {
+                thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="masonry-thumb w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
+            } else {
+                thumbHtml = `<div class="w-full aspect-video bg-gradient-to-br from-indigo-900 to-gray-900 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-all duration-500"></div>`;
+            }
+
+            item.innerHTML = `
+                ${thumbHtml}
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
+                    <i class="fas fa-play text-white text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-75 group-hover:scale-100 transition-transform"></i>
+                </div>
+                <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 pointer-events-none"><i class="fas fa-video"></i> ${evt.startDate}</div>
+                <div class="masonry-overlay z-10 pt-16 pointer-events-none">
+                    <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
+                    <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊直接播放</p>
+                </div>
+            `;
+            
+            item.addEventListener('click', function onClick(e) {
+                e.stopPropagation();
+                triggerHaptic();
+                // 點擊後解除綁定，避免重複注入
+                item.removeEventListener('click', onClick);
+                item.classList.remove('cursor-pointer', 'group');
+                
+                let embedHtml = '';
+                if (ytId && ytId.length > 5) {
+                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                } else if (url.includes('drive.google.com')) {
+                    let fileId = '';
+                    if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
+                    else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
+                    embedHtml = `<iframe class="w-full" style="aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                } else {
+                    embedHtml = `<video src="${url}" controls autoplay playsinline class="w-full" style="border-radius: 12px 12px 0 0;"></video>`;
+                }
+                
+                // 原位取代為播放器，並附加「查看行程明細」按鈕
+                item.innerHTML = `
+                    ${embedHtml}
+                    <button class="w-full py-2.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-100 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded-b-xl border-t border-indigo-900">
+                        <i class="fas fa-external-link-alt"></i> 查看完整行程明細
+                    </button>
+                `;
+                
+                item.querySelector('button').addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    triggerHaptic();
+                    modal.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        document.getElementById('video-grid-container').innerHTML = '';
+                        openViewModal(evt.id); 
+                    }, 300);
+                });
+            });
+            
+            container.appendChild(item);
+        });
+    }
+    
+    modal.classList.remove('hidden');
+    void modal.offsetWidth;
+    modal.classList.remove('translate-x-full');
+}
+
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     triggerHaptic();
@@ -1621,38 +1663,3 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
 document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
-
-setTimeout(() => {
-    const importGovBtn = document.getElementById('btn-import-gov-holidays');
-    if (importGovBtn && importGovBtn.parentNode && !document.getElementById('btn-export-apple')) {
-        const appleBtn = document.createElement('button');
-        appleBtn.id = 'btn-export-apple';
-        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
-        importGovBtn.parentNode.appendChild(appleBtn);
-        
-        appleBtn.addEventListener('click', () => {
-            const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
-            if (pwd !== ADMIN_PASSWORD) return alert('❌ 密碼錯誤！');
-            if (events.length === 0) return alert('目前沒有任何行程喔！');
-            
-            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
-            events.forEach(e => {
-                const s = e.startDate.replace(/-/g, '');
-                let ed = new Date(e.endDate || e.startDate);
-                ed.setDate(ed.getDate() + 1);
-                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
-                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
-                if (e.location) ics += "LOCATION:" + e.location + "\n";
-                ics += "END:VEVENT\n";
-            });
-            ics += "END:VCALENDAR";
-            
-            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'family_events.ics';
-            link.click();
-        });
-    }
-}, 1500);
