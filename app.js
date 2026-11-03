@@ -35,7 +35,6 @@ let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
-let wasRadioPlaying = false; // 🌟 記憶廣播狀態
 
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
@@ -78,6 +77,20 @@ if (!document.getElementById('ai-border-style')) {
     
     html, body { max-width: 100vw; overflow-x: hidden; }
     iframe, video { max-width: 100% !important; box-sizing: border-box; }
+
+    /* 🌟 修復：針對 iOS 手機瀏覽器的視圖鎖定，解決頂端時間軸遮擋問題 */
+    #video-gallery-modal { 
+        padding-top: env(safe-area-inset-top, 0px); 
+    }
+    .video-playback-wrapper {
+        position: relative;
+        z-index: 50;
+        margin-top: env(safe-area-inset-top, 0px);
+    }
+    .video-playback-wrapper iframe, .video-playback-wrapper video {
+        border-radius: 12px 12px 0 0 !important;
+        background-color: #000;
+    }
 
     @media screen and (max-height: 600px) and (orientation: landscape) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
@@ -193,17 +206,6 @@ function openVideoGallery() {
             setTimeout(() => {
                 modal.classList.add('hidden');
                 document.getElementById('video-grid-container').innerHTML = ''; 
-                // 🌟 當大廳關閉時，恢復可能被中斷的廣播
-                const radioAudio = document.getElementById('radio-audio');
-                const radioIcon = document.getElementById('radio-icon');
-                const radioStatus = document.getElementById('radio-status');
-                if (wasRadioPlaying && radioAudio && radioAudio.paused) {
-                    radioAudio.play().then(() => {
-                        radioIcon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-                        radioStatus.innerText = '正在播放';
-                    }).catch(()=>{});
-                    wasRadioPlaying = false;
-                }
             }, 300);
         });
     }
@@ -252,54 +254,29 @@ function openVideoGallery() {
                 e.stopPropagation();
                 triggerHaptic();
                 
-                // 🌟 播放影片前，先暫停廣播，並記住狀態
-                const radioAudio = document.getElementById('radio-audio');
-                const radioIcon = document.getElementById('radio-icon');
-                const radioStatus = document.getElementById('radio-status');
-                if (radioAudio && !radioAudio.paused) {
-                    wasRadioPlaying = true;
-                    radioAudio.pause();
-                    radioIcon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
-                    radioStatus.innerText = '已暫停(影片播放中)';
-                }
-
                 item.removeEventListener('click', onClick);
                 item.classList.remove('cursor-pointer', 'group');
                 
                 let embedHtml = '';
                 if (ytId && ytId.length > 5) {
-                    // 🌟 解決手機 iframe 全螢幕被時間軸遮住的問題：
-                    // 使用 allowfullscreen 並在載入後嘗試自動呼叫 requestFullscreen
-                    embedHtml = `<iframe id="yt-player-${evt.id}" style="width: 100%; aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0; max-width: 100%;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1&fs=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe style="width: 100%; aspect-ratio: 16/9; border: none; max-width: 100%;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
                 } else if (url.includes('drive.google.com')) {
                     let fileId = '';
                     if (url.includes('/d/')) fileId = url.split('/d/')[1].split('/')[0];
                     else if (url.includes('id=')) fileId = new URL(url).searchParams.get('id');
-                    embedHtml = `<iframe id="gd-player-${evt.id}" style="width: 100%; aspect-ratio: 16/9; border: none; border-radius: 12px 12px 0 0; max-width: 100%;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                    embedHtml = `<iframe style="width: 100%; aspect-ratio: 16/9; border: none; max-width: 100%;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
                 } else {
-                    embedHtml = `<video id="vid-player-${evt.id}" src="${url}" controls autoplay playsinline style="width: 100%; max-width: 100%; border-radius: 12px 12px 0 0;"></video>`;
+                    embedHtml = `<video src="${url}" controls autoplay playsinline style="width: 100%; max-width: 100%;"></video>`;
                 }
                 
                 item.innerHTML = `
-                    ${embedHtml}
-                    <button class="w-full py-2.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-100 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded-b-xl border-t border-indigo-900">
+                    <div class="video-playback-wrapper">
+                        ${embedHtml}
+                    </div>
+                    <button class="w-full py-2.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-100 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 rounded-b-xl border-t border-indigo-900 z-10 relative">
                         <i class="fas fa-external-link-alt"></i> 查看完整行程明細
                     </button>
                 `;
-
-                // 嘗試讓 iframe 或 video 自動進入全螢幕
-                setTimeout(() => {
-                    const iframe = document.getElementById(`yt-player-${evt.id}`) || document.getElementById(`gd-player-${evt.id}`);
-                    const video = document.getElementById(`vid-player-${evt.id}`);
-                    
-                    try {
-                        if (iframe && iframe.requestFullscreen) {
-                            iframe.requestFullscreen().catch(err => console.log(err));
-                        } else if (video && video.requestFullscreen) {
-                            video.requestFullscreen().catch(err => console.log(err));
-                        }
-                    } catch (err) {}
-                }, 500);
                 
                 item.querySelector('button').addEventListener('click', (ev) => {
                     ev.stopPropagation();
@@ -401,7 +378,7 @@ function openManualModal() {
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
                     <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
-                    <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家族相簿/影片牆</b>，以絕美瀑布流重溫美好回憶。</li>
+                    <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 相簿牆 或 🎬 影片大廳</b>，以絕美瀑布流重溫美好回憶。</li>
                     <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
             </section>
@@ -628,6 +605,341 @@ function requestAdminAccess(callback) {
     }
 }
 
+// 🌟 修復 2：重新綁定管理員後台的「Apple 匯出」按鈕與「清理假日」按鈕
+// 改為確保兩者都有獨立的 ID 且正確綁定，解決遺失與失效問題
+const adminSectionInit = () => {
+    const importGovBtn = document.getElementById('btn-import-gov-holidays');
+    if (!importGovBtn) return;
+    
+    // 綁定「匯入假日」功能
+    const newImportGovBtn = importGovBtn.cloneNode(true);
+    importGovBtn.parentNode.replaceChild(newImportGovBtn, importGovBtn);
+    newImportGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
+    newImportGovBtn.addEventListener('click', () => {
+        triggerHaptic();
+        requestAdminAccess(async () => {
+            const defaultYear = currentDate.getFullYear();
+            const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
+            if (!yearStr) return;
+            const targetYear = parseInt(yearStr, 10);
+            if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
+            try {
+                const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
+                const eve = lunarJan1.next(-1);
+                const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
+                const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
+                const govHolidays = [
+                    { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+                    { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                    { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                    { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+                    { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+                    { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+                    { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+                    { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+                    { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+                ];
+                let importedCount = 0;
+                for (const h of govHolidays) {
+                    const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
+                    if (!isExist) { await addDoc(eventsRef, h); importedCount++; }
+                }
+                if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
+                else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
+            } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
+        });
+    });
+
+    // 建立「清除重複假日」按鈕
+    let cleanupBtn = document.getElementById('btn-cleanup-holidays');
+    if (!cleanupBtn) {
+        cleanupBtn = document.createElement('button');
+        cleanupBtn.id = 'btn-cleanup-holidays';
+        cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+        cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
+        newImportGovBtn.parentNode.appendChild(cleanupBtn);
+    }
+    cleanupBtn.addEventListener('click', () => {
+        requestAdminAccess(async () => {
+            if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
+            triggerHaptic();
+            try {
+                const govEvents = events.filter(e => e.author === '政府行事曆');
+                const seen = new Set();
+                const duplicates = [];
+                for (const evt of govEvents) {
+                    const uniqueKey = `${evt.title}_${evt.startDate}`;
+                    if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
+                }
+                if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
+                if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
+                    for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
+                    alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
+                }
+            } catch (err) { alert('清除失敗，請檢查網路連線。'); }
+        });
+    });
+
+    // 建立「Apple Watch 匯出」按鈕
+    let appleBtn = document.getElementById('btn-export-apple');
+    if (!appleBtn) {
+        appleBtn = document.createElement('button');
+        appleBtn.id = 'btn-export-apple';
+        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
+        newImportGovBtn.parentNode.appendChild(appleBtn);
+    }
+    appleBtn.addEventListener('click', () => {
+        requestAdminAccess(() => {
+            if (events.length === 0) return alert('目前沒有任何行程喔！');
+            
+            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
+            events.forEach(e => {
+                const s = e.startDate.replace(/-/g, '');
+                let ed = new Date(e.endDate || e.startDate);
+                ed.setDate(ed.getDate() + 1);
+                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
+                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
+                if (e.location) ics += "LOCATION:" + e.location + "\n";
+                ics += "END:VEVENT\n";
+            });
+            ics += "END:VCALENDAR";
+            
+            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'family_events.ics';
+            link.click();
+        });
+    });
+};
+adminSectionInit();
+
+const exportBtn = document.getElementById('btn-export-json');
+const importInput = document.getElementById('input-import-json');
+if (exportBtn && importInput) {
+    const importLabel = importInput.parentElement;
+    const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
+    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份歷史紀錄 (隨時可還原)';
+    exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
+    exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
+    
+    const cloudRestoreBtn = document.createElement('button');
+    cloudRestoreBtn.id = 'btn-cloud-restore';
+    cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
+    cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
+    importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
+
+    exportBtn.addEventListener('click', () => {
+        requestAdminAccess(async () => {
+            if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
+            triggerHaptic();
+            try {
+                exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...'; exportBtn.disabled = true;
+                const backupData = { exportDate: new Date().toISOString(), events: events };
+                const backupId = Date.now().toString();
+                await setDoc(doc(db, 'familyBackups', backupId), backupData);
+                alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
+            } catch (err) { alert('備份失敗，請檢查網路連線。'); } 
+            finally { exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端'; exportBtn.disabled = false; }
+        });
+    });
+
+    cloudRestoreBtn.addEventListener('click', () => {
+        requestAdminAccess(async () => {
+            triggerHaptic();
+            try {
+                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...'; cloudRestoreBtn.disabled = true;
+                const snap = await getDocs(collection(db, 'familyBackups'));
+                if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
+                const backupsList = [];
+                snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
+                backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
+
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
+                let listHtml = '';
+                backupsList.slice(0, 10).forEach((b, index) => {
+                    const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
+                    const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2 font-bold">最新</span>' : '';
+                    listHtml += `
+                        <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
+                            <div><div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div><div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div></div>
+                            <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
+                        </button>`;
+                });
+                modal.innerHTML = `
+                    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+                        <div class="px-5 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                            <h3 class="font-bold text-amber-900 flex items-center gap-2"><i class="fas fa-history text-amber-500"></i> 選擇要還原的歷史備份</h3>
+                            <button id="btn-close-backup-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                        <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">${listHtml}</div>
+                    </div>`;
+                document.body.appendChild(modal);
+
+                document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
+                modal.onclick = () => modal.remove();
+
+                modal.querySelectorAll('button[data-id]').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const bId = btn.getAttribute('data-id');
+                        const selectedBackup = backupsList.find(b => b.id === bId);
+                        const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
+                        if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
+                            modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
+                            try {
+                                for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
+                                for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
+                                alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
+                                document.getElementById('member-modal').classList.add('hidden');
+                            } catch (err) { alert('寫入資料失敗，請檢查網路。'); }
+                        }
+                    };
+                });
+            } catch (err) { alert('讀取雲端歷史紀錄失敗，請檢查網路連線。'); } 
+            finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
+        });
+    });
+}
+
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    
+    container.className = 'p-4 masonry-gallery bg-gray-50 flex-1 overflow-y-auto'; 
+    
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (photoEvents.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400"><i class="far fa-images text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何相片記錄喔！</p></div>`;
+        return;
+    }
+    
+    photoEvents.forEach((evt, idx) => {
+        const item = document.createElement('div');
+        item.className = 'masonry-item shadow-sm border border-gray-200';
+        const imgUrl = getDirectImageUrl(evt.photoUrl);
+        item.innerHTML = `
+            <img src="${imgUrl}" loading="lazy" alt="Family Memory" class="masonry-thumb">
+            <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
+            <div class="masonry-overlay">
+                <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
+                <p class="text-[10px] text-gray-200 mt-1 font-bold"><i class="fas fa-search-plus"></i> 點擊放大觀賞</p>
+            </div>
+        `;
+        item.addEventListener('click', () => { 
+            triggerHaptic(); 
+            openLightbox(photoEvents, idx); 
+        });
+        container.appendChild(item);
+    });
+}
+
+let lightboxInterval = null;
+function openLightbox(photoEvents, startIndex) {
+    let currentIndex = startIndex;
+    let modal = document.getElementById('photo-lightbox-modal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'photo-lightbox-modal';
+        modal.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center opacity-0 transition-opacity duration-300';
+        modal.innerHTML = `
+            <button id="lb-close" class="absolute top-4 right-4 text-white p-4 text-2xl hover:text-rose-400 z-50 transition-colors"><i class="fas fa-times"></i></button>
+            <button id="lb-prev" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-left"></i></button>
+            <button id="lb-next" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-right"></i></button>
+            
+            <div class="relative w-full max-w-6xl px-12 md:px-24 flex-1 flex items-center justify-center">
+                <img id="lb-img" class="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl transition-all duration-300 opacity-0 scale-95">
+            </div>
+            
+            <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-50">
+                <div id="lb-title" class="text-white font-extrabold text-lg md:text-2xl drop-shadow-lg tracking-wide"></div>
+                <div class="flex items-center gap-4">
+                    <button id="lb-play" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10"><i class="fas fa-play"></i> 電子相框輪播</button>
+                    <button id="lb-goto" class="px-5 py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-warm-500/30"><i class="fas fa-calendar-day"></i> 開啟行程明細</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('lb-close').onclick = closeLB;
+        document.getElementById('lb-prev').onclick = () => showIdx(currentIndex - 1);
+        document.getElementById('lb-next').onclick = () => showIdx(currentIndex + 1);
+        
+        document.addEventListener('keydown', (e) => {
+            if (modal.classList.contains('hidden')) return;
+            if (e.key === 'ArrowLeft') showIdx(currentIndex - 1);
+            if (e.key === 'ArrowRight') showIdx(currentIndex + 1);
+            if (e.key === 'Escape') closeLB();
+        });
+    }
+    
+    modal.classList.remove('hidden');
+    void modal.offsetWidth; 
+    modal.classList.replace('opacity-0', 'opacity-100');
+    
+    let isPlaying = false;
+    const playBtn = document.getElementById('lb-play');
+    playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+    playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+    if(lightboxInterval) clearInterval(lightboxInterval);
+    
+    function showIdx(idx) {
+        if (idx < 0) idx = photoEvents.length - 1;
+        if (idx >= photoEvents.length) idx = 0;
+        currentIndex = idx;
+        const evt = photoEvents[idx];
+        
+        const img = document.getElementById('lb-img');
+        img.classList.remove('opacity-100', 'scale-100');
+        img.classList.add('opacity-0', 'scale-95');
+        
+        setTimeout(() => {
+            img.src = getDirectImageUrl(evt.photoUrl);
+            img.onload = () => {
+                img.classList.remove('opacity-0', 'scale-95');
+                img.classList.add('opacity-100', 'scale-100');
+            };
+        }, 150);
+        
+        document.getElementById('lb-title').innerText = `${evt.startDate} | ${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
+        
+        document.getElementById('lb-goto').onclick = () => {
+            closeLB();
+            document.getElementById('gallery-modal').classList.add('hidden');
+            openViewModal(evt.id);
+        };
+    }
+    
+    function closeLB() {
+        modal.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+        if(lightboxInterval) clearInterval(lightboxInterval);
+        isPlaying = false;
+    }
+    
+    playBtn.onclick = () => {
+        isPlaying = !isPlaying;
+        if(isPlaying) {
+            playBtn.innerHTML = '<i class="fas fa-pause"></i> 停止輪播';
+            playBtn.className = 'px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/30';
+            lightboxInterval = setInterval(() => showIdx(currentIndex + 1), 3500);
+        } else {
+            playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+            playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+            clearInterval(lightboxInterval);
+        }
+    };
+    
+    showIdx(startIndex);
+}
+
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
     familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
@@ -658,7 +970,7 @@ const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
 checklistCheckbox.addEventListener('change', (e) => {
     checklistFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && checklistContainer.length === 0) addChecklistRow();
+    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
 });
 function addChecklistRow(text = '', assignee = '', done = false) {
     const row = document.createElement('div');
@@ -679,7 +991,7 @@ const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
 pollCheckbox.addEventListener('change', (e) => {
     pollFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && pollOptionsContainer.length === 0) addPollOptionRow();
+    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
 });
 function addPollOptionRow(title = '') {
     const row = document.createElement('div');
@@ -1290,6 +1602,132 @@ function openViewModal(id) {
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
 
+document.getElementById('event-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    triggerHaptic();
+    const titleVal = document.getElementById('event-title').value.trim();
+    if (!titleVal) return alert('請輸入活動名稱！');
+
+    const isRecurring = document.getElementById('event-is-lunar-recurring').checked;
+    let lMonth = null, lDay = null; const startVal = document.getElementById('event-start-date').value;
+    if (isRecurring && startVal) {
+        const [y, m, d] = startVal.split('-').map(Number);
+        const lunar = Solar.fromYmd(y, m, d).getLunar();
+        lMonth = lunar.getMonth(); lDay = lunar.getDay();
+    }
+
+    let checklistArr = [];
+    if (checklistCheckbox.checked) {
+        document.querySelectorAll('.checklist-row').forEach(row => {
+            const text = row.querySelector('.checklist-text').value.trim();
+            const assignee = row.querySelector('.checklist-assignee').value.trim();
+            const done = row.dataset.done === 'true';
+            if (text) checklistArr.push({ text, assignee, done });
+        });
+    }
+
+    let pollOpts = [];
+    if (pollCheckbox.checked) {
+        const existing = events.find(ev => ev.id === currentEditingId);
+        document.querySelectorAll('.poll-row').forEach((row, idx) => {
+            const t = row.querySelector('.poll-option-title').value.trim();
+            if (t) {
+                let voters = (existing && existing.pollOptions && existing.pollOptions[idx] && existing.pollOptions[idx].title === t) ? existing.pollOptions[idx].voters : [];
+                pollOpts.push({ title: t, voters: voters });
+            }
+        });
+    }
+
+    let payersArr = []; let sharersArr = [];
+    if (expenseCheckbox.checked) {
+        document.querySelectorAll('.payer-row').forEach(row => {
+            const name = row.querySelector('.payer-name').value.trim(); const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
+            if (name && amount > 0) payersArr.push({ name, amount });
+        });
+        document.querySelectorAll('.sharer-row').forEach(row => {
+            const name = row.querySelector('.sharer-name').value.trim(); const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
+            if (name) sharersArr.push({ name, weight });
+        });
+    }
+
+    const eventData = {
+        title: titleVal, icon: document.getElementById('event-icon').value,
+        startDate: startVal, endDate: document.getElementById('event-end-date').value || startVal,
+        isLunarRecurring: isRecurring, lunarMonth: lMonth, lunarDay: lDay,
+        author: document.getElementById('event-author').value.trim() || '家族成員',
+        color: document.querySelector('input[name="event-color"]:checked').value,
+        photoUrl: document.getElementById('event-photo-url').value.trim(),
+        videoUrl: document.getElementById('event-video-url').value.trim(), fileUrl: document.getElementById('event-file-url').value.trim(),
+        location: document.getElementById('event-location').value.trim(), mapUrl: document.getElementById('event-map-url').value.trim(),
+        isChecklist: checklistCheckbox.checked && checklistArr.length > 0, checklist: checklistArr,
+        isPoll: pollCheckbox.checked && pollOpts.length > 0, pollOptions: pollOpts,
+        isExpense: expenseCheckbox.checked && payersArr.length > 0, payers: payersArr, sharers: sharersArr
+    };
+
+    if (currentEditingId) { await updateDoc(doc(eventsRef, currentEditingId), eventData); } 
+    else { await addDoc(eventsRef, eventData); }
+    closeModal();
+});
+
+document.getElementById('btn-delete').addEventListener('click', async () => {
+    if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
+});
+
+function initFunAnimations() {
+    if (document.getElementById('fun-animation-style')) return;
+    
+    if (!window.confetti) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js';
+        document.head.appendChild(script);
+    }
+    
+    const style = document.createElement('style');
+    style.id = 'fun-animation-style';
+    style.innerHTML = `
+    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
+    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
+    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
+    
+    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
+    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
+    
+    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
+    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
+    
+    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
+    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
+    `;
+    document.head.appendChild(style);
+
+    const vehicleDiv = document.createElement('div');
+    vehicleDiv.className = 'vehicle-wrapper';
+    const isTesla = Math.random() > 0.5;
+    if (isTesla) {
+        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
+    } else {
+        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
+    }
+    document.body.appendChild(vehicleDiv);
+
+    if (Math.random() > 0.7) {
+        const droneDiv = document.createElement('div');
+        droneDiv.className = 'drone-wrapper';
+        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
+        document.body.appendChild(droneDiv);
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu') || e.target.closest('#manual-modal') || e.target.closest('#qr-modal')) return;
+        let ripple = document.createElement('div');
+        ripple.className = 'click-ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 500);
+    });
+}
+
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
@@ -1621,60 +2059,5 @@ function initRadioPlayer() {
     });
 }
 
-function initFunAnimations() {
-    if (document.getElementById('fun-animation-style')) return;
-    
-    if (!window.confetti) {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js';
-        document.head.appendChild(script);
-    }
-    
-    const style = document.createElement('style');
-    style.id = 'fun-animation-style';
-    style.innerHTML = `
-    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
-    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
-    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
-    
-    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
-    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
-    
-    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
-    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
-    
-    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
-    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
-    `;
-    document.head.appendChild(style);
-
-    const vehicleDiv = document.createElement('div');
-    vehicleDiv.className = 'vehicle-wrapper';
-    const isTesla = Math.random() > 0.5;
-    if (isTesla) {
-        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
-    } else {
-        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
-    }
-    document.body.appendChild(vehicleDiv);
-
-    if (Math.random() > 0.7) {
-        const droneDiv = document.createElement('div');
-        droneDiv.className = 'drone-wrapper';
-        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
-        document.body.appendChild(droneDiv);
-    }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu') || e.target.closest('#manual-modal') || e.target.closest('#qr-modal')) return;
-        let ripple = document.createElement('div');
-        ripple.className = 'click-ripple';
-        ripple.style.left = e.clientX + 'px';
-        ripple.style.top = e.clientY + 'px';
-        document.body.appendChild(ripple);
-        setTimeout(() => ripple.remove(), 500);
-    });
-}
-
-initRadioPlayer();
 initFunAnimations();
+initRadioPlayer();
