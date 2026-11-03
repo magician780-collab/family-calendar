@@ -14,13 +14,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
-// 🌟 修復 1：解決「新增活動」點擊顏色標籤時，瀏覽器因焦點捕捉導致畫面亂跳/顯示不全的 Bug
 document.querySelectorAll('input[name="event-color"]').forEach(radio => {
     radio.classList.remove('sr-only');
-    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10'); // 改用安全隱藏法，拔除強制捲動
+    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10');
 });
 const eventForm = document.getElementById('event-form');
-if (eventForm) eventForm.classList.add('pb-8'); // 增加底部彈性留白，防止按鈕被截斷
+if (eventForm) eventForm.classList.add('pb-8');
 
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
@@ -78,8 +77,50 @@ if (!document.getElementById('ai-border-style')) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
-        /* 🌟 修復手機橫向隱藏問題：將 radio-widget 從隱藏清單移除 */
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
+    }
+    /* 🌟 新增相簿牆專屬瀑布流與懸浮特效 CSS */
+    .masonry-gallery {
+        column-count: 2;
+        column-gap: 12px;
+    }
+    @media (min-width: 768px) {
+        .masonry-gallery { column-count: 3; column-gap: 16px; }
+    }
+    @media (min-width: 1024px) {
+        .masonry-gallery { column-count: 4; column-gap: 16px; }
+    }
+    .masonry-item {
+        break-inside: avoid;
+        margin-bottom: 12px;
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        background: #f3f4f6;
+    }
+    .masonry-item img {
+        width: 100%;
+        display: block;
+        transition: transform 0.5s ease;
+    }
+    .masonry-item:hover img {
+        transform: scale(1.08);
+    }
+    .masonry-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 12px;
+        color: white;
+    }
+    .masonry-item:hover .masonry-overlay {
+        opacity: 1;
     }
     `;
     document.head.appendChild(style);
@@ -126,11 +167,69 @@ if (galleryBtn && !document.getElementById('btn-open-manual')) {
     manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
     galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
 
+    const qrBtn = document.createElement('button');
+    qrBtn.id = 'btn-open-qr';
+    qrBtn.className = 'w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-2';
+    qrBtn.innerHTML = '<i class="fas fa-qrcode text-emerald-600"></i> 📱 掃描安裝 App';
+    manualBtn.parentNode.insertBefore(qrBtn, manualBtn.nextSibling);
+
     manualBtn.addEventListener('click', () => {
         triggerHaptic();
         if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
         openManualModal();
     });
+
+    qrBtn.addEventListener('click', () => {
+        triggerHaptic();
+        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
+        openQRModal();
+    });
+}
+
+function openQRModal() {
+    if (document.getElementById('qr-modal')) {
+        document.getElementById('qr-modal').classList.remove('hidden');
+        return;
+    }
+    if (typeof QRCode === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        script.onload = () => createAndShowQRModal();
+        document.head.appendChild(script);
+    } else {
+        createAndShowQRModal();
+    }
+}
+
+function createAndShowQRModal() {
+    const modal = document.createElement('div');
+    modal.id = 'qr-modal';
+    modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
+    
+    modal.innerHTML = `
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-content" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-emerald-900 flex items-center gap-2"><i class="fas fa-qrcode text-emerald-600"></i> 掃描加入主畫面</h3>
+                <button id="btn-close-qr-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 flex flex-col items-center justify-center space-y-4">
+                <p class="text-sm font-bold text-gray-700 text-center">請家人用手機相機掃描下方條碼</p>
+                <div id="qrcode-render-area" class="p-4 bg-white border-2 border-dashed border-emerald-200 rounded-2xl flex justify-center shadow-sm"></div>
+                <div class="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl w-full">
+                    <ul class="list-disc pl-4 space-y-1 font-bold">
+                        <li>iPhone 掃描後請用 <strong>Safari</strong> 開啟</li>
+                        <li>Android 掃描後請用 <strong>Chrome</strong> 開啟</li>
+                        <li>開啟後，在底部選單點擊 <strong>「加入主畫面」</strong> 即可直接變成手機 App！</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    const currentUrl = window.location.origin + window.location.pathname;
+    new QRCode(document.getElementById("qrcode-render-area"), { text: currentUrl, width: 180, height: 180, colorDark : "#064e3b", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+    document.getElementById('btn-close-qr-modal').onclick = () => modal.classList.add('hidden');
+    modal.onclick = () => modal.classList.add('hidden');
 }
 
 function openManualModal() {
@@ -138,14 +237,12 @@ function openManualModal() {
         document.getElementById('manual-modal').classList.remove('hidden');
         return;
     }
-
     const modal = document.createElement('div');
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
-        
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section>
                 <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
@@ -156,7 +253,6 @@ function openManualModal() {
                     <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
                 </ul>
             </section>
-            
             <section>
                 <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
@@ -165,7 +261,6 @@ function openManualModal() {
                     <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
                 </ul>
             </section>
-            
             <section>
                 <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
@@ -175,7 +270,6 @@ function openManualModal() {
                     <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
             </section>
-
             <section>
                 <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
                 <ul class="list-disc pl-5 space-y-1">
@@ -184,7 +278,6 @@ function openManualModal() {
                     <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
                 </ul>
             </section>
-            
             <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
                 <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
                 <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
@@ -208,9 +301,7 @@ function openManualModal() {
             </div>
         </div>
     `;
-
     document.body.appendChild(modal);
-
     document.getElementById('btn-close-manual-modal').onclick = () => modal.classList.add('hidden');
     document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
     modal.onclick = () => modal.classList.add('hidden');
@@ -553,22 +644,143 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
+// 🌟 全新進化 1：相簿牆改為絕美瀑布流 (Masonry) 排版
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
+    
+    // 覆蓋原本的 Grid Layout，改套用我們寫好的 masonry-gallery
+    container.className = 'p-4 masonry-gallery bg-gray-50 flex-1 overflow-y-auto'; 
+    
     const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
     if (photoEvents.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-400"><i class="far fa-images text-4xl mb-3 opacity-50"></i><p class="text-sm">目前還沒有任何相片記錄喔！</p></div>`;
         return;
     }
-    photoEvents.forEach(evt => {
+    
+    photoEvents.forEach((evt, idx) => {
         const item = document.createElement('div');
-        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
+        item.className = 'masonry-item shadow-sm border border-gray-200';
         const imgUrl = getDirectImageUrl(evt.photoUrl);
-        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
-        item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
+        item.innerHTML = `
+            <img src="${imgUrl}" loading="lazy" alt="Family Memory">
+            <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
+            <div class="masonry-overlay">
+                <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
+                <p class="text-[10px] text-gray-200 mt-1 font-bold"><i class="fas fa-search-plus"></i> 點擊放大觀賞</p>
+            </div>
+        `;
+        item.addEventListener('click', () => { 
+            triggerHaptic(); 
+            // 🌟 觸發全新的沉浸式燈箱，而不是舊版的檢視視窗
+            openLightbox(photoEvents, idx); 
+        });
         container.appendChild(item);
     });
+}
+
+// 🌟 全新進化 2 & 3：沉浸式全螢幕燈箱與電子相框(自動輪播) 系統
+let lightboxInterval = null;
+function openLightbox(photoEvents, startIndex) {
+    let currentIndex = startIndex;
+    let modal = document.getElementById('photo-lightbox-modal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'photo-lightbox-modal';
+        modal.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center opacity-0 transition-opacity duration-300';
+        modal.innerHTML = `
+            <button id="lb-close" class="absolute top-4 right-4 text-white p-4 text-2xl hover:text-rose-400 z-50 transition-colors"><i class="fas fa-times"></i></button>
+            <button id="lb-prev" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-left"></i></button>
+            <button id="lb-next" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-right"></i></button>
+            
+            <div class="relative w-full max-w-6xl px-12 md:px-24 flex-1 flex items-center justify-center">
+                <img id="lb-img" class="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl transition-all duration-300 opacity-0 scale-95">
+            </div>
+            
+            <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-50">
+                <div id="lb-title" class="text-white font-extrabold text-lg md:text-2xl drop-shadow-lg tracking-wide"></div>
+                <div class="flex items-center gap-4">
+                    <button id="lb-play" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10"><i class="fas fa-play"></i> 電子相框輪播</button>
+                    <button id="lb-goto" class="px-5 py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-warm-500/30"><i class="fas fa-calendar-day"></i> 開啟行程明細</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('lb-close').onclick = closeLB;
+        document.getElementById('lb-prev').onclick = () => showIdx(currentIndex - 1);
+        document.getElementById('lb-next').onclick = () => showIdx(currentIndex + 1);
+        
+        // 鍵盤左右鍵支援
+        document.addEventListener('keydown', (e) => {
+            if (modal.classList.contains('hidden')) return;
+            if (e.key === 'ArrowLeft') showIdx(currentIndex - 1);
+            if (e.key === 'ArrowRight') showIdx(currentIndex + 1);
+            if (e.key === 'Escape') closeLB();
+        });
+    }
+    
+    modal.classList.remove('hidden');
+    // 強制重繪以觸發漸顯動畫
+    void modal.offsetWidth; 
+    modal.classList.replace('opacity-0', 'opacity-100');
+    
+    let isPlaying = false;
+    const playBtn = document.getElementById('lb-play');
+    playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+    playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+    if(lightboxInterval) clearInterval(lightboxInterval);
+    
+    function showIdx(idx) {
+        if (idx < 0) idx = photoEvents.length - 1;
+        if (idx >= photoEvents.length) idx = 0;
+        currentIndex = idx;
+        const evt = photoEvents[idx];
+        
+        const img = document.getElementById('lb-img');
+        img.classList.remove('opacity-100', 'scale-100');
+        img.classList.add('opacity-0', 'scale-95');
+        
+        setTimeout(() => {
+            img.src = getDirectImageUrl(evt.photoUrl);
+            img.onload = () => {
+                img.classList.remove('opacity-0', 'scale-95');
+                img.classList.add('opacity-100', 'scale-100');
+            };
+        }, 150);
+        
+        document.getElementById('lb-title').innerText = `${evt.startDate} | ${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
+        
+        document.getElementById('lb-goto').onclick = () => {
+            closeLB();
+            document.getElementById('gallery-modal').classList.add('hidden'); // 收起後方的相簿牆
+            openViewModal(evt.id); // 跳轉到該行程明細
+        };
+    }
+    
+    function closeLB() {
+        modal.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+        if(lightboxInterval) clearInterval(lightboxInterval);
+        isPlaying = false;
+    }
+    
+    playBtn.onclick = () => {
+        isPlaying = !isPlaying;
+        if(isPlaying) {
+            playBtn.innerHTML = '<i class="fas fa-pause"></i> 停止輪播';
+            playBtn.className = 'px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/30';
+            // 每 3.5 秒自動換下一張
+            lightboxInterval = setInterval(() => showIdx(currentIndex + 1), 3500);
+        } else {
+            playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
+            playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
+            clearInterval(lightboxInterval);
+        }
+    };
+    
+    showIdx(startIndex);
 }
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
@@ -861,7 +1073,6 @@ function renderUpcoming() {
     });
 }
 
-// 🌟 修復 2：更新「今天」按鈕邏輯，跳轉月份同時將焦點重置到今天
 const goToToday = () => {
     triggerHaptic();
     const now = new Date();
@@ -1003,7 +1214,7 @@ function openViewModal(id) {
         vIframe.classList.add('hidden'); 
         vElement.classList.add('hidden');
         
-        vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: margin-top: 0.75rem; position: relative;";
+        vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden; margin-top: 0.75rem; position: relative;";
         vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;";
         vIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
         vIframe.setAttribute('allowfullscreen', 'true');
@@ -1222,8 +1433,7 @@ function openViewModal(id) {
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
-                alert('🎉 已成功將最高票拍板定案！'); 
-                document.getElementById('view-modal').classList.add('hidden');
+                alert('🎉 已成功將最高票拍板定案！'); document.getElementById('view-modal').classList.add('hidden');
                 if (window.confetti) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, zIndex: 9999 });
             }
         };
@@ -1319,391 +1529,38 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
-function initRadioPlayer() {
-    if (document.getElementById('radio-widget')) return;
-
-    let stations = [
-        { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
-        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
-        { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
-    ];
-
-    try {
-        const customStations = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
-        stations = [...stations, ...customStations];
-    } catch (e) {}
-
-    let currentStationIdx = 0;
-    let hlsInstance = null; 
-
-    const radioContainer = document.createElement('div');
-    radioContainer.id = 'radio-widget';
-    radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
-    
-    const savedPos = localStorage.getItem('radio_widget_pos');
-    if (savedPos) {
-        try {
-            const pos = JSON.parse(savedPos);
-            let nx = pos.left, ny = pos.top;
-            if (nx < 0) nx = 20; if (ny < 0) ny = 20;
-            if (nx > window.innerWidth - 100) nx = window.innerWidth - 150;
-            if (ny > window.innerHeight - 50) ny = window.innerHeight - 100;
-            radioContainer.style.left = nx + 'px';
-            radioContainer.style.top = ny + 'px';
-        } catch(e) {}
-    } else {
-        radioContainer.style.bottom = '24px';
-        radioContainer.style.right = '24px';
-    }
-
-    radioContainer.innerHTML = `
-        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
-            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
-        </div>
-        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1 pointer-events-none">
-            <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
-            <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
-        </div>
-        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
-            <i class="fas fa-list-ul text-[10px] md:text-xs pointer-events-none"></i>
-        </button>
-        <audio id="radio-audio" preload="none"></audio>
-        <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
-    `;
-    document.body.appendChild(radioContainer);
-
-    const menuContainer = document.createElement('div');
-    menuContainer.id = 'radio-menu';
-    menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
-    document.body.appendChild(menuContainer);
-    
-    const audio = document.getElementById('radio-audio');
-    const ytContainer = document.getElementById('yt-radio-container');
-    const playBtn = document.getElementById('btn-radio-play');
-    const menuBtn = document.getElementById('btn-radio-menu');
-    const icon = document.getElementById('radio-icon');
-    const text = document.getElementById('radio-text');
-    const statusText = document.getElementById('radio-status');
-    let isPlaying = false;
-
-    let isDragging = false;
-    let hasDragged = false;
-    let dragStartX = 0, dragStartY = 0;
-    let initialLeft = 0, initialTop = 0;
-
-    const onDragStart = (e) => {
-        if (e.type === 'touchstart') {
-            dragStartX = e.touches[0].clientX;
-            dragStartY = e.touches[0].clientY;
-        } else {
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-        }
-        isDragging = true;
-        hasDragged = false;
+// 🌟 Apple Watch / 內建行事曆 同步匯出引擎
+setTimeout(() => {
+    const importGovBtn = document.getElementById('btn-import-gov-holidays');
+    if (importGovBtn && importGovBtn.parentNode && !document.getElementById('btn-export-apple')) {
+        const appleBtn = document.createElement('button');
+        appleBtn.id = 'btn-export-apple';
+        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
+        importGovBtn.parentNode.appendChild(appleBtn);
         
-        const rect = radioContainer.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
-
-        radioContainer.style.bottom = 'auto';
-        radioContainer.style.right = 'auto';
-        radioContainer.style.left = initialLeft + 'px';
-        radioContainer.style.top = initialTop + 'px';
-        radioContainer.style.transition = 'none';
-    };
-
-    const onDragMove = (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        
-        const dx = clientX - dragStartX;
-        const dy = clientY - dragStartY;
-
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
-
-        let newLeft = initialLeft + dx;
-        let newTop = initialTop + dy;
-
-        const rect = radioContainer.getBoundingClientRect();
-        if (newLeft < 0) newLeft = 0;
-        if (newTop < 0) newTop = 0;
-        if (newLeft + rect.width > window.innerWidth) newLeft = window.innerWidth - rect.width;
-        if (newTop + rect.height > window.innerHeight) newTop = window.innerHeight - rect.height;
-
-        radioContainer.style.left = newLeft + 'px';
-        radioContainer.style.top = newTop + 'px';
-    };
-
-    const onDragEnd = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        radioContainer.style.transition = 'all 0.3s ease';
-        if (hasDragged) {
-            const rect = radioContainer.getBoundingClientRect();
-            localStorage.setItem('radio_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
-        }
-    };
-
-    radioContainer.addEventListener('mousedown', onDragStart);
-    document.addEventListener('mousemove', onDragMove, { passive: false });
-    document.addEventListener('mouseup', onDragEnd);
-
-    radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
-    document.addEventListener('touchmove', onDragMove, { passive: false });
-    document.addEventListener('touchend', onDragEnd);
-
-    radioContainer.addEventListener('click', (e) => {
-        if (hasDragged) {
-            e.preventDefault();
-            e.stopPropagation();
-            hasDragged = false;
-        }
-    }, true);
-
-    function renderMenu() {
-        menuContainer.innerHTML = '';
-        stations.forEach((station, idx) => {
-            const item = document.createElement('button');
-            const isActive = (idx === currentStationIdx);
-            item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
+        appleBtn.addEventListener('click', () => {
+            const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
+            if (pwd !== ADMIN_PASSWORD) return alert('❌ 密碼錯誤！');
+            if (events.length === 0) return alert('目前沒有任何行程喔！');
             
-            const isCustom = idx >= 4; 
-            const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
-
-            item.innerHTML = `
-                <div class="flex items-center truncate">
-                    <span class="truncate pr-2">${station.name}</span>
-                </div>
-                <div class="flex items-center shrink-0">
-                    <i class="fas fa-volume-up text-warm-500 ${isActive ? 'opacity-100' : 'opacity-0'}"></i>
-                    ${deleteBtnHtml}
-                </div>
-            `;
-            
-            item.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                if (e.target.dataset.delete) {
-                    if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
-                        stations.splice(idx, 1);
-                        const customStations = stations.slice(4);
-                        localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
-                        
-                        if (currentStationIdx === idx) {
-                            audio.pause();
-                            ytContainer.innerHTML = '';
-                            if(hlsInstance) hlsInstance.destroy();
-                            isPlaying = false;
-                            currentStationIdx = 0;
-                            text.innerText = stations[0].name;
-                            statusText.innerText = '點擊播放';
-                            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
-                            radioContainer.classList.remove('ring-2', 'ring-warm-400');
-                        } else if (currentStationIdx > idx) currentStationIdx--;
-                        
-                        renderMenu();
-                    }
-                    return;
-                }
-
-                triggerHaptic();
-                currentStationIdx = idx;
-                renderMenu(); 
-                loadAndPlayStation(idx);
-                menuContainer.classList.add('hidden');
+            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
+            events.forEach(e => {
+                const s = e.startDate.replace(/-/g, '');
+                let ed = new Date(e.endDate || e.startDate);
+                ed.setDate(ed.getDate() + 1);
+                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
+                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
+                if (e.location) ics += "LOCATION:" + e.location + "\n";
+                ics += "END:VEVENT\n";
             });
-            menuContainer.appendChild(item);
+            ics += "END:VCALENDAR";
+            
+            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'family_events.ics';
+            link.click();
         });
-
-        const addBtn = document.createElement('button');
-        addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
-        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
-        addBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const newName = prompt('請輸入電台名稱 (例如：飛碟聯播網)：');
-            if (!newName) return;
-            const newUrl = prompt('請貼上網址 (支援 YouTube 直播連結、.mp3 或 .m3u8)：\n例如：https://www.youtube.com/watch?v=...');
-            if (!newUrl) return;
-            
-            const newStation = { name: '📺 ' + newName, url: newUrl, type: 'live' };
-            stations.push(newStation);
-            
-            const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
-            custom.push(newStation);
-            localStorage.setItem('my_custom_stations', JSON.stringify(custom));
-            
-            alert('🎉 新增成功！請在選單中點選播放。');
-            renderMenu();
-        });
-        menuContainer.appendChild(addBtn);
     }
-
-    renderMenu();
-
-    menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
-        triggerHaptic();
-        if (hasDragged) { hasDragged = false; return; }
-        
-        if (menuContainer.classList.contains('hidden')) {
-            const rect = radioContainer.getBoundingClientRect();
-            let menuTop = rect.top - 260;
-            if (menuTop < 10) menuTop = rect.bottom + 10;
-            
-            let menuLeft = rect.right - 256;
-            if (menuLeft < 10) menuLeft = 10;
-            
-            menuContainer.style.top = menuTop + 'px';
-            menuContainer.style.left = menuLeft + 'px';
-        }
-        menuContainer.classList.toggle('hidden');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) menuContainer.classList.add('hidden');
-    });
-
-    function loadAndPlayStation(index) {
-        const station = stations[index];
-        text.innerText = station.name;
-        audio.volume = 0.4;
-        statusText.innerText = '連線中...';
-        icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
-        isPlaying = true;
-
-        audio.pause();
-        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-        ytContainer.innerHTML = '';
-
-        const onPlaySuccess = () => {
-            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-            statusText.innerText = '正在播放';
-            radioContainer.classList.add('ring-2', 'ring-warm-400');
-        };
-
-        const onPlayError = (e) => {
-            console.log('Stream Error:', e);
-            statusText.innerText = '網址失效或阻擋連線';
-            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
-            radioContainer.classList.remove('ring-2', 'ring-warm-400');
-            isPlaying = false;
-        };
-
-        let isYouTube = false;
-        let ytId = '';
-        if (station.url.includes('youtube.com/watch?v=')) {
-            isYouTube = true;
-            ytId = new URL(station.url).searchParams.get('v');
-        } else if (station.url.includes('youtu.be/')) {
-            isYouTube = true;
-            ytId = station.url.split('youtu.be/')[1].split('?')[0];
-        }
-
-        if (isYouTube && ytId) {
-            ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
-            setTimeout(onPlaySuccess, 1500); 
-        } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
-            hlsInstance = new Hls();
-            hlsInstance.loadSource(station.url);
-            hlsInstance.attachMedia(audio);
-            hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-                audio.play().then(onPlaySuccess).catch(onPlayError);
-            });
-            hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-                if (data.fatal) onPlayError(data);
-            });
-        } else {
-            audio.src = station.url;
-            audio.loop = (station.type === 'bgm'); 
-            audio.play().then(onPlaySuccess).catch(onPlayError);
-        }
-    }
-
-    playBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        triggerHaptic();
-        if (hasDragged) { hasDragged = false; return; }
-        
-        if (isPlaying) {
-            audio.pause();
-            ytContainer.innerHTML = ''; 
-            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
-            statusText.innerText = '已暫停';
-            radioContainer.classList.remove('ring-2', 'ring-warm-400');
-        } else {
-            loadAndPlayStation(currentStationIdx);
-        }
-        isPlaying = !isPlaying;
-    });
-
-    audio.addEventListener('error', () => {
-        if (isPlaying) {
-            statusText.innerText = '電台斷線，請換台';
-            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
-            isPlaying = false;
-            radioContainer.classList.remove('ring-2', 'ring-warm-400');
-        }
-    });
-}
-
-function initFunAnimations() {
-    if (document.getElementById('fun-animation-style')) return;
-    
-    if (!window.confetti) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-        document.head.appendChild(script);
-    }
-    
-    const style = document.createElement('style');
-    style.id = 'fun-animation-style';
-    style.innerHTML = `
-    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
-    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
-    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
-    
-    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
-    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
-    
-    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
-    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
-    
-    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
-    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
-    `;
-    document.head.appendChild(style);
-
-    const vehicleDiv = document.createElement('div');
-    vehicleDiv.className = 'vehicle-wrapper';
-    const isTesla = Math.random() > 0.5;
-    if (isTesla) {
-        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
-    } else {
-        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
-    }
-    document.body.appendChild(vehicleDiv);
-
-    if (Math.random() > 0.7) {
-        const droneDiv = document.createElement('div');
-        droneDiv.className = 'drone-wrapper';
-        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
-        document.body.appendChild(droneDiv);
-    }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu')) return;
-        let ripple = document.createElement('div');
-        ripple.className = 'click-ripple';
-        ripple.style.left = e.clientX + 'px';
-        ripple.style.top = e.clientY + 'px';
-        document.body.appendChild(ripple);
-        setTimeout(() => ripple.remove(), 500);
-    });
-}
-
-initRadioPlayer();
-initFunAnimations();
+}, 1500);
