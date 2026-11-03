@@ -32,6 +32,17 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
+// 🌟 新增：氣象代碼全中文翻譯庫
+const weatherDescMap = {
+    0: '☀️ 晴朗', 1: '🌤️ 晴時多雲', 2: '⛅ 多雲', 3: '☁️ 陰天', 
+    45: '🌫️ 起霧', 48: '🌫️ 霧霾', 
+    51: '🌧️ 毛毛雨', 53: '🌧️ 小雨', 55: '🌧️ 陰雨', 
+    61: '🌧️ 陣雨', 63: '🌧️ 中雨', 65: '🌧️ 大雨', 
+    71: '❄️ 小雪', 73: '❄️ 中雪', 75: '❄️ 大雪', 
+    80: '🌧️ 陣雨', 81: '🌧️ 大陣雨', 82: '🌧️ 狂風暴雨', 
+    85: '❄️ 陣雪', 86: '❄️ 大陣雪', 95: '⛈️ 雷陣雨'
+};
+
 function getDirectImageUrl(url) {
     if (!url) return '';
     if (url.includes('drive.google.com/file/d/')) {
@@ -308,12 +319,12 @@ async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
         const data = await res.json();
-        const m = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌧️', 53: '🌧️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '❄️', 73: '❄️', 75: '❄️', 80: '🌧️', 81: '🌧️', 82: '🌧️', 85: '❄️', 86: '❄️', 95: '⛈️' };
         if (data && data.daily) {
             data.daily.time.forEach((d, i) => { 
                 const code = data.daily.weathercode[i];
-                const icon = m[code] || '☁️';
-                weatherData[d] = `${icon} ${Math.round(data.daily.temperature_2m_max[i])}°`; 
+                // 🌟 使用中文翻譯庫
+                const desc = weatherDescMap[code] || '☁️ 陰天';
+                weatherData[d] = `${desc} ${Math.round(data.daily.temperature_2m_max[i])}°`; 
             });
         }
     } catch (e) {}
@@ -949,7 +960,6 @@ const twLocations = {
     "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
 };
 
-// 🌟 全新升級：字體放大、動態判斷「下雨變色警示」
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1020,7 +1030,6 @@ function openViewModal(id) {
     if (!weatherBox) {
         weatherBox = document.createElement('div');
         weatherBox.id = 'view-weather-box';
-        // 預設樣式放大，文字加粗
         weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
         mMapBox.appendChild(weatherBox);
     }
@@ -1068,31 +1077,27 @@ function openViewModal(id) {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
                         const wCode = wData.daily.weathercode[idx];
-                        // 天氣圖示分類
-                        const icon = [0].includes(wCode) ? '☀️' : [1,2].includes(wCode) ? '⛅' : [3].includes(wCode) ? '☁️' : [45,48].includes(wCode) ? '🌫️' : [51,53,55,61,63,65,80,81,82].includes(wCode) ? '🌧️' : [71,73,75,85,86].includes(wCode) ? '❄️' : '⛈️';
+                        // 🌟 套用中文翻譯庫
+                        const desc = weatherDescMap[wCode] || '☁️ 未知';
                         
-                        // 🌟 下雨警報判定：如果是雨天或暴雷，變色並加入震動提示
                         const isRainy = [51,53,55,61,63,65,80,81,82,95].includes(wCode);
                         
                         if (isRainy) {
-                            // 下雨警報樣式 (靛藍色+閃爍框)
                             weatherBox.className = 'w-full py-2.5 bg-indigo-100 text-indigo-900 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md mt-2 px-2 text-center ring-2 ring-indigo-400 animate-pulse transition-all';
                         } else {
-                            // 晴朗好天氣樣式 (天空藍色)
                             weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
                         }
 
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
                         
-                        let weatherDesc = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
+                        let weatherTips = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
                         
-                        // 字體放大
                         weatherBox.innerHTML = `
                             <div class="flex flex-col items-center">
                                 <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
-                                <div class="text-base mt-0.5">${icon} 溫度 ${min}~${max}°C</div>
-                                <div class="text-[11px] opacity-80 mt-0.5">${weatherDesc}</div>
+                                <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
                             </div>
                         `;
                     } else {
