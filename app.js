@@ -32,7 +32,6 @@ let searchQuery = '';
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
-// 🌟 新增：氣象代碼全中文翻譯庫
 const weatherDescMap = {
     0: '☀️ 晴朗', 1: '🌤️ 晴時多雲', 2: '⛅ 多雲', 3: '☁️ 陰天', 
     45: '🌫️ 起霧', 48: '🌫️ 霧霾', 
@@ -165,8 +164,8 @@ function openManualModal() {
             <section>
                 <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li>系統右下角有一個懸浮的「音樂播放器」。</li>
-                    <li>內建多個精選頻道。您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
+                    <li>系統內建一個隨時可以「自由拖曳移動」的音樂播放器。</li>
+                    <li>您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
                     <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
                 </ul>
             </section>
@@ -322,7 +321,6 @@ async function fetchWeather() {
         if (data && data.daily) {
             data.daily.time.forEach((d, i) => { 
                 const code = data.daily.weathercode[i];
-                // 🌟 使用中文翻譯庫
                 const desc = weatherDescMap[code] || '☁️ 陰天';
                 weatherData[d] = `${desc} ${Math.round(data.daily.temperature_2m_max[i])}°`; 
             });
@@ -950,6 +948,7 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
+
 const twLocations = {
     "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
     "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
@@ -1077,9 +1076,7 @@ function openViewModal(id) {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
                         const wCode = wData.daily.weathercode[idx];
-                        // 🌟 套用中文翻譯庫
                         const desc = weatherDescMap[wCode] || '☁️ 未知';
-                        
                         const isRainy = [51,53,55,61,63,65,80,81,82,95].includes(wCode);
                         
                         if (isRainy) {
@@ -1090,7 +1087,6 @@ function openViewModal(id) {
 
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
-                        
                         let weatherTips = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
                         
                         weatherBox.innerHTML = `
@@ -1293,6 +1289,7 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
+// 🌟 全新模組：支援懸浮拖曳與位置記憶的音樂播放器
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
@@ -1313,18 +1310,36 @@ function initRadioPlayer() {
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
-    radioContainer.className = 'fixed bottom-4 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-pointer hover:scale-105 transition-all';
+    // 移除 fixed bottom/right，改由 JS 動態控制位置，並加入 cursor-grab
+    radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
     
+    // 自動讀取上次拖放儲存的位置
+    const savedPos = localStorage.getItem('radio_widget_pos');
+    if (savedPos) {
+        try {
+            const pos = JSON.parse(savedPos);
+            let nx = pos.left, ny = pos.top;
+            if (nx < 0) nx = 20; if (ny < 0) ny = 20;
+            if (nx > window.innerWidth - 100) nx = window.innerWidth - 150;
+            if (ny > window.innerHeight - 50) ny = window.innerHeight - 100;
+            radioContainer.style.left = nx + 'px';
+            radioContainer.style.top = ny + 'px';
+        } catch(e) {}
+    } else {
+        radioContainer.style.bottom = '24px';
+        radioContainer.style.right = '24px';
+    }
+
     radioContainer.innerHTML = `
-        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0">
-            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5"></i>
+        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
+            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
         </div>
-        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1">
+        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1 pointer-events-none">
             <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
             <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
         </div>
-        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0" title="開啟電台選單">
-            <i class="fas fa-list-ul text-[10px] md:text-xs"></i>
+        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
+            <i class="fas fa-list-ul text-[10px] md:text-xs pointer-events-none"></i>
         </button>
         <audio id="radio-audio" preload="none"></audio>
         <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
@@ -1333,7 +1348,8 @@ function initRadioPlayer() {
 
     const menuContainer = document.createElement('div');
     menuContainer.id = 'radio-menu';
-    menuContainer.className = 'fixed bottom-16 md:bottom-20 right-4 md:right-6 z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
+    // 移除選單固定的 bottom/right，讓它能跟著播放器跑
+    menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
     document.body.appendChild(menuContainer);
     
     const audio = document.getElementById('radio-audio');
@@ -1344,6 +1360,87 @@ function initRadioPlayer() {
     const text = document.getElementById('radio-text');
     const statusText = document.getElementById('radio-status');
     let isPlaying = false;
+
+    // 🌟 全新拖曳系統邏輯
+    let isDragging = false;
+    let hasDragged = false;
+    let dragStartX = 0, dragStartY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    const onDragStart = (e) => {
+        if (e.type === 'touchstart') {
+            dragStartX = e.touches[0].clientX;
+            dragStartY = e.touches[0].clientY;
+        } else {
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        isDragging = true;
+        hasDragged = false;
+        
+        const rect = radioContainer.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        radioContainer.style.bottom = 'auto';
+        radioContainer.style.right = 'auto';
+        radioContainer.style.left = initialLeft + 'px';
+        radioContainer.style.top = initialTop + 'px';
+        radioContainer.style.transition = 'none'; // 取消動畫以實現順暢拖曳
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault(); // 防止手機畫面跟著滑動
+
+        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - dragStartX;
+        const dy = clientY - dragStartY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+
+        // 螢幕邊界限制防呆
+        const rect = radioContainer.getBoundingClientRect();
+        if (newLeft < 0) newLeft = 0;
+        if (newTop < 0) newTop = 0;
+        if (newLeft + rect.width > window.innerWidth) newLeft = window.innerWidth - rect.width;
+        if (newTop + rect.height > window.innerHeight) newTop = window.innerHeight - rect.height;
+
+        radioContainer.style.left = newLeft + 'px';
+        radioContainer.style.top = newTop + 'px';
+    };
+
+    const onDragEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        radioContainer.style.transition = 'all 0.3s ease';
+        if (hasDragged) {
+            const rect = radioContainer.getBoundingClientRect();
+            localStorage.setItem('radio_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+        }
+    };
+
+    radioContainer.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove, { passive: false });
+    document.addEventListener('mouseup', onDragEnd);
+
+    radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+
+    // 攔截拖曳後的點擊事件，避免誤觸播放或選單
+    radioContainer.addEventListener('click', (e) => {
+        if (hasDragged) {
+            e.preventDefault();
+            e.stopPropagation();
+            hasDragged = false;
+        }
+    }, true);
 
     function renderMenu() {
         menuContainer.innerHTML = '';
@@ -1425,7 +1522,23 @@ function initRadioPlayer() {
     renderMenu();
 
     menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); triggerHaptic(); menuContainer.classList.toggle('hidden');
+        e.stopPropagation(); 
+        triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
+        
+        // 🌟 智慧選單定位：展開時自動跟隨播放器目前的位置
+        if (menuContainer.classList.contains('hidden')) {
+            const rect = radioContainer.getBoundingClientRect();
+            let menuTop = rect.top - 260; // 預估選單高度
+            if (menuTop < 10) menuTop = rect.bottom + 10; // 頂部空間不夠時改在下方展開
+            
+            let menuLeft = rect.right - 256; // 靠右對齊
+            if (menuLeft < 10) menuLeft = 10; // 左邊界防溢出
+            
+            menuContainer.style.top = menuTop + 'px';
+            menuContainer.style.left = menuLeft + 'px';
+        }
+        menuContainer.classList.toggle('hidden');
     });
 
     document.addEventListener('click', (e) => {
@@ -1491,6 +1604,7 @@ function initRadioPlayer() {
     playBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
         
         if (isPlaying) {
             audio.pause();
@@ -1515,4 +1629,81 @@ function initRadioPlayer() {
 }
 
 initRadioPlayer();
+
+// ========================================================
+// 🚐 趣味彩蛋：活潑露營車與狗狗巡邏動畫
+// ========================================================
+function initCamperAnimation() {
+    if (document.getElementById('camper-animation-style')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'camper-animation-style';
+    style.innerHTML = `
+    @keyframes driveCamper {
+        0% { transform: translateX(120vw); }
+        100% { transform: translateX(-30vw); }
+    }
+    @keyframes bounceCamper {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-3px) rotate(-2deg); }
+    }
+    @keyframes runDog {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25% { transform: translateY(-5px) rotate(5deg); }
+        75% { transform: translateY(2px) rotate(-5deg); }
+    }
+    @keyframes exhaust {
+        0% { opacity: 0.8; transform: scale(0.5) translate(0, 0); }
+        100% { opacity: 0; transform: scale(1.5) translate(15px, -15px); }
+    }
+    .camper-wrapper {
+        position: fixed;
+        bottom: 90px;
+        left: 0;
+        z-index: 15;
+        pointer-events: none;
+        display: flex;
+        align-items: flex-end;
+        animation: driveCamper 30s linear infinite;
+        opacity: 0.85;
+    }
+    .camper-body {
+        font-size: 3.5rem;
+        animation: bounceCamper 0.8s ease-in-out infinite;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+        position: relative;
+        z-index: 2;
+    }
+    .camper-smoke {
+        font-size: 1.5rem;
+        position: absolute;
+        right: -10px;
+        bottom: 5px;
+        animation: exhaust 1.2s linear infinite;
+        z-index: 1;
+    }
+    .camper-dog {
+        font-size: 2rem;
+        margin-left: 20px;
+        margin-bottom: 2px;
+        animation: runDog 0.5s infinite;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+    `;
+    document.head.appendChild(style);
+
+    const camperDiv = document.createElement('div');
+    camperDiv.className = 'camper-wrapper';
+    camperDiv.innerHTML = `
+        <div style="position: relative;">
+            <div class="camper-body">🚐</div>
+            <div class="camper-smoke">💨</div>
+            <div class="camper-smoke" style="animation-delay: 0.6s; right: -20px;">💨</div>
+        </div>
+        <div class="camper-dog">🐕</div>
+    `;
+    document.body.appendChild(camperDiv);
+}
+
+initCamperAnimation();
 renderApp();
