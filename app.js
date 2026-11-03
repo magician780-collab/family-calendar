@@ -1392,8 +1392,8 @@ function openViewModal(id) {
                             </button>
                             
                             <a href="linebank://" onclick="alert('即將為您開啟 LINE Bank 進行轉帳！')" class="w-7 h-7 bg-sky-50 hover:bg-sky-100 text-sky-600 rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Bank 轉帳">
-    <i class="fas fa-university text-xs"></i>
-</a>
+                                <i class="fas fa-university text-xs"></i>
+                            </a>
                         </div>
                     </div>`;
             });
@@ -1907,32 +1907,24 @@ exportIcsBtn.addEventListener('click', () => {
                 ics += "DTSTART;VALUE=DATE:" + startStr + "\n";
                 ics += "DTEND;VALUE=DATE:" + endStr + "\n";
                 if (e.location) ics += "LOCATION:" + e.location + "\n";
-                if (e.author) ics += "DESCRIPTION:建立者：" + e.author + "\\n" + (e.desc ? "備註：" + e.desc : "") + "\n";
+                if (e.author) ics += "DESCRIPTION:JSON 格式備份或行程建立者：" + e.author + "\n";
                 ics += "END:VEVENT\n";
             });
             ics += "END:VCALENDAR";
-            
+
             const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-            const fileName = `family_events_${new Date().getTime()}.ics`;
-            const file = new File([blob], fileName, { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `family_calendar_${new Date().toISOString().split('T')[0]}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
             
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
-                    title: '同步至 Apple 行事曆',
-                    files: [file]
-                });
-            } else {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-            }
+            alert('🎉 成功匯出 iOS 行事曆檔案！');
         } catch (err) {
-            console.error(err);
-            alert('產生行事曆檔案時發生錯誤。');
+            alert('匯出失敗，請重試。');
         } finally {
             exportIcsBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch (iOS 行事曆)';
             exportIcsBtn.style.pointerEvents = 'auto';
