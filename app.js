@@ -14,12 +14,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
+// 🌟 修復 1：解決「新增活動」點擊顏色標籤時，瀏覽器因焦點捕捉導致畫面亂跳/顯示不全的 Bug
 document.querySelectorAll('input[name="event-color"]').forEach(radio => {
     radio.classList.remove('sr-only');
-    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10');
+    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10'); // 改用安全隱藏法，拔除強制捲動
 });
 const eventForm = document.getElementById('event-form');
-if (eventForm) eventForm.classList.add('pb-8');
+if (eventForm) eventForm.classList.add('pb-8'); // 增加底部彈性留白，防止按鈕被截斷
 
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
@@ -35,7 +36,6 @@ let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
-let wasRadioPlaying = false; 
 
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
@@ -48,16 +48,6 @@ const weatherDescMap = {
     71: '❄️ 小雪', 73: '❄️ 中雪', 75: '❄️ 大雪', 
     80: '🌧️ 陣雨', 81: '🌧️ 大陣雨', 82: '🌧️ 狂風暴雨', 
     85: '❄️ 陣雪', 86: '❄️ 大陣雪', 95: '⛈️ 雷陣雨'
-};
-
-const twLocations = {
-    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
-    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
-    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
-    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
-    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
-    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
-    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
 };
 
 function getDirectImageUrl(url) {
@@ -73,42 +63,24 @@ if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
     style.id = 'ai-border-style';
     style.innerHTML = `
-    @keyframes ai-glow { 0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); } 50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); } }
-    .ai-active-cell { animation: ai-glow 2s infinite alternate; transform: scale(1.02); z-index: 20; border-width: 2px !important; border-radius: 0.75rem; }
-    
-    html, body { max-width: 100vw; overflow-x: hidden; }
-    iframe, video { max-width: 100% !important; box-sizing: border-box; }
-
-    /* 🌟 修復側邊欄滑動問題：強制啟用 Y 軸捲動與順暢滑動 (iOS) */
-    #sidebar {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        overscroll-behavior: contain;
-        padding-bottom: env(safe-area-inset-bottom, 30px) !important;
+    @keyframes ai-glow {
+        0%, 100% { box-shadow: 0 0 8px var(--color-400), inset 0 0 4px var(--color-100); border-color: var(--color-500); }
+        50% { box-shadow: 0 0 16px var(--color-500), inset 0 0 8px var(--color-200); border-color: var(--color-600); }
     }
-
-    #video-fullscreen-modal {
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+    .ai-active-cell {
+        animation: ai-glow 2s infinite alternate;
+        transform: scale(1.02);
+        z-index: 20;
+        border-width: 2px !important;
+        border-radius: 0.75rem;
     }
-
     @media screen and (max-height: 600px) and (orientation: landscape) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
+        /* 🌟 修復手機橫向隱藏問題：將 radio-widget 從隱藏清單移除 */
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
     }
-    
-    .masonry-gallery { column-count: 1; column-gap: 16px; padding-bottom: 80px; }
-    @media (min-width: 640px) { .masonry-gallery { column-count: 2; } }
-    @media (min-width: 768px) { .masonry-gallery { column-count: 3; } }
-    @media (min-width: 1024px) { .masonry-gallery { column-count: 4; } }
-    
-    .masonry-item { break-inside: avoid; margin-bottom: 16px; position: relative; border-radius: 12px; overflow: hidden; background: #111827; width: 100%; box-sizing: border-box; }
-    .masonry-item img.masonry-thumb { width: 100%; display: block; transition: transform 0.5s ease; }
-    .masonry-item:hover img.masonry-thumb { transform: scale(1.05); }
-    .masonry-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 60%); opacity: 0; transition: opacity 0.3s ease; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; color: white; pointer-events: none; }
-    .masonry-item:hover .masonry-overlay { opacity: 1; }
     `;
     document.head.appendChild(style);
 }
@@ -147,252 +119,18 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
 });
 
 const galleryBtn = document.getElementById('btn-open-gallery');
-if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
-    
-    const videoBtn = document.createElement('button');
-    videoBtn.id = 'btn-open-video-gallery';
-    videoBtn.className = 'w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
-    videoBtn.innerHTML = '<i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳';
-    galleryBtn.parentNode.insertBefore(videoBtn, galleryBtn.nextSibling);
-
+if (galleryBtn && !document.getElementById('btn-open-manual')) {
     const manualBtn = document.createElement('button');
     manualBtn.id = 'btn-open-manual';
-    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-2';
+    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
     manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
-    videoBtn.parentNode.insertBefore(manualBtn, videoBtn.nextSibling);
-
-    const qrBtn = document.createElement('button');
-    qrBtn.id = 'btn-open-qr';
-    qrBtn.className = 'w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-2';
-    qrBtn.innerHTML = '<i class="fas fa-qrcode text-emerald-600"></i> 📱 掃描安裝 App';
-    manualBtn.parentNode.insertBefore(qrBtn, manualBtn.nextSibling);
-
-    videoBtn.addEventListener('click', () => {
-        triggerHaptic();
-        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
-        openVideoGallery();
-    });
+    galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
 
     manualBtn.addEventListener('click', () => {
         triggerHaptic();
         if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
         openManualModal();
     });
-
-    qrBtn.addEventListener('click', () => {
-        triggerHaptic();
-        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
-        openQRModal();
-    });
-}
-
-function openVideoGallery() {
-    let modal = document.getElementById('video-gallery-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'video-gallery-modal';
-        modal.className = 'fixed inset-0 bg-warm-50 z-[150] flex flex-col hidden transition-transform transform translate-x-full duration-300';
-        modal.innerHTML = `
-            <div class="px-4 py-4 md:px-6 md:py-5 bg-white border-b border-warm-200 flex justify-between items-center shadow-sm shrink-0 z-50">
-                <h2 class="text-lg md:text-xl font-extrabold text-indigo-800 flex items-center gap-2"><i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳</h2>
-                <button id="btn-close-video-gallery" class="w-8 h-8 md:w-10 md:h-10 bg-warm-100 text-warm-600 rounded-full flex items-center justify-center hover:bg-warm-200 transition-colors"><i class="fas fa-times text-lg"></i></button>
-            </div>
-            <div id="video-grid-container" class="p-4 masonry-gallery bg-gray-900 flex-1 overflow-y-auto w-full"></div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('btn-close-video-gallery').addEventListener('click', () => {
-            triggerHaptic();
-            modal.classList.add('translate-x-full');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                document.getElementById('video-grid-container').innerHTML = ''; 
-            }, 300);
-        });
-    }
-
-    const container = document.getElementById('video-grid-container');
-    container.innerHTML = '';
-    
-    const videoEvents = events.filter(e => e.videoUrl && e.videoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    
-    if (videoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500"><i class="fas fa-video-slash text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何影片記錄喔！</p></div>`;
-    } else {
-        videoEvents.forEach(evt => {
-            const item = document.createElement('div');
-            item.className = 'masonry-item shadow-lg border border-gray-800 bg-gray-950 group cursor-pointer w-full';
-            
-            let ytId = '';
-            let url = evt.videoUrl.trim();
-            
-            try {
-                if (url.includes('v=')) ytId = url.split('v=')[1].split('&')[0];
-                else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].split('?')[0];
-                else if (url.includes('shorts/')) ytId = url.split('shorts/')[1].split('?')[0];
-            } catch (e) {}
-            
-            let thumbHtml = '';
-            if (ytId && ytId.length > 5) {
-                thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="masonry-thumb w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
-            } else {
-                thumbHtml = `<div class="w-full aspect-video bg-gradient-to-br from-indigo-900 to-gray-900 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-all duration-500"></div>`;
-            }
-
-            item.innerHTML = `
-                ${thumbHtml}
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
-                    <i class="fas fa-play text-white text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-75 group-hover:scale-100 transition-transform"></i>
-                </div>
-                <div class="absolute top-2 left-2 bg-rose-600/80 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-20 flex items-center gap-1 pointer-events-none"><i class="fas fa-video"></i> ${evt.startDate}</div>
-                <div class="masonry-overlay z-10 pt-16 pointer-events-none">
-                    <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
-                    <p class="text-[10px] text-gray-300 mt-1 font-bold">點擊全螢幕播放</p>
-                </div>
-                <button class="w-full py-2 bg-gray-800/80 hover:bg-gray-700 text-gray-200 text-[11px] font-bold mt-[-4px] transition-colors flex items-center justify-center gap-1.5 border-t border-gray-700 relative z-30 view-details-btn">
-                    <i class="fas fa-external-link-alt"></i> 查看明細
-                </button>
-            `;
-            
-            item.querySelector('.view-details-btn').addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                triggerHaptic();
-                modal.classList.add('translate-x-full');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    document.getElementById('video-grid-container').innerHTML = '';
-                    openViewModal(evt.id); 
-                }, 300);
-            });
-
-            item.addEventListener('click', () => {
-                triggerHaptic();
-                
-                const radioAudio = document.getElementById('radio-audio');
-                const radioIcon = document.getElementById('radio-icon');
-                const radioStatus = document.getElementById('radio-status');
-                if (radioAudio && !radioAudio.paused) {
-                    wasRadioPlaying = true;
-                    radioAudio.pause();
-                    radioIcon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
-                    radioStatus.innerText = '已暫停(影片播放中)';
-                }
-
-                openFullscreenVideo(ytId, url, evt.title);
-            });
-            
-            container.appendChild(item);
-        });
-    }
-    
-    modal.classList.remove('hidden');
-    void modal.offsetWidth;
-    modal.classList.remove('translate-x-full');
-}
-
-function openFullscreenVideo(ytId, rawUrl, title) {
-    let fsModal = document.getElementById('video-fullscreen-modal');
-    if (!fsModal) {
-        fsModal = document.createElement('div');
-        fsModal.id = 'video-fullscreen-modal';
-        fsModal.className = 'fixed inset-0 bg-black z-[999] flex flex-col hidden opacity-0 transition-opacity duration-300';
-        document.body.appendChild(fsModal);
-    }
-    
-    let embedHtml = '';
-    if (ytId && ytId.length > 5) {
-        embedHtml = `<iframe id="fs-iframe" style="width: 100%; height: 100%; border: none;" src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-    } else if (rawUrl.includes('drive.google.com')) {
-        let fileId = '';
-        if (rawUrl.includes('/d/')) fileId = rawUrl.split('/d/')[1].split('/')[0];
-        else if (rawUrl.includes('id=')) fileId = new URL(rawUrl).searchParams.get('id');
-        embedHtml = `<iframe id="fs-iframe" style="width: 100%; height: 100%; border: none;" src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-    } else {
-        embedHtml = `<video id="fs-video" src="${rawUrl}" controls autoplay playsinline style="width: 100%; height: 100%; object-fit: contain;"></video>`;
-    }
-
-    fsModal.innerHTML = `
-        <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-start z-50 pointer-events-none">
-            <h3 class="text-white font-bold drop-shadow-md truncate pr-8 pointer-events-auto">${title || ''}</h3>
-            <button id="btn-close-fs" class="text-white w-10 h-10 flex items-center justify-center bg-black/50 rounded-full hover:bg-rose-600 transition-colors pointer-events-auto">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div class="flex-1 w-full flex items-center justify-center relative bg-black">
-            ${embedHtml}
-        </div>
-    `;
-
-    fsModal.classList.remove('hidden');
-    void fsModal.offsetWidth;
-    fsModal.classList.replace('opacity-0', 'opacity-100');
-
-    document.getElementById('btn-close-fs').addEventListener('click', () => {
-        triggerHaptic();
-        fsModal.classList.replace('opacity-100', 'opacity-0');
-        
-        const radioAudio = document.getElementById('radio-audio');
-        const radioIcon = document.getElementById('radio-icon');
-        const radioStatus = document.getElementById('radio-status');
-        if (wasRadioPlaying && radioAudio && radioAudio.paused) {
-            radioAudio.play().then(() => {
-                radioIcon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
-                radioStatus.innerText = '正在播放';
-            }).catch(()=>{});
-            wasRadioPlaying = false;
-        }
-
-        setTimeout(() => {
-            fsModal.classList.add('hidden');
-            fsModal.innerHTML = '';
-        }, 300);
-    });
-}
-
-function openQRModal() {
-    if (document.getElementById('qr-modal')) {
-        document.getElementById('qr-modal').classList.remove('hidden');
-        return;
-    }
-    if (typeof QRCode === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-        script.onload = () => createAndShowQRModal();
-        document.head.appendChild(script);
-    } else {
-        createAndShowQRModal();
-    }
-}
-
-function createAndShowQRModal() {
-    const modal = document.createElement('div');
-    modal.id = 'qr-modal';
-    modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
-    
-    modal.innerHTML = `
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-content" onclick="event.stopPropagation()">
-            <div class="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-emerald-900 flex items-center gap-2"><i class="fas fa-qrcode text-emerald-600"></i> 掃描加入主畫面</h3>
-                <button id="btn-close-qr-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="p-6 flex flex-col items-center justify-center space-y-4">
-                <p class="text-sm font-bold text-gray-700 text-center">請家人用手機相機掃描下方條碼</p>
-                <div id="qrcode-render-area" class="p-4 bg-white border-2 border-dashed border-emerald-200 rounded-2xl flex justify-center shadow-sm"></div>
-                <div class="bg-emerald-50 text-emerald-800 text-xs p-3 rounded-xl w-full">
-                    <ul class="list-disc pl-4 space-y-1 font-bold">
-                        <li>iPhone 掃描後請用 <strong>Safari</strong> 開啟</li>
-                        <li>Android 掃描後請用 <strong>Chrome</strong> 開啟</li>
-                        <li>開啟後，在底部選單點擊 <strong>「加入主畫面」</strong> 即可直接變成手機 App！</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    const currentUrl = window.location.origin + window.location.pathname;
-    new QRCode(document.getElementById("qrcode-render-area"), { text: currentUrl, width: 180, height: 180, colorDark : "#064e3b", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
-    document.getElementById('btn-close-qr-modal').onclick = () => modal.classList.add('hidden');
-    modal.onclick = () => modal.classList.add('hidden');
 }
 
 function openManualModal() {
@@ -400,12 +138,14 @@ function openManualModal() {
         document.getElementById('manual-modal').classList.remove('hidden');
         return;
     }
+
     const modal = document.createElement('div');
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
+        
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section>
                 <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
@@ -416,6 +156,7 @@ function openManualModal() {
                     <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
                 </ul>
             </section>
+            
             <section>
                 <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
@@ -424,15 +165,17 @@ function openManualModal() {
                     <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
                 </ul>
             </section>
+            
             <section>
                 <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
                     <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
-                    <li><b>相簿/影片牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 相簿牆 或 🎬 影片大廳</b>，以絕美瀑布流重溫美好回憶。</li>
+                    <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
                     <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
             </section>
+
             <section>
                 <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
                 <ul class="list-disc pl-5 space-y-1">
@@ -441,9 +184,10 @@ function openManualModal() {
                     <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
                 </ul>
             </section>
+            
             <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
                 <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
-                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」等高權限功能。</p>
+                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
             </section>
         </div>
     `;
@@ -464,7 +208,9 @@ function openManualModal() {
             </div>
         </div>
     `;
+
     document.body.appendChild(modal);
+
     document.getElementById('btn-close-manual-modal').onclick = () => modal.classList.add('hidden');
     document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
     modal.onclick = () => modal.classList.add('hidden');
@@ -495,15 +241,6 @@ document.addEventListener('keydown', (e) => {
                     stopViewVideo(); 
                 }
             });
-        }
-        
-        const videoModal = document.getElementById('video-gallery-modal');
-        if (videoModal && !videoModal.classList.contains('hidden')) {
-            videoModal.classList.add('translate-x-full');
-            setTimeout(() => {
-                videoModal.classList.add('hidden');
-                document.getElementById('video-grid-container').innerHTML = '';
-            }, 300);
         }
     }
 });
@@ -647,7 +384,7 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
 function requestAdminAccess(callback) {
-    const pwd = prompt('🔒 此功能需驗證權限，請輸入管理員密碼：');
+    const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
     if (pwd === null) return; 
     if (pwd === ADMIN_PASSWORD) {
         callback();
@@ -656,14 +393,10 @@ function requestAdminAccess(callback) {
     }
 }
 
-const adminSectionInit = () => {
-    const importGovBtn = document.getElementById('btn-import-gov-holidays');
-    if (!importGovBtn) return;
-    
-    const newImportGovBtn = importGovBtn.cloneNode(true);
-    importGovBtn.parentNode.replaceChild(newImportGovBtn, importGovBtn);
-    newImportGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
-    newImportGovBtn.addEventListener('click', () => {
+const importGovBtn = document.getElementById('btn-import-gov-holidays');
+if (importGovBtn) {
+    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
+    importGovBtn.addEventListener('click', () => {
         triggerHaptic();
         requestAdminAccess(async () => {
             const defaultYear = currentDate.getFullYear();
@@ -697,15 +430,14 @@ const adminSectionInit = () => {
             } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
         });
     });
+}
 
-    let cleanupBtn = document.getElementById('btn-cleanup-holidays');
-    if (!cleanupBtn) {
-        cleanupBtn = document.createElement('button');
-        cleanupBtn.id = 'btn-cleanup-holidays';
-        cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-        cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
-        newImportGovBtn.parentNode.appendChild(cleanupBtn);
-    }
+if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
+    const cleanupBtn = document.createElement('button');
+    cleanupBtn.id = 'btn-cleanup-holidays';
+    cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
+    cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
+    importGovBtn.parentNode.appendChild(cleanupBtn);
     cleanupBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
             if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
@@ -726,40 +458,7 @@ const adminSectionInit = () => {
             } catch (err) { alert('清除失敗，請檢查網路連線。'); }
         });
     });
-
-    let appleBtn = document.getElementById('btn-export-apple');
-    if (!appleBtn) {
-        appleBtn = document.createElement('button');
-        appleBtn.id = 'btn-export-apple';
-        appleBtn.className = 'w-full py-2.5 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
-        appleBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch / 內建行事曆';
-        newImportGovBtn.parentNode.appendChild(appleBtn);
-    }
-    appleBtn.addEventListener('click', () => {
-        requestAdminAccess(() => {
-            if (events.length === 0) return alert('目前沒有任何行程喔！');
-            
-            let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
-            events.forEach(e => {
-                const s = e.startDate.replace(/-/g, '');
-                let ed = new Date(e.endDate || e.startDate);
-                ed.setDate(ed.getDate() + 1);
-                const eStr = ed.getFullYear() + String(ed.getMonth()+1).padStart(2,'0') + String(ed.getDate()).padStart(2,'0');
-                ics += "BEGIN:VEVENT\nSUMMARY:" + (e.icon||'') + e.title + "\nDTSTART;VALUE=DATE:" + s + "\nDTEND;VALUE=DATE:" + eStr + "\n";
-                if (e.location) ics += "LOCATION:" + e.location + "\n";
-                ics += "END:VEVENT\n";
-            });
-            ics += "END:VCALENDAR";
-            
-            const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'family_events.ics';
-            link.click();
-        });
-    });
-};
-adminSectionInit();
+}
 
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
@@ -847,6 +546,28 @@ if (exportBtn && importInput) {
             } catch (err) { alert('讀取雲端歷史紀錄失敗，請檢查網路連線。'); } 
             finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
         });
+    });
+}
+
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (photoEvents.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-400"><i class="far fa-images text-4xl mb-3 opacity-50"></i><p class="text-sm">目前還沒有任何相片記錄喔！</p></div>`;
+        return;
+    }
+    photoEvents.forEach(evt => {
+        const item = document.createElement('div');
+        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
+        const imgUrl = getDirectImageUrl(evt.photoUrl);
+        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
+        item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
+        container.appendChild(item);
     });
 }
 
@@ -1140,6 +861,7 @@ function renderUpcoming() {
     });
 }
 
+// 🌟 修復 2：更新「今天」按鈕邏輯，跳轉月份同時將焦點重置到今天
 const goToToday = () => {
     triggerHaptic();
     const now = new Date();
@@ -1250,6 +972,16 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
+const twLocations = {
+    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
+    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
+    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
+    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
+    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
+    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
+    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
+};
+
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1271,21 +1003,24 @@ function openViewModal(id) {
         vIframe.classList.add('hidden'); 
         vElement.classList.add('hidden');
         
-        vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden; margin-top: 0.75rem; position: relative;";
-        vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; max-width: 100%;";
+        vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: margin-top: 0.75rem; position: relative;";
+        vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;";
         vIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
         vIframe.setAttribute('allowfullscreen', 'true');
-        vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none; max-width: 100%;";
+        vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none;";
         vElement.setAttribute('controls', 'true');
         
         let ytId = '';
-        try {
-            if (url.includes('v=')) ytId = url.split('v=')[1].split('&')[0];
-            else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].split('?')[0];
-            else if (url.includes('shorts/')) ytId = url.split('shorts/')[1].split('?')[0];
-        } catch(e) {}
+        if (url.includes('youtube.com/watch?v=')) {
+            ytId = new URL(url).searchParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+            ytId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('youtube.com/shorts/')) {
+            ytId = url.split('youtube.com/shorts/')[1].split('?')[0];
+            vBox.style.cssText = "width: 100%; max-width: 320px; aspect-ratio: 9/16; background: #000; border-radius: 0.75rem; overflow: hidden; margin: 0.75rem auto; position: relative;";
+        }
 
-        if (ytId && ytId.length > 5) {
+        if (ytId) {
             vIframe.src = `https://www.youtube.com/embed/${ytId}?rel=0&playsinline=1`;
             vIframe.classList.remove('hidden');
         } else if (url.includes('drive.google.com')) {
@@ -1487,7 +1222,8 @@ function openViewModal(id) {
             if (!winnerOpt || winnerOpt.voters.length === 0) return alert('目前還沒有人投票喔！');
             if (confirm(`【家族投票總結報告】\n\n🎯 最高票勝出選項：${winnerOpt.title}\n📊 獲得票數：${winnerOpt.voters.length} 票\n\n確定要將此結果拍板定案為正式行程標題嗎？`)) {
                 await updateDoc(doc(eventsRef, evt.id), { title: winnerOpt.title, isPoll: false });
-                alert('🎉 已成功將最高票拍板定案！'); document.getElementById('view-modal').classList.add('hidden');
+                alert('🎉 已成功將最高票拍板定案！'); 
+                document.getElementById('view-modal').classList.add('hidden');
                 if (window.confetti) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, zIndex: 9999 });
             }
         };
@@ -1582,61 +1318,6 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
 document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
-
-function initFunAnimations() {
-    if (document.getElementById('fun-animation-style')) return;
-    
-    if (!window.confetti) {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js';
-        document.head.appendChild(script);
-    }
-    
-    const style = document.createElement('style');
-    style.id = 'fun-animation-style';
-    style.innerHTML = `
-    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
-    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
-    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
-    
-    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
-    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
-    
-    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
-    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
-    
-    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
-    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
-    `;
-    document.head.appendChild(style);
-
-    const vehicleDiv = document.createElement('div');
-    vehicleDiv.className = 'vehicle-wrapper';
-    const isTesla = Math.random() > 0.5;
-    if (isTesla) {
-        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
-    } else {
-        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
-    }
-    document.body.appendChild(vehicleDiv);
-
-    if (Math.random() > 0.7) {
-        const droneDiv = document.createElement('div');
-        droneDiv.className = 'drone-wrapper';
-        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
-        document.body.appendChild(droneDiv);
-    }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu') || e.target.closest('#manual-modal') || e.target.closest('#qr-modal') || e.target.closest('#video-fullscreen-modal')) return;
-        let ripple = document.createElement('div');
-        ripple.className = 'click-ripple';
-        ripple.style.left = e.clientX + 'px';
-        ripple.style.top = e.clientY + 'px';
-        document.body.appendChild(ripple);
-        setTimeout(() => ripple.remove(), 500);
-    });
-}
 
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
@@ -1774,10 +1455,6 @@ function initRadioPlayer() {
 
     radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
     document.addEventListener('touchmove', onDragMove, { passive: false });
-    document.addEventListener('touchmove', (e) => {
-        // 防止拖曳時觸發側邊欄或頁面滾動
-        if (isDragging) e.preventDefault();
-    }, { passive: false });
     document.addEventListener('touchend', onDragEnd);
 
     radioContainer.addEventListener('click', (e) => {
@@ -1973,5 +1650,60 @@ function initRadioPlayer() {
     });
 }
 
-initFunAnimations();
+function initFunAnimations() {
+    if (document.getElementById('fun-animation-style')) return;
+    
+    if (!window.confetti) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+        document.head.appendChild(script);
+    }
+    
+    const style = document.createElement('style');
+    style.id = 'fun-animation-style';
+    style.innerHTML = `
+    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
+    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
+    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
+    
+    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
+    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
+    
+    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
+    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
+    
+    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
+    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
+    `;
+    document.head.appendChild(style);
+
+    const vehicleDiv = document.createElement('div');
+    vehicleDiv.className = 'vehicle-wrapper';
+    const isTesla = Math.random() > 0.5;
+    if (isTesla) {
+        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
+    } else {
+        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
+    }
+    document.body.appendChild(vehicleDiv);
+
+    if (Math.random() > 0.7) {
+        const droneDiv = document.createElement('div');
+        droneDiv.className = 'drone-wrapper';
+        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
+        document.body.appendChild(droneDiv);
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu')) return;
+        let ripple = document.createElement('div');
+        ripple.className = 'click-ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 500);
+    });
+}
+
 initRadioPlayer();
+initFunAnimations();
