@@ -1391,9 +1391,9 @@ function openViewModal(id) {
                                 <i class="far fa-copy text-xs"></i>
                             </button>
                             
-                            <a href="line://pay/transfer" class="w-7 h-7 bg-[#06C755]/10 hover:bg-[#06C755]/20 text-[#06C755] rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Pay 轉帳">
-                                <i class="fab fa-line text-base"></i>
-                            </a>
+                            <a href="linebank://" onclick="alert('即將為您開啟 LINE Bank 進行轉帳！')" class="w-7 h-7 bg-sky-50 hover:bg-sky-100 text-sky-600 rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Bank 轉帳">
+    <i class="fas fa-university text-xs"></i>
+</a>
                         </div>
                     </div>`;
             });
