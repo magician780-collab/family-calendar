@@ -478,21 +478,18 @@ if (exportBtn && importInput) {
     gridContainer.className = 'flex flex-col gap-2'; 
     gridContainer.insertBefore(cloudRestoreBtn, importLabel);
 
-    // Remove the cursor-pointer and label behavior from the wrapper so we can intercept the click
     const importBtn = document.createElement('button');
     importBtn.id = 'btn-local-import';
     importBtn.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-blue-200';
     importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入';
     
     importLabel.parentNode.replaceChild(importBtn, importLabel);
-    // Keep the hidden input in the DOM but outside the button
     importBtn.parentNode.appendChild(importInput);
 
     importBtn.addEventListener('click', (e) => {
         e.preventDefault();
         triggerHaptic();
         requestAdminAccess(() => {
-            // Password correct, now trigger the file picker
             importInput.click();
         });
     });
@@ -820,7 +817,6 @@ function createDayCell(dayNum, dateStr, isToday) {
         openDayModal(dateStr);
     });
     
-    // --- 農曆與天氣顯示區塊開始 ---
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
     
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -841,7 +837,6 @@ function createDayCell(dayNum, dateStr, isToday) {
     
     const lunarStyle = isLunarHighlight ? 'text-rose-500 font-bold' : 'text-gray-400 font-medium';
 
-    // 【排版優化】改為上下兩層排列，天氣享有獨立行並支援自動換行
     cell.innerHTML = `
         <div class="flex flex-col px-0.5 w-full shrink-0">
             <div class="flex justify-between items-start w-full">
@@ -850,7 +845,6 @@ function createDayCell(dayNum, dateStr, isToday) {
             </div>
             <span class="text-[8.5px] md:text-[9px] text-blue-500 leading-tight mt-0.5 whitespace-normal break-words">${weatherData[dateStr] || ''}</span>
         </div>`;
-    // --- 農曆與天氣顯示區塊結束 ---
 
     const container = document.createElement('div');
     container.className = 'flex flex-col gap-0.5 overflow-y-auto flex-1 hide-scrollbar';
@@ -949,7 +943,6 @@ function renderUpcoming() {
     });
 }
 
-// 🌟 修復 2：更新「今天」按鈕邏輯，跳轉月份同時將焦點重置到今天
 const goToToday = () => {
     triggerHaptic();
     const now = new Date();
@@ -1379,21 +1372,13 @@ function openViewModal(id) {
         } else {
             transactions.forEach(t => {
                 html += `
-                    <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-100 shadow-sm">
+                    <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
                         <div class="flex flex-col">
                             <span class="font-bold text-sm text-gray-800">👤 ${t.from}</span>
-                            <span class="text-[10px] text-gray-500">應轉給 <strong class="text-gray-700">${t.to}</strong></span>
+                            <span class="text-xs text-gray-500 mt-0.5">應轉給 <strong class="text-gray-700">${t.to}</strong></span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-extrabold text-amber-600 mr-1">$${t.amount.toLocaleString()}</span>
-                            
-                            <button onclick="navigator.clipboard.writeText('【家族行程分帳】${t.from} 應轉帳給 ${t.to} $${t.amount} 元').then(()=>alert('已複製金額與明細！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額明細">
-                                <i class="far fa-copy text-xs"></i>
-                            </button>
-                            
-                            <a href="linebank://" onclick="alert('即將為您開啟 LINE Bank 進行轉帳！')" class="w-7 h-7 bg-sky-50 hover:bg-sky-100 text-sky-600 rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Bank 轉帳">
-                                <i class="fas fa-university text-xs"></i>
-                            </a>
+                        <div class="font-extrabold text-amber-600 text-base">
+                            $${t.amount.toLocaleString()}
                         </div>
                     </div>`;
             });
@@ -1868,7 +1853,7 @@ function initFunAnimations() {
 
 initRadioPlayer();
 initFunAnimations();
-// 🌟 Apple Watch / 內建行事曆 同步匯出引擎 (.ics 格式)
+
 const exportIcsBtn = document.createElement('button');
 exportIcsBtn.id = 'btn-export-ics';
 exportIcsBtn.className = 'w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer mt-3';
@@ -1907,7 +1892,7 @@ exportIcsBtn.addEventListener('click', () => {
                 ics += "DTSTART;VALUE=DATE:" + startStr + "\n";
                 ics += "DTEND;VALUE=DATE:" + endStr + "\n";
                 if (e.location) ics += "LOCATION:" + e.location + "\n";
-                if (e.author) ics += "DESCRIPTION:JSON 格式備份或行程建立者：" + e.author + "\n";
+                if (e.author) ics += "DESCRIPTION:建立者：" + e.author + "\n";
                 ics += "END:VEVENT\n";
             });
             ics += "END:VCALENDAR";
