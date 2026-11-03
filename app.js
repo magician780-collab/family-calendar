@@ -79,7 +79,14 @@ if (!document.getElementById('ai-border-style')) {
     html, body { max-width: 100vw; overflow-x: hidden; }
     iframe, video { max-width: 100% !important; box-sizing: border-box; }
 
-    /* 確保全螢幕彈出視窗不受 iOS 頂部安全區干擾 */
+    /* 🌟 修復側邊欄滑動問題：強制啟用 Y 軸捲動與順暢滑動 (iOS) */
+    #sidebar {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain;
+        padding-bottom: env(safe-area-inset-bottom, 30px) !important;
+    }
+
     #video-fullscreen-modal {
         padding-top: env(safe-area-inset-top, 0px);
         padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -179,7 +186,6 @@ if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
     });
 }
 
-// 🌟 全新升級：點擊後直接彈出全螢幕播放引擎 (Fullscreen Video Engine)
 function openVideoGallery() {
     let modal = document.getElementById('video-gallery-modal');
     if (!modal) {
@@ -248,7 +254,6 @@ function openVideoGallery() {
                 </button>
             `;
             
-            // 查看明細按鈕事件
             item.querySelector('.view-details-btn').addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 triggerHaptic();
@@ -260,11 +265,9 @@ function openVideoGallery() {
                 }, 300);
             });
 
-            // 🌟 點擊整張縮圖觸發「全螢幕沉浸播放器」
             item.addEventListener('click', () => {
                 triggerHaptic();
                 
-                // 暫停廣播並記憶
                 const radioAudio = document.getElementById('radio-audio');
                 const radioIcon = document.getElementById('radio-icon');
                 const radioStatus = document.getElementById('radio-status');
@@ -275,7 +278,6 @@ function openVideoGallery() {
                     radioStatus.innerText = '已暫停(影片播放中)';
                 }
 
-                // 呼叫專屬的全螢幕播放視窗
                 openFullscreenVideo(ytId, url, evt.title);
             });
             
@@ -288,7 +290,6 @@ function openVideoGallery() {
     modal.classList.remove('translate-x-full');
 }
 
-// 🌟 全螢幕劇院播放引擎 (獨立於大廳，擁有自己的 Z-index 和全黑背景)
 function openFullscreenVideo(ytId, rawUrl, title) {
     let fsModal = document.getElementById('video-fullscreen-modal');
     if (!fsModal) {
@@ -326,12 +327,10 @@ function openFullscreenVideo(ytId, rawUrl, title) {
     void fsModal.offsetWidth;
     fsModal.classList.replace('opacity-0', 'opacity-100');
 
-    // 關閉全螢幕模式並恢復廣播
     document.getElementById('btn-close-fs').addEventListener('click', () => {
         triggerHaptic();
         fsModal.classList.replace('opacity-100', 'opacity-0');
         
-        // 恢復廣播
         const radioAudio = document.getElementById('radio-audio');
         const radioIcon = document.getElementById('radio-icon');
         const radioStatus = document.getElementById('radio-status');
@@ -345,7 +344,7 @@ function openFullscreenVideo(ytId, rawUrl, title) {
 
         setTimeout(() => {
             fsModal.classList.add('hidden');
-            fsModal.innerHTML = ''; // 清空 iframe/video 停止播放
+            fsModal.innerHTML = '';
         }, 300);
     });
 }
@@ -657,7 +656,6 @@ function requestAdminAccess(callback) {
     }
 }
 
-// 🌟 管理員後台綁定邏輯重寫，確保獨立載入
 const adminSectionInit = () => {
     const importGovBtn = document.getElementById('btn-import-gov-holidays');
     if (!importGovBtn) return;
@@ -850,142 +848,6 @@ if (exportBtn && importInput) {
             finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
         });
     });
-}
-
-const galleryModal = document.getElementById('gallery-modal');
-document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
-document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
-
-function renderGalleryGrid() {
-    const container = document.getElementById('gallery-grid-container');
-    container.innerHTML = '';
-    
-    container.className = 'p-4 masonry-gallery bg-gray-50 flex-1 overflow-y-auto'; 
-    
-    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    if (photoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400"><i class="far fa-images text-5xl mb-4 opacity-50"></i><p class="text-sm font-bold">目前還沒有任何相片記錄喔！</p></div>`;
-        return;
-    }
-    
-    photoEvents.forEach((evt, idx) => {
-        const item = document.createElement('div');
-        item.className = 'masonry-item shadow-sm border border-gray-200';
-        const imgUrl = getDirectImageUrl(evt.photoUrl);
-        item.innerHTML = `
-            <img src="${imgUrl}" loading="lazy" alt="Family Memory" class="masonry-thumb">
-            <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">${evt.startDate}</div>
-            <div class="masonry-overlay">
-                <h4 class="font-extrabold text-sm truncate drop-shadow-md">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4>
-                <p class="text-[10px] text-gray-200 mt-1 font-bold"><i class="fas fa-search-plus"></i> 點擊放大觀賞</p>
-            </div>
-        `;
-        item.addEventListener('click', () => { 
-            triggerHaptic(); 
-            openLightbox(photoEvents, idx); 
-        });
-        container.appendChild(item);
-    });
-}
-
-let lightboxInterval = null;
-function openLightbox(photoEvents, startIndex) {
-    let currentIndex = startIndex;
-    let modal = document.getElementById('photo-lightbox-modal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'photo-lightbox-modal';
-        modal.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center opacity-0 transition-opacity duration-300';
-        modal.innerHTML = `
-            <button id="lb-close" class="absolute top-4 right-4 text-white p-4 text-2xl hover:text-rose-400 z-50 transition-colors"><i class="fas fa-times"></i></button>
-            <button id="lb-prev" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-left"></i></button>
-            <button id="lb-next" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/70 p-4 text-4xl md:text-5xl hover:text-white hover:scale-110 z-50 transition-all"><i class="fas fa-chevron-right"></i></button>
-            
-            <div class="relative w-full max-w-6xl px-12 md:px-24 flex-1 flex items-center justify-center">
-                <img id="lb-img" class="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl transition-all duration-300 opacity-0 scale-95">
-            </div>
-            
-            <div class="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-50">
-                <div id="lb-title" class="text-white font-extrabold text-lg md:text-2xl drop-shadow-lg tracking-wide"></div>
-                <div class="flex items-center gap-4">
-                    <button id="lb-play" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10"><i class="fas fa-play"></i> 電子相框輪播</button>
-                    <button id="lb-goto" class="px-5 py-2.5 bg-warm-500 hover:bg-warm-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-warm-500/30"><i class="fas fa-calendar-day"></i> 開啟行程明細</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('lb-close').onclick = closeLB;
-        document.getElementById('lb-prev').onclick = () => showIdx(currentIndex - 1);
-        document.getElementById('lb-next').onclick = () => showIdx(currentIndex + 1);
-        
-        document.addEventListener('keydown', (e) => {
-            if (modal.classList.contains('hidden')) return;
-            if (e.key === 'ArrowLeft') showIdx(currentIndex - 1);
-            if (e.key === 'ArrowRight') showIdx(currentIndex + 1);
-            if (e.key === 'Escape') closeLB();
-        });
-    }
-    
-    modal.classList.remove('hidden');
-    void modal.offsetWidth; 
-    modal.classList.replace('opacity-0', 'opacity-100');
-    
-    let isPlaying = false;
-    const playBtn = document.getElementById('lb-play');
-    playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
-    playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
-    if(lightboxInterval) clearInterval(lightboxInterval);
-    
-    function showIdx(idx) {
-        if (idx < 0) idx = photoEvents.length - 1;
-        if (idx >= photoEvents.length) idx = 0;
-        currentIndex = idx;
-        const evt = photoEvents[idx];
-        
-        const img = document.getElementById('lb-img');
-        img.classList.remove('opacity-100', 'scale-100');
-        img.classList.add('opacity-0', 'scale-95');
-        
-        setTimeout(() => {
-            img.src = getDirectImageUrl(evt.photoUrl);
-            img.onload = () => {
-                img.classList.remove('opacity-0', 'scale-95');
-                img.classList.add('opacity-100', 'scale-100');
-            };
-        }, 150);
-        
-        document.getElementById('lb-title').innerText = `${evt.startDate} | ${evt.icon ? evt.icon+' ' : ''}${evt.title}`;
-        
-        document.getElementById('lb-goto').onclick = () => {
-            closeLB();
-            document.getElementById('gallery-modal').classList.add('hidden');
-            openViewModal(evt.id);
-        };
-    }
-    
-    function closeLB() {
-        modal.classList.replace('opacity-100', 'opacity-0');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-        if(lightboxInterval) clearInterval(lightboxInterval);
-        isPlaying = false;
-    }
-    
-    playBtn.onclick = () => {
-        isPlaying = !isPlaying;
-        if(isPlaying) {
-            playBtn.innerHTML = '<i class="fas fa-pause"></i> 停止輪播';
-            playBtn.className = 'px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/30';
-            lightboxInterval = setInterval(() => showIdx(currentIndex + 1), 3500);
-        } else {
-            playBtn.innerHTML = '<i class="fas fa-play"></i> 電子相框輪播';
-            playBtn.className = 'px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-white/10';
-            clearInterval(lightboxInterval);
-        }
-    };
-    
-    showIdx(startIndex);
 }
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
@@ -1766,7 +1628,7 @@ function initFunAnimations() {
     }
 
     document.addEventListener('click', function(e) {
-        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu') || e.target.closest('#manual-modal') || e.target.closest('#qr-modal')) return;
+        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu') || e.target.closest('#manual-modal') || e.target.closest('#qr-modal') || e.target.closest('#video-fullscreen-modal')) return;
         let ripple = document.createElement('div');
         ripple.className = 'click-ripple';
         ripple.style.left = e.clientX + 'px';
@@ -1776,5 +1638,340 @@ function initFunAnimations() {
     });
 }
 
-initRadioPlayer();
+function initRadioPlayer() {
+    if (document.getElementById('radio-widget')) return;
+
+    let stations = [
+        { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
+        { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
+        { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
+    ];
+
+    try {
+        const customStations = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
+        stations = [...stations, ...customStations];
+    } catch (e) {}
+
+    let currentStationIdx = 0;
+    let hlsInstance = null; 
+
+    const radioContainer = document.createElement('div');
+    radioContainer.id = 'radio-widget';
+    radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
+    
+    const savedPos = localStorage.getItem('radio_widget_pos');
+    if (savedPos) {
+        try {
+            const pos = JSON.parse(savedPos);
+            let nx = pos.left, ny = pos.top;
+            if (nx < 0) nx = 20; if (ny < 0) ny = 20;
+            if (nx > window.innerWidth - 100) nx = window.innerWidth - 150;
+            if (ny > window.innerHeight - 50) ny = window.innerHeight - 100;
+            radioContainer.style.left = nx + 'px';
+            radioContainer.style.top = ny + 'px';
+        } catch(e) {}
+    } else {
+        radioContainer.style.bottom = '24px';
+        radioContainer.style.right = '24px';
+    }
+
+    radioContainer.innerHTML = `
+        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
+            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
+        </div>
+        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1 pointer-events-none">
+            <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
+            <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
+        </div>
+        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
+            <i class="fas fa-list-ul text-[10px] md:text-xs pointer-events-none"></i>
+        </button>
+        <audio id="radio-audio" preload="none"></audio>
+        <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
+    `;
+    document.body.appendChild(radioContainer);
+
+    const menuContainer = document.createElement('div');
+    menuContainer.id = 'radio-menu';
+    menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
+    document.body.appendChild(menuContainer);
+    
+    const audio = document.getElementById('radio-audio');
+    const ytContainer = document.getElementById('yt-radio-container');
+    const playBtn = document.getElementById('btn-radio-play');
+    const menuBtn = document.getElementById('btn-radio-menu');
+    const icon = document.getElementById('radio-icon');
+    const text = document.getElementById('radio-text');
+    const statusText = document.getElementById('radio-status');
+    let isPlaying = false;
+
+    let isDragging = false;
+    let hasDragged = false;
+    let dragStartX = 0, dragStartY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    const onDragStart = (e) => {
+        if (e.type === 'touchstart') {
+            dragStartX = e.touches[0].clientX;
+            dragStartY = e.touches[0].clientY;
+        } else {
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        isDragging = true;
+        hasDragged = false;
+        
+        const rect = radioContainer.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        radioContainer.style.bottom = 'auto';
+        radioContainer.style.right = 'auto';
+        radioContainer.style.left = initialLeft + 'px';
+        radioContainer.style.top = initialTop + 'px';
+        radioContainer.style.transition = 'none';
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - dragStartX;
+        const dy = clientY - dragStartY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+
+        const rect = radioContainer.getBoundingClientRect();
+        if (newLeft < 0) newLeft = 0;
+        if (newTop < 0) newTop = 0;
+        if (newLeft + rect.width > window.innerWidth) newLeft = window.innerWidth - rect.width;
+        if (newTop + rect.height > window.innerHeight) newTop = window.innerHeight - rect.height;
+
+        radioContainer.style.left = newLeft + 'px';
+        radioContainer.style.top = newTop + 'px';
+    };
+
+    const onDragEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        radioContainer.style.transition = 'all 0.3s ease';
+        if (hasDragged) {
+            const rect = radioContainer.getBoundingClientRect();
+            localStorage.setItem('radio_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+        }
+    };
+
+    radioContainer.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove, { passive: false });
+    document.addEventListener('mouseup', onDragEnd);
+
+    radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+        // 防止拖曳時觸發側邊欄或頁面滾動
+        if (isDragging) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+
+    radioContainer.addEventListener('click', (e) => {
+        if (hasDragged) {
+            e.preventDefault();
+            e.stopPropagation();
+            hasDragged = false;
+        }
+    }, true);
+
+    function renderMenu() {
+        menuContainer.innerHTML = '';
+        stations.forEach((station, idx) => {
+            const item = document.createElement('button');
+            const isActive = (idx === currentStationIdx);
+            item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
+            
+            const isCustom = idx >= 4; 
+            const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
+
+            item.innerHTML = `
+                <div class="flex items-center truncate">
+                    <span class="truncate pr-2">${station.name}</span>
+                </div>
+                <div class="flex items-center shrink-0">
+                    <i class="fas fa-volume-up text-warm-500 ${isActive ? 'opacity-100' : 'opacity-0'}"></i>
+                    ${deleteBtnHtml}
+                </div>
+            `;
+            
+            item.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                if (e.target.dataset.delete) {
+                    if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
+                        stations.splice(idx, 1);
+                        const customStations = stations.slice(4);
+                        localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
+                        
+                        if (currentStationIdx === idx) {
+                            audio.pause();
+                            ytContainer.innerHTML = '';
+                            if(hlsInstance) hlsInstance.destroy();
+                            isPlaying = false;
+                            currentStationIdx = 0;
+                            text.innerText = stations[0].name;
+                            statusText.innerText = '點擊播放';
+                            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+                            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+                        } else if (currentStationIdx > idx) currentStationIdx--;
+                        
+                        renderMenu();
+                    }
+                    return;
+                }
+
+                triggerHaptic();
+                currentStationIdx = idx;
+                renderMenu(); 
+                loadAndPlayStation(idx);
+                menuContainer.classList.add('hidden');
+            });
+            menuContainer.appendChild(item);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const newName = prompt('請輸入電台名稱 (例如：飛碟聯播網)：');
+            if (!newName) return;
+            const newUrl = prompt('請貼上網址 (支援 YouTube 直播連結、.mp3 或 .m3u8)：\n例如：https://www.youtube.com/watch?v=...');
+            if (!newUrl) return;
+            
+            const newStation = { name: '📺 ' + newName, url: newUrl, type: 'live' };
+            stations.push(newStation);
+            
+            const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
+            custom.push(newStation);
+            localStorage.setItem('my_custom_stations', JSON.stringify(custom));
+            
+            alert('🎉 新增成功！請在選單中點選播放。');
+            renderMenu();
+        });
+        menuContainer.appendChild(addBtn);
+    }
+
+    renderMenu();
+
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); 
+        triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
+        
+        if (menuContainer.classList.contains('hidden')) {
+            const rect = radioContainer.getBoundingClientRect();
+            let menuTop = rect.top - 260;
+            if (menuTop < 10) menuTop = rect.bottom + 10;
+            
+            let menuLeft = rect.right - 256;
+            if (menuLeft < 10) menuLeft = 10;
+            
+            menuContainer.style.top = menuTop + 'px';
+            menuContainer.style.left = menuLeft + 'px';
+        }
+        menuContainer.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) menuContainer.classList.add('hidden');
+    });
+
+    function loadAndPlayStation(index) {
+        const station = stations[index];
+        text.innerText = station.name;
+        audio.volume = 0.4;
+        statusText.innerText = '連線中...';
+        icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
+        isPlaying = true;
+
+        audio.pause();
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        ytContainer.innerHTML = '';
+
+        const onPlaySuccess = () => {
+            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+            statusText.innerText = '正在播放';
+            radioContainer.classList.add('ring-2', 'ring-warm-400');
+        };
+
+        const onPlayError = (e) => {
+            console.log('Stream Error:', e);
+            statusText.innerText = '網址失效或阻擋連線';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+            isPlaying = false;
+        };
+
+        let isYouTube = false;
+        let ytId = '';
+        if (station.url.includes('youtube.com/watch?v=')) {
+            isYouTube = true;
+            ytId = new URL(station.url).searchParams.get('v');
+        } else if (station.url.includes('youtu.be/')) {
+            isYouTube = true;
+            ytId = station.url.split('youtu.be/')[1].split('?')[0];
+        }
+
+        if (isYouTube && ytId) {
+            ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
+            setTimeout(onPlaySuccess, 1500); 
+        } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(station.url);
+            hlsInstance.attachMedia(audio);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                audio.play().then(onPlaySuccess).catch(onPlayError);
+            });
+            hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) onPlayError(data);
+            });
+        } else {
+            audio.src = station.url;
+            audio.loop = (station.type === 'bgm'); 
+            audio.play().then(onPlaySuccess).catch(onPlayError);
+        }
+    }
+
+    playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
+        
+        if (isPlaying) {
+            audio.pause();
+            ytContainer.innerHTML = ''; 
+            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+            statusText.innerText = '已暫停';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+        } else {
+            loadAndPlayStation(currentStationIdx);
+        }
+        isPlaying = !isPlaying;
+    });
+
+    audio.addEventListener('error', () => {
+        if (isPlaying) {
+            statusText.innerText = '電台斷線，請換台';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            isPlaying = false;
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+        }
+    });
+}
+
 initFunAnimations();
+initRadioPlayer();
