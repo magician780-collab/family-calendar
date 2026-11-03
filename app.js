@@ -158,25 +158,21 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-// 🌟 全新側邊欄配置：相簿牆 -> 影片牆 -> 說明書 -> QR Code
 const galleryBtn = document.getElementById('btn-open-gallery');
 if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
     
-    // 1. 新增：影片牆按鈕
     const videoBtn = document.createElement('button');
     videoBtn.id = 'btn-open-video-gallery';
     videoBtn.className = 'w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
     videoBtn.innerHTML = '<i class="fas fa-film text-indigo-600"></i> 🎬 家庭影音大廳';
     galleryBtn.parentNode.insertBefore(videoBtn, galleryBtn.nextSibling);
 
-    // 2. 說明書按鈕
     const manualBtn = document.createElement('button');
     manualBtn.id = 'btn-open-manual';
     manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-2';
     manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
     videoBtn.parentNode.insertBefore(manualBtn, videoBtn.nextSibling);
 
-    // 3. QR Code 按鈕
     const qrBtn = document.createElement('button');
     qrBtn.id = 'btn-open-qr';
     qrBtn.className = 'w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-2';
@@ -202,7 +198,7 @@ if (galleryBtn && !document.getElementById('btn-open-video-gallery')) {
     });
 }
 
-// 🌟 核心：開啟影片牆
+// 🌟 防彈版影片大廳載入機制
 function openVideoGallery() {
     let modal = document.getElementById('video-gallery-modal');
     if (!modal) {
@@ -227,7 +223,6 @@ function openVideoGallery() {
     const container = document.getElementById('video-grid-container');
     container.innerHTML = '';
     
-    // 篩選有影片網址的行程
     const videoEvents = events.filter(e => e.videoUrl && e.videoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
     
     if (videoEvents.length === 0) {
@@ -237,19 +232,26 @@ function openVideoGallery() {
             const item = document.createElement('div');
             item.className = 'masonry-item shadow-lg border border-gray-800 bg-black group';
             
-            // 解析 YouTube ID 以獲取預覽圖
             let ytId = '';
             let url = evt.videoUrl.trim();
-            if (url.includes('youtube.com/watch?v=')) ytId = new URL(url).searchParams.get('v');
-            else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].split('?')[0];
-            else if (url.includes('youtube.com/shorts/')) ytId = url.split('youtube.com/shorts/')[1].split('?')[0];
+            
+            // 🛡️ 防彈版解析器：利用 String Split 防止 new URL 拋錯崩潰
+            try {
+                if (url.includes('v=')) {
+                    ytId = url.split('v=')[1].split('&')[0];
+                } else if (url.includes('youtu.be/')) {
+                    ytId = url.split('youtu.be/')[1].split('?')[0];
+                } else if (url.includes('shorts/')) {
+                    ytId = url.split('shorts/')[1].split('?')[0];
+                }
+            } catch (e) {
+                console.error("網址解析略過：", url);
+            }
             
             let thumbHtml = '';
-            if (ytId) {
-                // 有 YT 連結就直接掛上高品質縮圖
+            if (ytId && ytId.length > 5) {
                 thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="w-full h-auto object-cover opacity-60 group-hover:opacity-100 transition-all duration-500">`;
             } else {
-                // 沒有的話給一個高質感的漸層播放底圖
                 thumbHtml = `<div class="w-full aspect-video bg-gradient-to-br from-indigo-900 to-gray-900 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-all duration-500"></div>`;
             }
 
@@ -274,10 +276,9 @@ function openVideoGallery() {
     }
     
     modal.classList.remove('hidden');
-    void modal.offsetWidth; // 強制重繪
+    void modal.offsetWidth;
     modal.classList.remove('translate-x-full');
 }
-
 
 function openQRModal() {
     if (document.getElementById('qr-modal')) {
@@ -743,7 +744,6 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
-// 🌟 全新進化 1：相簿牆改為絕美瀑布流 (Masonry) 排版
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
@@ -776,7 +776,6 @@ function renderGalleryGrid() {
     });
 }
 
-// 🌟 全新進化 2 & 3：沉浸式全螢幕燈箱與電子相框(自動輪播)
 let lightboxInterval = null;
 function openLightbox(photoEvents, startIndex) {
     let currentIndex = startIndex;
@@ -907,7 +906,7 @@ const checklistFields = document.getElementById('checklist-fields');
 const checklistContainer = document.getElementById('checklist-items-container');
 checklistCheckbox.addEventListener('change', (e) => {
     checklistFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && checklistContainer.length === 0) addChecklistRow();
+    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
 });
 function addChecklistRow(text = '', assignee = '', done = false) {
     const row = document.createElement('div');
@@ -928,7 +927,7 @@ const pollFields = document.getElementById('poll-fields');
 const pollOptionsContainer = document.getElementById('poll-options-container');
 pollCheckbox.addEventListener('change', (e) => {
     pollFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && pollOptionsContainer.length === 0) addPollOptionRow();
+    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
 });
 function addPollOptionRow(title = '') {
     const row = document.createElement('div');
@@ -1316,16 +1315,13 @@ function openViewModal(id) {
         vElement.setAttribute('controls', 'true');
         
         let ytId = '';
-        if (url.includes('youtube.com/watch?v=')) {
-            ytId = new URL(url).searchParams.get('v');
-        } else if (url.includes('youtu.be/')) {
-            ytId = url.split('youtu.be/')[1].split('?')[0];
-        } else if (url.includes('youtube.com/shorts/')) {
-            ytId = url.split('youtube.com/shorts/')[1].split('?')[0];
-            vBox.style.cssText = "width: 100%; max-width: 320px; aspect-ratio: 9/16; background: #000; border-radius: 0.75rem; overflow: hidden; margin: 0.75rem auto; position: relative;";
-        }
+        try {
+            if (url.includes('v=')) ytId = url.split('v=')[1].split('&')[0];
+            else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].split('?')[0];
+            else if (url.includes('shorts/')) ytId = url.split('shorts/')[1].split('?')[0];
+        } catch(e) {}
 
-        if (ytId) {
+        if (ytId && ytId.length > 5) {
             vIframe.src = `https://www.youtube.com/embed/${ytId}?rel=0&playsinline=1`;
             vIframe.classList.remove('hidden');
         } else if (url.includes('drive.google.com')) {
@@ -1623,6 +1619,8 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
+// 🌟 保留並優化原有彩蛋與播放器 (代碼省略，完全沿用先前穩定版本)
+// 確保您先前的 initRadioPlayer() 與 initFunAnimations() 依然掛載
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
