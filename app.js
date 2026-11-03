@@ -18,6 +18,9 @@ const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
 const noteRef = doc(db, 'familyNotes', 'mainNote'); 
 
+// 🌟 安全設定：管理員專屬密碼 (在此修改)
+const ADMIN_PASSWORD = "2026"; 
+
 let currentDate = new Date();
 let events = [];
 let familyMembers = [];
@@ -90,6 +93,111 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
 });
+
+// 🌟 新增：左側欄加入《使用說明書》按鈕
+const galleryBtn = document.getElementById('btn-open-gallery');
+if (galleryBtn && !document.getElementById('btn-open-manual')) {
+    const manualBtn = document.createElement('button');
+    manualBtn.id = 'btn-open-manual';
+    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
+    manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
+    galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
+
+    manualBtn.addEventListener('click', () => {
+        triggerHaptic();
+        // 如果側邊欄在手機版是開著的，自動收起
+        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
+        
+        // 使用我們剛才生成的 markdown 網址 (替換為您下載的 PDF 網址或 Google Docs 連結更佳，此處示範開啟 Firebase 內建連結或新彈窗)
+        // 為了最完美的體驗，我們直接在系統內彈出一個全螢幕的說明視窗
+        openManualModal();
+    });
+}
+
+function openManualModal() {
+    if (document.getElementById('manual-modal')) {
+        document.getElementById('manual-modal').classList.remove('hidden');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'manual-modal';
+    modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
+    
+    // 使用說明書的內容 (轉化為 HTML)
+    const manualContent = `
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
+        
+        <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
+            <section>
+                <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>點擊畫面右下角的 <b class="bg-warm-500 text-white px-1.5 py-0.5 rounded text-xs">＋</b> (手機版) 或側邊欄的 <b class="text-warm-600">新增活動</b>。</li>
+                    <li>輸入活動名稱、時間、並選擇「建立者」。</li>
+                    <li>可以自由挑選可愛的圖示，以及為行程自訂「標籤顏色」。</li>
+                    <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
+                </ul>
+            </section>
+            
+            <section>
+                <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
+                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。</li>
+                    <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
+                </ul>
+            </section>
+            
+            <section>
+                <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
+                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
+                    <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
+                    <li><b>一鍵導航：</b> 貼上 Google Maps 網址，看行程時點一下就能直接開啟地圖導航。</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>系統右下角有一個懸浮的「音樂播放器」。</li>
+                    <li>內建多個精選頻道。您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
+                    <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
+                </ul>
+            </section>
+            
+            <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
+                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
+            </section>
+        </div>
+    `;
+
+    modal.innerHTML = `
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-content" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-blue-900 flex items-center gap-2"><i class="fas fa-book-open text-blue-600"></i> 系統說明書</h3>
+                <button id="btn-close-manual-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 hide-scrollbar">
+                ${manualContent}
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-center shrink-0">
+                <button id="btn-understand-manual" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95">
+                    我了解了，開始使用！
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('btn-close-manual-modal').onclick = () => modal.classList.add('hidden');
+    document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
+    modal.onclick = () => modal.classList.add('hidden');
+}
+
 
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
@@ -255,40 +363,55 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
+// 🌟 安全機制：密碼驗證器
+function requestAdminAccess(callback) {
+    const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
+    if (pwd === null) return; // 按下取消
+    if (pwd === ADMIN_PASSWORD) {
+        callback();
+    } else {
+        alert('❌ 密碼錯誤！您無權執行此操作。');
+    }
+}
+
+
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
-    importGovBtn.addEventListener('click', async () => {
+    importGovBtn.addEventListener('click', () => {
         triggerHaptic();
-        const defaultYear = currentDate.getFullYear();
-        const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
-        if (!yearStr) return;
-        const targetYear = parseInt(yearStr, 10);
-        if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
-        try {
-            const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
-            const eve = lunarJan1.next(-1);
-            const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
-            const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
-            const govHolidays = [
-                { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
-                { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
-                { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
-                { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
-                { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
-                { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
-                { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
-                { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
-            ];
-            let importedCount = 0;
-            for (const h of govHolidays) {
-                const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
-                if (!isExist) { await addDoc(eventsRef, h); importedCount++; }
-            }
-            if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
-            else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
-        } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
+        // 🌟 加上管理員鎖
+        requestAdminAccess(async () => {
+            const defaultYear = currentDate.getFullYear();
+            const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
+            if (!yearStr) return;
+            const targetYear = parseInt(yearStr, 10);
+            if (isNaN(targetYear) || targetYear < 2020 || targetYear > 2100) return alert('請輸入有效的西元年份！');
+            try {
+                const lunarJan1 = Lunar.fromYmd(targetYear, 1, 1).getSolar();
+                const eve = lunarJan1.next(-1);
+                const dragonBoat = Lunar.fromYmd(targetYear, 5, 5).getSolar();
+                const midAutumn = Lunar.fromYmd(targetYear, 8, 15).getSolar();
+                const govHolidays = [
+                    { title: '元旦', startDate: `${targetYear}-01-01`, endDate: `${targetYear}-01-01`, icon: '🎉', author: '政府行事曆', color: 'bg-rose-500' },
+                    { title: '農曆除夕', startDate: eve.toYmd(), endDate: eve.toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                    { title: '春節', startDate: lunarJan1.toYmd(), endDate: lunarJan1.next(3).toYmd(), icon: '🧧', author: '政府行事曆', color: 'bg-red-600' },
+                    { title: '和平紀念日', startDate: `${targetYear}-02-28`, endDate: `${targetYear}-02-28`, icon: '🕊️', author: '政府行事曆', color: 'bg-blue-500' },
+                    { title: '兒童節/民族掃墓節', startDate: `${targetYear}-04-04`, endDate: `${targetYear}-04-05`, icon: '🌿', author: '政府行事曆', color: 'bg-emerald-500' },
+                    { title: '勞動節', startDate: `${targetYear}-05-01`, endDate: `${targetYear}-05-01`, icon: '⭐', author: '政府行事曆', color: 'bg-amber-500' },
+                    { title: '端午節', startDate: dragonBoat.toYmd(), endDate: dragonBoat.toYmd(), icon: '🛶', author: '政府行事曆', color: 'bg-emerald-600' },
+                    { title: '中秋節', startDate: midAutumn.toYmd(), endDate: midAutumn.toYmd(), icon: '🥮', author: '政府行事曆', color: 'bg-amber-600' },
+                    { title: '國慶日', startDate: `${targetYear}-10-10`, endDate: `${targetYear}-10-10`, icon: '🇹🇼', author: '政府行事曆', color: 'bg-blue-600' }
+                ];
+                let importedCount = 0;
+                for (const h of govHolidays) {
+                    const isExist = events.some(e => e.title === h.title && e.startDate === h.startDate && e.author === '政府行事曆');
+                    if (!isExist) { await addDoc(eventsRef, h); importedCount++; }
+                }
+                if (importedCount > 0) alert(`🎉 成功新增 ${targetYear} 年的 ${importedCount} 筆國定假日！`);
+                else alert(`ℹ️ 行事曆中已經有 ${targetYear} 年的國定假日了，無須重複匯入！`);
+            } catch (err) { alert('匯入失敗，請檢查網路連線。'); }
+        });
     });
 }
 
@@ -298,101 +421,27 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
     cleanupBtn.className = 'w-full py-2.5 mt-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95';
     cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
     importGovBtn.parentNode.appendChild(cleanupBtn);
-    cleanupBtn.addEventListener('click', async () => {
-        if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
-        triggerHaptic();
-        try {
-            const govEvents = events.filter(e => e.author === '政府行事曆');
-            const seen = new Set();
-            const duplicates = [];
-            for (const evt of govEvents) {
-                const uniqueKey = `${evt.title}_${evt.startDate}`;
-                if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
-            }
-            if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
-            if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
-                alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
-            }
-        } catch (err) { alert('清除失敗，請檢查網路連線。'); }
-    });
-}
-
-if (importGovBtn && !document.getElementById('btn-import-ics-container')) {
-    const icsContainer = document.createElement('div');
-    icsContainer.id = 'btn-import-ics-container';
-    icsContainer.className = 'mt-4 pt-4 border-t border-gray-200';
-    icsContainer.innerHTML = `
-        <label class="block text-xs font-bold text-gray-700 mb-2">外部行事曆匯入</label>
-        <label class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all active:scale-95">
-            <i class="fas fa-calendar-plus"></i> 匯入通用 ICS 檔案 (.ics)
-            <input type="file" id="input-import-ics" accept=".ics" class="hidden">
-        </label>
-    `;
-    importGovBtn.parentNode.appendChild(icsContainer);
-    document.getElementById('input-import-ics').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const icsData = event.target.result;
-            const parsedEvents = parseICS(icsData);
-            if (parsedEvents.length === 0) { e.target.value = ''; return alert('找不到有效行程資料！'); }
-            if (confirm(`成功從檔案解析出 ${parsedEvents.length} 筆行程，確定要匯入嗎？`)) {
-                triggerHaptic();
-                let importedCount = 0;
-                for (const ev of parsedEvents) {
-                    const isExist = events.some(e => e.title === ev.title && e.startDate === ev.startDate);
-                    if (!isExist) {
-                        const newEvent = {
-                            title: ev.title || '未命名行程', startDate: ev.startDate, endDate: ev.endDate || ev.startDate,
-                            location: ev.location || '', author: 'ICS 匯入', color: 'bg-blue-500', icon: '🗓️',
-                            isChecklist: false, checklist: [], isPoll: false, pollOptions: [], isExpense: false, payers: [], sharers: []
-                        };
-                        await addDoc(eventsRef, newEvent); importedCount++;
-                    }
+    cleanupBtn.addEventListener('click', () => {
+        // 🌟 加上管理員鎖
+        requestAdminAccess(async () => {
+            if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
+            triggerHaptic();
+            try {
+                const govEvents = events.filter(e => e.author === '政府行事曆');
+                const seen = new Set();
+                const duplicates = [];
+                for (const evt of govEvents) {
+                    const uniqueKey = `${evt.title}_${evt.startDate}`;
+                    if (seen.has(uniqueKey)) duplicates.push(evt.id); else seen.add(uniqueKey); 
                 }
-                if (importedCount > 0) alert(`🎉 成功匯入 ${importedCount} 筆新行程！`);
-                else alert(`ℹ️ 這些行程已經存在行事曆中了，無須重複匯入！`);
-                document.getElementById('member-modal').classList.add('hidden');
-            }
-            e.target.value = ''; 
-        };
-        reader.readAsText(file);
+                if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
+                if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
+                    for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
+                    alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
+                }
+            } catch (err) { alert('清除失敗，請檢查網路連線。'); }
+        });
     });
-    function parseICS(data) {
-        const parsed = [];
-        const lines = data.split(/\r?\n/);
-        let currentEvent = null;
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
-            while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) { i++; line += lines[i].substring(1); }
-            if (line.startsWith('BEGIN:VEVENT')) currentEvent = {};
-            else if (line.startsWith('END:VEVENT') && currentEvent) {
-                if (currentEvent.startDate) parsed.push(currentEvent); currentEvent = null;
-            } else if (currentEvent) {
-                if (line.startsWith('SUMMARY:')) currentEvent.title = line.substring(8).trim();
-                else if (line.match(/^DTSTART/)) {
-                    const match = line.match(/:([0-9T]+Z?)/); if (match) currentEvent.startDate = formatICSDate(match[1]);
-                } else if (line.match(/^DTEND/)) {
-                    const match = line.match(/:([0-9T]+Z?)/);
-                    if (match) {
-                        let eDate = formatICSDate(match[1]);
-                        if (match[1].length === 8 && eDate !== currentEvent.startDate) {
-                            const d = new Date(eDate); d.setDate(d.getDate() - 1);
-                            eDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                        }
-                        currentEvent.endDate = eDate;
-                    }
-                } else if (line.startsWith('LOCATION:')) currentEvent.location = line.substring(9).trim();
-            }
-        }
-        return parsed;
-    }
-    function formatICSDate(icsDateStr) {
-        const clean = icsDateStr.replace(/[^0-9]/g, '');
-        if (clean.length >= 8) return `${clean.substring(0,4)}-${clean.substring(4,6)}-${clean.substring(6,8)}`; return '';
-    }
 }
 
 const exportBtn = document.getElementById('btn-export-json');
@@ -410,73 +459,79 @@ if (exportBtn && importInput) {
     cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
 
-    exportBtn.addEventListener('click', async () => {
-        if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
-        triggerHaptic();
-        try {
-            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...'; exportBtn.disabled = true;
-            const backupData = { exportDate: new Date().toISOString(), events: events };
-            const backupId = Date.now().toString();
-            await setDoc(doc(db, 'familyBackups', backupId), backupData);
-            alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
-        } catch (err) { alert('備份失敗，請檢查網路連線。'); } 
-        finally { exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端'; exportBtn.disabled = false; }
+    exportBtn.addEventListener('click', () => {
+        // 🌟 加上管理員鎖
+        requestAdminAccess(async () => {
+            if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
+            triggerHaptic();
+            try {
+                exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...'; exportBtn.disabled = true;
+                const backupData = { exportDate: new Date().toISOString(), events: events };
+                const backupId = Date.now().toString();
+                await setDoc(doc(db, 'familyBackups', backupId), backupData);
+                alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
+            } catch (err) { alert('備份失敗，請檢查網路連線。'); } 
+            finally { exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端'; exportBtn.disabled = false; }
+        });
     });
 
-    cloudRestoreBtn.addEventListener('click', async () => {
-        triggerHaptic();
-        try {
-            cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...'; cloudRestoreBtn.disabled = true;
-            const snap = await getDocs(collection(db, 'familyBackups'));
-            if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
-            const backupsList = [];
-            snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
-            backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
+    cloudRestoreBtn.addEventListener('click', () => {
+        // 🌟 加上管理員鎖
+        requestAdminAccess(async () => {
+            triggerHaptic();
+            try {
+                cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...'; cloudRestoreBtn.disabled = true;
+                const snap = await getDocs(collection(db, 'familyBackups'));
+                if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
+                const backupsList = [];
+                snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
+                backupsList.sort((a, b) => new Date(b.exportDate) - new Date(a.exportDate));
 
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
-            let listHtml = '';
-            backupsList.slice(0, 10).forEach((b, index) => {
-                const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
-                const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2 font-bold">最新</span>' : '';
-                listHtml += `
-                    <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
-                        <div><div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div><div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div></div>
-                        <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
-                    </button>`;
-            });
-            modal.innerHTML = `
-                <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
-                    <div class="px-5 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
-                        <h3 class="font-bold text-amber-900 flex items-center gap-2"><i class="fas fa-history text-amber-500"></i> 選擇要還原的歷史備份</h3>
-                        <button id="btn-close-backup-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-                    </div>
-                    <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">${listHtml}</div>
-                </div>`;
-            document.body.appendChild(modal);
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in';
+                let listHtml = '';
+                backupsList.slice(0, 10).forEach((b, index) => {
+                    const timeStr = new Date(b.exportDate).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit', second:'2-digit' });
+                    const badge = index === 0 ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full text-[10px] ml-2 font-bold">最新</span>' : '';
+                    listHtml += `
+                        <button class="w-full text-left bg-white p-3 rounded-xl border hover:bg-amber-50 hover:border-amber-400 transition-all flex justify-between items-center group cursor-pointer shadow-sm" data-id="${b.id}">
+                            <div><div class="font-bold text-gray-800 flex items-center">${timeStr} ${badge}</div><div class="text-xs text-gray-500 mt-1">包含 ${b.events ? b.events.length : 0} 筆行程</div></div>
+                            <i class="fas fa-download text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg"></i>
+                        </button>`;
+                });
+                modal.innerHTML = `
+                    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+                        <div class="px-5 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                            <h3 class="font-bold text-amber-900 flex items-center gap-2"><i class="fas fa-history text-amber-500"></i> 選擇要還原的歷史備份</h3>
+                            <button id="btn-close-backup-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                        <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto bg-gray-50">${listHtml}</div>
+                    </div>`;
+                document.body.appendChild(modal);
 
-            document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
-            modal.onclick = () => modal.remove();
+                document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
+                modal.onclick = () => modal.remove();
 
-            modal.querySelectorAll('button[data-id]').forEach(btn => {
-                btn.onclick = async (e) => {
-                    e.stopPropagation();
-                    const bId = btn.getAttribute('data-id');
-                    const selectedBackup = backupsList.find(b => b.id === bId);
-                    const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
-                    if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
-                        modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
-                        try {
-                            for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
-                            for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
-                            alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
-                            document.getElementById('member-modal').classList.add('hidden');
-                        } catch (err) { alert('寫入資料失敗，請檢查網路。'); }
-                    }
-                };
-            });
-        } catch (err) { alert('讀取雲端歷史紀錄失敗，請檢查網路連線。'); } 
-        finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
+                modal.querySelectorAll('button[data-id]').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const bId = btn.getAttribute('data-id');
+                        const selectedBackup = backupsList.find(b => b.id === bId);
+                        const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
+                        if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
+                            modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
+                            try {
+                                for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
+                                for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
+                                alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
+                                document.getElementById('member-modal').classList.add('hidden');
+                            } catch (err) { alert('寫入資料失敗，請檢查網路。'); }
+                        }
+                    };
+                });
+            } catch (err) { alert('讀取雲端歷史紀錄失敗，請檢查網路連線。'); } 
+            finally { cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原'; cloudRestoreBtn.disabled = false; }
+        });
     });
 }
 
@@ -894,9 +949,6 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-// ========================================================
-// 🌟 影片視窗智慧優化引擎 (滿版防切邊、全螢幕解鎖、Shorts 支援)
-// ========================================================
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -918,10 +970,8 @@ function openViewModal(id) {
         vIframe.classList.add('hidden'); 
         vElement.classList.add('hidden');
         
-        // 核心修正 1：動態注入 CSS 確保 16:9 滿版不會被切邊
         vBox.style.cssText = "width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden; margin-top: 0.75rem; position: relative;";
         vIframe.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;";
-        // 核心修正 2：強制解鎖 iframe 放大全螢幕權限
         vIframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
         vIframe.setAttribute('allowfullscreen', 'true');
         vElement.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; outline: none;";
@@ -933,9 +983,7 @@ function openViewModal(id) {
         } else if (url.includes('youtu.be/')) {
             ytId = url.split('youtu.be/')[1].split('?')[0];
         } else if (url.includes('youtube.com/shorts/')) {
-            // 核心修正 3：精準捕捉 Shorts 短影音網址
             ytId = url.split('youtube.com/shorts/')[1].split('?')[0];
-            // Shorts 專屬 9:16 直立式比例，防擠壓變形
             vBox.style.cssText = "width: 100%; max-width: 320px; aspect-ratio: 9/16; background: #000; border-radius: 0.75rem; overflow: hidden; margin: 0.75rem auto; position: relative;";
         }
 
@@ -957,7 +1005,7 @@ function openViewModal(id) {
         vBox.classList.add('hidden'); 
         vIframe.src = ''; 
         vElement.src = '';
-        vBox.style.cssText = ""; // 關閉時復原樣式
+        vBox.style.cssText = "";
     }
 
     const fBox = document.getElementById('view-file-container');
@@ -1143,9 +1191,6 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
-// ========================================================
-// 📻 動態加入：網路電台播放器 (YouTube 隱藏播放支援)
-// ========================================================
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
