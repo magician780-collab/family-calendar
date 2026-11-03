@@ -94,7 +94,6 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
     document.getElementById('member-modal').classList.remove('hidden');
 });
 
-// 🌟 新增：左側欄加入《使用說明書》按鈕
 const galleryBtn = document.getElementById('btn-open-gallery');
 if (galleryBtn && !document.getElementById('btn-open-manual')) {
     const manualBtn = document.createElement('button');
@@ -105,11 +104,7 @@ if (galleryBtn && !document.getElementById('btn-open-manual')) {
 
     manualBtn.addEventListener('click', () => {
         triggerHaptic();
-        // 如果側邊欄在手機版是開著的，自動收起
         if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
-        
-        // 使用我們剛才生成的 markdown 網址 (替換為您下載的 PDF 網址或 Google Docs 連結更佳，此處示範開啟 Firebase 內建連結或新彈窗)
-        // 為了最完美的體驗，我們直接在系統內彈出一個全螢幕的說明視窗
         openManualModal();
     });
 }
@@ -124,7 +119,6 @@ function openManualModal() {
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
-    // 使用說明書的內容 (轉化為 HTML)
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
         
@@ -154,7 +148,7 @@ function openManualModal() {
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
                     <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
                     <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
-                    <li><b>一鍵導航：</b> 貼上 Google Maps 網址，看行程時點一下就能直接開啟地圖導航。</li>
+                    <li><b>智慧導航與天氣：</b> 輸入地點名稱並儲存後，系統不僅能一鍵地圖導航，還會自動算出活動當天該地點的天氣預報！</li>
                 </ul>
             </section>
 
@@ -197,7 +191,6 @@ function openManualModal() {
     document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
     modal.onclick = () => modal.classList.add('hidden');
 }
-
 
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
     backdrop.addEventListener('click', () => {
@@ -312,6 +305,7 @@ if (themeSelectEl) {
     newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
+// 日曆預設天氣 (目前預設為台南市經緯度)
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
@@ -363,10 +357,9 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-// 🌟 安全機制：密碼驗證器
 function requestAdminAccess(callback) {
     const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
-    if (pwd === null) return; // 按下取消
+    if (pwd === null) return; 
     if (pwd === ADMIN_PASSWORD) {
         callback();
     } else {
@@ -374,13 +367,11 @@ function requestAdminAccess(callback) {
     }
 }
 
-
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     importGovBtn.addEventListener('click', () => {
         triggerHaptic();
-        // 🌟 加上管理員鎖
         requestAdminAccess(async () => {
             const defaultYear = currentDate.getFullYear();
             const yearStr = prompt('請輸入您要匯入國定假日的「西元年份」：', defaultYear);
@@ -422,7 +413,6 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
     cleanupBtn.innerHTML = '<i class="fas fa-broom"></i> 清除重複的國定假日';
     importGovBtn.parentNode.appendChild(cleanupBtn);
     cleanupBtn.addEventListener('click', () => {
-        // 🌟 加上管理員鎖
         requestAdminAccess(async () => {
             if (!confirm('確定要掃描並清除重複匯入的「政府行事曆」假日嗎？')) return;
             triggerHaptic();
@@ -460,7 +450,6 @@ if (exportBtn && importInput) {
     importLabel.parentNode.replaceChild(cloudRestoreBtn, importLabel);
 
     exportBtn.addEventListener('click', () => {
-        // 🌟 加上管理員鎖
         requestAdminAccess(async () => {
             if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
             triggerHaptic();
@@ -476,7 +465,6 @@ if (exportBtn && importInput) {
     });
 
     cloudRestoreBtn.addEventListener('click', () => {
-        // 🌟 加上管理員鎖
         requestAdminAccess(async () => {
             triggerHaptic();
             try {
@@ -1014,11 +1002,57 @@ function openViewModal(id) {
     const mMapBox = document.getElementById('view-map-container');
     const mMapLink = document.getElementById('view-map-link');
     const mLocText = document.getElementById('view-location-text');
+    
+    // 🌟 核心：建立行程專屬的動態天氣小標籤
+    let weatherSpan = document.getElementById('dynamic-event-weather');
+    if (!weatherSpan) {
+        weatherSpan = document.createElement('span');
+        weatherSpan.id = 'dynamic-event-weather';
+        weatherSpan.className = 'ml-1.5 px-2 py-0.5 bg-white/60 text-rose-800 rounded-full text-[11px] font-extrabold shadow-sm hidden inline-flex items-center gap-1';
+        mMapLink.appendChild(weatherSpan);
+    }
+    weatherSpan.classList.add('hidden');
+
     if (evt.mapUrl || evt.location) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
-    } else { mMapBox.classList.add('hidden'); }
+
+        // 🌟 智慧判斷目的地天氣 (使用 Open-Meteo 免費經緯度查詢)
+        if (evt.location && evt.startDate) {
+            weatherSpan.classList.remove('hidden');
+            weatherSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 即時氣象...';
+            
+            fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+                .then(r => r.json())
+                .then(geo => {
+                    if(geo.results && geo.results.length > 0) {
+                        const { latitude, longitude } = geo.results[0];
+                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei`);
+                    }
+                    throw new Error('找不到地點');
+                })
+                .then(r => r.json())
+                .then(wData => {
+                    const idx = wData.daily.time.indexOf(evt.startDate);
+                    if (idx !== -1) {
+                        const wCode = wData.daily.weathercode[idx];
+                        // 天氣圖示智慧對應
+                        const icon = [0].includes(wCode) ? '☀️' : [1,2].includes(wCode) ? '⛅' : [3].includes(wCode) ? '☁️' : [45,48].includes(wCode) ? '🌫️' : [51,53,55,61,63,65,80,81,82].includes(wCode) ? '🌧️' : [71,73,75,85,86].includes(wCode) ? '❄️' : '⛈️';
+                        const max = Math.round(wData.daily.temperature_2m_max[idx]);
+                        const min = Math.round(wData.daily.temperature_2m_min[idx]);
+                        weatherSpan.innerHTML = `${icon} ${min}~${max}°C`;
+                    } else {
+                        weatherSpan.innerHTML = '<i class="fas fa-info-circle"></i> 無當日預報';
+                    }
+                })
+                .catch(() => {
+                    weatherSpan.classList.add('hidden'); // 若地名太偏門查不到經緯度，就安靜地隱藏不打擾
+                });
+        }
+    } else { 
+        mMapBox.classList.add('hidden'); 
+    }
 
     const checkContainer = document.getElementById('view-checklist-container');
     const checkItems = document.getElementById('view-checklist-items');
