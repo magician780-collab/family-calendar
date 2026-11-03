@@ -1318,42 +1318,86 @@ function openViewModal(id) {
         pollContainer.classList.remove('hidden');
     } else pollContainer.classList.add('hidden');
 
-        const expenseContainer = document.getElementById('view-expense-container');
+    const expenseContainer = document.getElementById('view-expense-container');
     const expenseDetails = document.getElementById('view-expense-details');
     if (evt.isExpense && evt.payers && evt.payers.length > 0) {
-        let totalExpense = evt.payers.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        let balances = {};
+        let totalExpense = 0;
+
+        // 1. 計算代墊的錢 (債權)
+        evt.payers.forEach(p => {
+            let amt = parseFloat(p.amount) || 0;
+            balances[p.name] = (balances[p.name] || 0) + amt;
+            totalExpense += amt;
+        });
+
+        // 2. 計算應分攤的錢 (債務)
         let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
         let perWeightAmount = totalExpense / totalWeight;
-        
-        let mainPayer = evt.payers[0].name;
+
+        (evt.sharers || []).forEach(s => {
+            let shareAmt = perWeightAmount * (parseFloat(s.weight) || 1);
+            balances[s.name] = (balances[s.name] || 0) - shareAmt;
+        });
+
+        // 3. 分出債權人(正數)與債務人(負數)
+        let debtors = [];
+        let creditors = [];
+        for (let name in balances) {
+            let b = Math.round(balances[name]);
+            if (b < -1) debtors.push({ name, amount: -b });
+            else if (b > 1) creditors.push({ name, amount: b });
+        }
+
+        // 4. 開始互抵撮合
+        let transactions = [];
+        let d = 0, c = 0;
+        while (d < debtors.length && c < creditors.length) {
+            let debtor = debtors[d];
+            let creditor = creditors[c];
+            let settleAmount = Math.min(debtor.amount, creditor.amount);
+
+            if (settleAmount > 0) {
+                transactions.push({ from: debtor.name, to: creditor.name, amount: settleAmount });
+            }
+
+            debtor.amount -= settleAmount;
+            creditor.amount -= settleAmount;
+
+            if (debtor.amount === 0) d++;
+            if (creditor.amount === 0) c++;
+        }
 
         let html = `<div class="font-bold border-b border-amber-200 pb-2 mb-2 flex justify-between items-center">
-                        <span>總支出：$${totalExpense.toLocaleString()}</span>
-                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">收款人：${mainPayer}</span>
+                        <span>總支出：$${Math.round(totalExpense).toLocaleString()}</span>
+                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full"><i class="fas fa-balance-scale"></i> 已啟用互抵結算</span>
                     </div>
                     <div class="space-y-2">`;
                     
-        (evt.sharers || []).forEach(s => {
-            let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
-            html += `
-                <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-100 shadow-sm">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-sm text-gray-800">👤 ${s.name}</span>
-                        <span class="text-[10px] text-gray-400">分攤 ${s.weight} 份</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-amber-600 mr-1">$${shareAmt.toLocaleString()}</span>
-                        
-                        <button onclick="navigator.clipboard.writeText('【家族行程分帳】${s.name} 應轉帳給 ${mainPayer} $${shareAmt} 元').then(()=>alert('已複製金額與明細！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額明細">
-                            <i class="far fa-copy text-xs"></i>
-                        </button>
-                        
-                        <a href="line://pay/transfer" class="w-7 h-7 bg-[#06C755]/10 hover:bg-[#06C755]/20 text-[#06C755] rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Pay 轉帳">
-                            <i class="fab fa-line text-base"></i>
-                        </a>
-                    </div>
-                </div>`;
-        });
+        if (transactions.length === 0) {
+            html += `<div class="text-center text-sm text-gray-500 py-3">🎉 無須互相轉帳，帳目已完美平衡！</div>`;
+        } else {
+            transactions.forEach(t => {
+                html += `
+                    <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-100 shadow-sm">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm text-gray-800">👤 ${t.from}</span>
+                            <span class="text-[10px] text-gray-500">應轉給 <strong class="text-gray-700">${t.to}</strong></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-amber-600 mr-1">$${t.amount.toLocaleString()}</span>
+                            
+                            <button onclick="navigator.clipboard.writeText('【家族行程分帳】${t.from} 應轉帳給 ${t.to} $${t.amount} 元').then(()=>alert('已複製金額與明細！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額明細">
+                                <i class="far fa-copy text-xs"></i>
+                            </button>
+                            
+                            <a href="line://pay/transfer" class="w-7 h-7 bg-[#06C755]/10 hover:bg-[#06C755]/20 text-[#06C755] rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Pay 轉帳">
+                                <i class="fab fa-line text-base"></i>
+                            </a>
+                        </div>
+                    </div>`;
+            });
+        }
         html += `</div>`;
         
         expenseDetails.innerHTML = html; 
