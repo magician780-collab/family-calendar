@@ -761,9 +761,37 @@ function createDayCell(dayNum, dateStr, isToday) {
         openDayModal(dateStr);
     });
     
+    // --- 農曆與天氣顯示區塊開始 ---
     let dateNumColor = isToday ? 'bg-warm-500 text-white shadow-sm' : (isRedDay ? 'text-rose-600 font-extrabold' : 'text-gray-600');
-    cell.innerHTML = `<div class="flex justify-between items-center px-0.5"><span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${dateNumColor}">${dayNum}</span><span class="text-[9px] text-blue-500">${weatherData[dateStr] || ''}</span></div>`;
     
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const lunar = Lunar.fromDate(dateObj); 
+    let lunarText = lunar.getDayInChinese(); 
+    let isLunarHighlight = (lunarText === '初一' || lunarText === '十五');
+    
+    const festivals = lunar.getFestivals();
+    const jieQi = lunar.getJieQi();
+    
+    if (festivals.length > 0) {
+        lunarText = festivals[0];
+        isLunarHighlight = true;
+    } else if (jieQi) {
+        lunarText = jieQi;
+        isLunarHighlight = true;
+    }
+    
+    const lunarStyle = isLunarHighlight ? 'text-rose-500 font-bold' : 'text-gray-400 font-medium';
+
+    cell.innerHTML = `
+        <div class="flex justify-between items-start px-0.5">
+            <div class="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-1">
+                <span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${dateNumColor} shrink-0">${dayNum}</span>
+                <span class="text-[9px] ${lunarStyle} truncate max-w-[40px] pl-0.5 md:pl-0">${lunarText}</span>
+            </div>
+            <span class="text-[9px] text-blue-500 text-right leading-tight truncate max-w-[35px]">${weatherData[dateStr] || ''}</span>
+        </div>`;
+    // --- 農曆與天氣顯示區塊結束 ---
+
     const container = document.createElement('div');
     container.className = 'flex flex-col gap-0.5 overflow-y-auto flex-1 hide-scrollbar';
     dayEvents.forEach(evt => {
@@ -782,7 +810,6 @@ function createDayCell(dayNum, dateStr, isToday) {
     cell.appendChild(container);
     return cell;
 }
-
 function openDayModal(dateStr, setGlobal = true) {
     if (setGlobal) selectedDateForModal = dateStr;
     document.getElementById('day-modal-title').innerText = `${dateStr} 行程`;
