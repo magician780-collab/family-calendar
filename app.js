@@ -1325,32 +1325,54 @@ function openViewModal(id) {
         let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
         let perWeightAmount = totalExpense / totalWeight;
         
-        let mainPayer = evt.payers[0].name;
+        // 1. 計算每個人的淨額 (Net Balance)
+        let balances = {};
+        
+        // 扣除已經代墊的錢 (別人欠他，記為負數)
+        evt.payers.forEach(p => {
+            balances[p.name] = (balances[p.name] || 0) - (parseFloat(p.amount) || 0);
+        });
+        
+        // 加上應該分攤的錢 (他欠別人，記為正數)
+        (evt.sharers || []).forEach(s => {
+            let shareAmt = perWeightAmount * (parseFloat(s.weight) || 1);
+            balances[s.name] = (balances[s.name] || 0) + shareAmt;
+        });
 
+        // 2. 渲染結算明細
         let html = `<div class="font-bold border-b border-amber-200 pb-2 mb-2 flex justify-between items-center">
                         <span>總支出：$${totalExpense.toLocaleString()}</span>
-                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">收款人：${mainPayer}</span>
+                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">每 1 份：$${Math.round(perWeightAmount).toLocaleString()}</span>
                     </div>
                     <div class="space-y-2">`;
                     
-        (evt.sharers || []).forEach(s => {
-            let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
+        Object.keys(balances).forEach(name => {
+            let netAmt = Math.round(balances[name]);
+            if (netAmt === 0) return; // 剛好結清不顯示
+            
+            let isOwe = netAmt > 0; // 大於 0 代表要拿錢出來給別人
+            let statusText = isOwe ? '應付款' : '應收款';
+            let colorClass = isOwe ? 'text-rose-600' : 'text-emerald-600';
+            let bgClass = isOwe ? 'bg-rose-50' : 'bg-emerald-50';
+            let icon = isOwe ? 'fa-arrow-up' : 'fa-arrow-down';
+            
             html += `
                 <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-amber-100 shadow-sm">
                     <div class="flex flex-col">
-                        <span class="font-bold text-sm text-gray-800">👤 ${s.name}</span>
-                        <span class="text-[10px] text-gray-400">分攤 ${s.weight} 份</span>
+                        <span class="font-bold text-sm text-gray-800">👤 ${name}</span>
+                        <span class="text-[10px] text-gray-400">多退少補結算</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-amber-600 mr-1">$${shareAmt.toLocaleString()}</span>
+                        <span class="text-[10px] ${bgClass} ${colorClass} px-1.5 py-0.5 rounded font-bold"><i class="fas ${icon}"></i> ${statusText}</span>
+                        <span class="font-extrabold ${colorClass} mr-1">$${Math.abs(netAmt).toLocaleString()}</span>
                         
-                        <button onclick="navigator.clipboard.writeText('【家族行程分帳】${s.name} 應轉帳給 ${mainPayer} $${shareAmt} 元').then(()=>alert('已複製金額與明細！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額明細">
+                        ${isOwe ? `
+                        <button onclick="navigator.clipboard.writeText('【家族分帳】${name} 尚需付款 $${Math.abs(netAmt)} 元').then(()=>alert('已複製結算金額！'))" class="w-7 h-7 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full flex items-center justify-center transition-all shadow-sm" title="複製金額">
                             <i class="far fa-copy text-xs"></i>
                         </button>
-                        
                         <a href="line://pay/transfer" class="w-7 h-7 bg-[#06C755]/10 hover:bg-[#06C755]/20 text-[#06C755] rounded-full flex items-center justify-center transition-all shadow-sm" title="開啟 LINE Pay 轉帳">
                             <i class="fab fa-line text-base"></i>
-                        </a>
+                        </a>` : ''}
                     </div>
                 </div>`;
         });
@@ -1360,6 +1382,7 @@ function openViewModal(id) {
         expenseContainer.classList.remove('hidden');
     } else {
         expenseContainer.classList.add('hidden');
+    }
     }
 
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
