@@ -118,7 +118,6 @@ function openManualModal() {
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
-    // 🌟 更新教學文字：針對天氣查無地名的解法
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
         
@@ -148,7 +147,7 @@ function openManualModal() {
                     <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
                     <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
                     <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
-                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來自動抓取天氣。若輸入特定的私人營區或店名（如：白石馬露營區）可能會查無天氣。<b>建議改填較大的「鄉鎮市區」（如：南投縣、埔里鎮）</b>，系統就能精準預報！詳細地址可貼在導航網址欄位。</li>
+                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
                 </ul>
             </section>
 
@@ -305,13 +304,18 @@ if (themeSelectEl) {
     newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
+// 🌟 天氣API升級：解鎖 16 天極限預測與 7 天歷史紀錄
 async function fetchWeather() {
     try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei');
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
         const data = await res.json();
-        const m = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 51: '🌧️', 61: '🌧️', 95: '⛈️' };
+        const m = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌧️', 53: '🌧️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '❄️', 73: '❄️', 75: '❄️', 80: '🌧️', 81: '🌧️', 82: '🌧️', 85: '❄️', 86: '❄️', 95: '⛈️' };
         if (data && data.daily) {
-            data.daily.time.forEach((d, i) => { weatherData[d] = `${m[data.daily.weathercode[i]] || '☁️'} ${Math.round(data.daily.temperature_2m_max[i])}°`; });
+            data.daily.time.forEach((d, i) => { 
+                const code = data.daily.weathercode[i];
+                const icon = m[code] || '☁️';
+                weatherData[d] = `${icon} ${Math.round(data.daily.temperature_2m_max[i])}°`; 
+            });
         }
     } catch (e) {}
 }
@@ -936,7 +940,18 @@ function openModal(id = null) {
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
-// 🌟 修改：加入防呆查無天氣時的提示
+
+// 🌟 全新防呆升級：內建台灣常見地名與景點座標庫
+const twLocations = {
+    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
+    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
+    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
+    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
+    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
+    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
+    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
+};
+
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1011,7 +1026,6 @@ function openViewModal(id) {
         mMapBox.appendChild(weatherBox);
     }
     weatherBox.classList.add('hidden');
-    // 預設復原為正常的藍色氣象樣式
     weatherBox.className = 'w-full py-2 bg-sky-50 text-sky-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
 
     if (evt.mapUrl || evt.location) {
@@ -1019,36 +1033,66 @@ function openViewModal(id) {
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
 
+        // 🌟 升級版天氣驗證與提示邏輯
         if (evt.location && evt.startDate) {
             weatherBox.classList.remove('hidden');
             weatherBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在為您查詢當地氣象...';
             
-            fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
-                .then(r => r.json())
-                .then(geo => {
-                    if(geo.results && geo.results.length > 0) {
-                        const { latitude, longitude, name } = geo.results[0];
-                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei`)
-                            .then(r => r.json())
-                            .then(wData => ({ wData, locName: name }));
-                    }
-                    throw new Error('找不到地點');
-                })
+            let foundCoord = null;
+            let foundName = evt.location;
+            
+            // 掃描是否有內建地名
+            for (const [key, coords] of Object.entries(twLocations)) {
+                if (evt.location.includes(key)) {
+                    foundCoord = coords;
+                    foundName = key;
+                    break;
+                }
+            }
+
+            const weatherFetchPromise = foundCoord 
+                // 如果有內建，直接發送座標，省去地名查不到的錯誤
+                ? fetch(`https://api.open-meteo.com/v1/forecast?latitude=${foundCoord.lat}&longitude=${foundCoord.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
+                    .then(r => r.json())
+                    .then(wData => ({ wData, locName: foundName }))
+                // 如果沒內建，依賴 Open-Meteo 查詢
+                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+                    .then(r => r.json())
+                    .then(geo => {
+                        if(geo.results && geo.results.length > 0) {
+                            const { latitude, longitude, name } = geo.results[0];
+                            return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
+                                .then(r => r.json())
+                                .then(wData => ({ wData, locName: name }));
+                        }
+                        throw new Error('找不到地點');
+                    });
+
+            weatherFetchPromise
                 .then(({ wData, locName }) => {
                     const idx = wData.daily.time.indexOf(evt.startDate);
-                    if (idx !== -1) {
+                    if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
                         const wCode = wData.daily.weathercode[idx];
                         const icon = [0].includes(wCode) ? '☀️' : [1,2].includes(wCode) ? '⛅' : [3].includes(wCode) ? '☁️' : [45,48].includes(wCode) ? '🌫️' : [51,53,55,61,63,65,80,81,82].includes(wCode) ? '🌧️' : [71,73,75,85,86].includes(wCode) ? '❄️' : '⛈️';
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
-                        weatherBox.innerHTML = `<i class="fas fa-cloud-sun text-sky-500 text-sm"></i> ${evt.startDate} [${locName}] 天氣：${icon} ${min}~${max}°C`;
+                        weatherBox.innerHTML = `<i class="fas fa-map-marker-alt text-sky-500"></i> 成功定位 [${locName}]：${icon} ${min}~${max}°C`;
                     } else {
-                        weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-500"></i> 無法取得 ${evt.startDate} 的預報 (僅支援14天內)`;
+                        // 日期判定防呆機制
+                        const tDate = new Date(evt.startDate);
+                        const nDate = new Date();
+                        const diff = Math.ceil((tDate - nDate) / (1000 * 60 * 60 * 24));
+                        if (diff > 14) {
+                            weatherBox.innerHTML = `<i class="fas fa-calendar-check text-sky-500"></i> 已定位 [${locName}]：氣象預報僅支援14天內，快出發時再來看喔！`;
+                        } else if (diff < -7) {
+                            weatherBox.innerHTML = `<i class="fas fa-history text-sky-500"></i> 已定位 [${locName}]：這是過去的行程囉。`;
+                        } else {
+                            weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-500"></i> 已定位 [${locName}]：當日無氣象資料。`;
+                        }
                     }
                 })
                 .catch(() => {
-                    // 🌟 防呆提示：找不到地名時給予友善提示，而不是藏起來
-                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-500"></i> 氣象站查無此地名，請嘗試改填「縣市」或「鄉鎮區」`;
+                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-500"></i> 氣象站查無此私人地點，請改填「縣市區」(如:南投)`;
                     weatherBox.className = 'w-full py-2 bg-amber-50 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
                 });
         }
@@ -1147,7 +1191,7 @@ function openViewModal(id) {
         let html = `<div class="font-bold border-b border-amber-200 pb-1 mb-1">總支出：$${totalExpense.toLocaleString()} 元</div><div class="space-y-1">`;
         (evt.sharers || []).forEach(s => {
             let shareAmt = Math.round(perWeightAmount * (parseFloat(s.weight) || 1));
-            html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} 元</span></div>`;
+            html += `<div class="flex justify-between"><span>👤 ${s.name} (${s.weight}份)：</span><span class="font-bold">$${shareAmt.toLocaleString()} float()} 元</span></div>`;
         });
         html += `</div>`;
         expenseDetails.innerHTML = html; expenseContainer.classList.remove('hidden');
