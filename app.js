@@ -698,12 +698,13 @@ expenseCheckbox.addEventListener('change', (e) => {
     if (e.target.checked && payersContainer.children.length === 0) { addPayerRow(); addSharerRow(); }
 });
 
-function addPayerRow(name = '', amount = '') {
+function addPayerRow(name = '', amount = '', note = '') {
     const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 payer-row';
+    row.className = 'flex items-center gap-1 payer-row';
     row.innerHTML = `
-        <select class="payer-name w-1/3 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '代墊人...')}</select>
-        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <select class="payer-name w-[28%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '代墊人...')}</select>
+        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount w-[25%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <input type="text" placeholder="備註(如:門票)" value="${note}" class="payer-note flex-1 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none">
         <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
     `;
     row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('payers-container', '.payer-name'); });
@@ -711,7 +712,7 @@ function addPayerRow(name = '', amount = '') {
     payersContainer.appendChild(row);
     updateUniqueSelects('payers-container', '.payer-name');
 }
-document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow());
+document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow('', '', ''));
 
 function addSharerRow(name = '', weight = 1) {
     const row = document.createElement('div');
@@ -1040,7 +1041,7 @@ function openModal(id = null) {
             }
             if (evt.isExpense) {
                 expenseCheckbox.checked = true; expenseFields.classList.remove('hidden');
-                (evt.payers || []).forEach(p => addPayerRow(p.name, p.amount));
+                (evt.payers || []).forEach(p => addPayerRow(p.name, p.amount, p.note));
                 (evt.sharers || []).forEach(s => addSharerRow(s.name, s.weight));
             }
         }
@@ -1361,9 +1362,19 @@ function openViewModal(id) {
             if (creditor.amount === 0) c++;
         }
 
-        let html = `<div class="font-bold border-b border-amber-200 pb-2 mb-2 flex justify-between items-center">
-                        <span>總支出：$${Math.round(totalExpense).toLocaleString()}</span>
-                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full"><i class="fas fa-balance-scale"></i> 已啟用互抵結算</span>
+        let detailsHtml = `<div class="mb-3 space-y-1.5 bg-white/60 p-2.5 rounded-xl border border-amber-200/60 shadow-sm">
+                            <div class="text-[11px] font-bold text-amber-800 mb-1 flex items-center gap-1"><i class="fas fa-clipboard-list"></i> 代墊明細紀錄：</div>`;
+        evt.payers.forEach(p => {
+            detailsHtml += `<div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-700"><strong>${p.name}</strong> 墊付${p.note ? '：「<span class="text-amber-700 font-medium">'+p.note+'</span>」' : ''}</span>
+                                <span class="font-bold text-amber-700">$${p.amount}</span>
+                            </div>`;
+        });
+        detailsHtml += `</div>`;
+
+        let html = detailsHtml + `<div class="font-bold border-b border-amber-200 pb-2 mb-2 flex justify-between items-center">
+                        <span>總計產生支出：$${Math.round(totalExpense).toLocaleString()}</span>
+                        <span class="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full"><i class="fas fa-balance-scale"></i> 互抵結算</span>
                     </div>
                     <div class="space-y-2">`;
                     
@@ -1433,8 +1444,10 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
     let payersArr = []; let sharersArr = [];
     if (expenseCheckbox.checked) {
         document.querySelectorAll('.payer-row').forEach(row => {
-            const name = row.querySelector('.payer-name').value.trim(); const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
-            if (name && amount > 0) payersArr.push({ name, amount });
+            const name = row.querySelector('.payer-name').value.trim(); 
+            const amount = parseFloat(row.querySelector('.payer-amount').value) || 0;
+            const note = row.querySelector('.payer-note').value.trim();
+            if (name && amount > 0) payersArr.push({ name, amount, note });
         });
         document.querySelectorAll('.sharer-row').forEach(row => {
             const name = row.querySelector('.sharer-name').value.trim(); const weight = parseFloat(row.querySelector('.sharer-weight').value) || 1;
