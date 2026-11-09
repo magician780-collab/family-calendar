@@ -90,7 +90,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v6.9</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v6.8</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -328,8 +328,8 @@
                 </button>
             </div>
             
-            <!-- 內容網格區 (由 JS 動態生成排版) -->
-            <div id="gallery-grid-container" class="overflow-y-auto flex-1 relative">
+            <!-- 內容網格區 (加入點狀網底) -->
+            <div id="gallery-grid-container" class="p-6 overflow-y-auto flex-1 relative" style="background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 24px 24px;">
                 <!-- 相片將透過 JS 動態生成至此 -->
             </div>
         </div>
@@ -456,6 +456,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=6.9"></script>
+    <script type="module" src="./app.js?v=6.8"></script>
 </body>
 </html>
