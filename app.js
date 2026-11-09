@@ -1,13 +1,31 @@
-// ==========================================
-// 模組引入區 (修正版：移除會導致崩潰的 Storage 模組)
-// ==========================================
-import { db, eventsRef, membersRef, noteRef, backupsRef, addDoc, updateDoc, deleteDoc, doc, setDoc, getDocs, onSnapshot } from './modules/firebase.js';
-import { initFunAnimations } from './modules/effects.js';
-import { initRadioPlayer } from './modules/radio.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// ==========================================
-// 系統變數與常數
-// ==========================================
+const firebaseConfig = {
+    apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
+    authDomain: "all-family-calendar.firebaseapp.com",
+    projectId: "all-family-calendar",
+    storageBucket: "all-family-calendar.firebasestorage.app",
+    messagingSenderId: "790336816938",
+    appId: "1:790336816938:web:b3b06b1c9877e5ba46c053"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+enableIndexedDbPersistence(db).catch(() => {});
+
+// 🌟 修復 1：解決「新增活動」點擊顏色標籤時，瀏覽器因焦點捕捉導致畫面亂跳/顯示不全的 Bug
+document.querySelectorAll('input[name="event-color"]').forEach(radio => {
+    radio.classList.remove('sr-only');
+    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10'); // 改用安全隱藏法，拔除強制捲動
+});
+const eventForm = document.getElementById('event-form');
+if (eventForm) eventForm.classList.add('pb-8'); // 增加底部彈性留白，防止按鈕被截斷
+
+const eventsRef = collection(db, 'familyEvents');
+const membersRef = collection(db, 'familyMembers');
+const noteRef = doc(db, 'familyNotes', 'mainNote'); 
+
 const ADMIN_PASSWORD = "2026"; 
 
 let currentDate = new Date();
@@ -32,19 +50,6 @@ const weatherDescMap = {
     85: '❄️ 陣雪', 86: '❄️ 大陣雪', 95: '⛈️ 雷陣雨'
 };
 
-const twLocations = {
-    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
-    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
-    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
-    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
-    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
-    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
-    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
-};
-
-// ==========================================
-// 基礎工具與設定
-// ==========================================
 function getDirectImageUrl(url) {
     if (!url) return '';
     if (url.includes('drive.google.com/file/d/')) {
@@ -53,27 +58,6 @@ function getDirectImageUrl(url) {
     }
     return url;
 }
-
-function triggerHaptic() {
-    if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
-}
-
-function requestAdminAccess(callback) {
-    const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
-    if (pwd === null) return; 
-    if (pwd === ADMIN_PASSWORD) {
-        callback();
-    } else {
-        alert('❌ 密碼錯誤！您無權執行此操作。');
-    }
-}
-
-document.querySelectorAll('input[name="event-color"]').forEach(radio => {
-    radio.classList.remove('sr-only');
-    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10');
-});
-const eventForm = document.getElementById('event-form');
-if (eventForm) eventForm.classList.add('pb-8'); 
 
 if (!document.getElementById('ai-border-style')) {
     const style = document.createElement('style');
@@ -94,15 +78,193 @@ if (!document.getElementById('ai-border-style')) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
+        /* 🌟 修復手機橫向隱藏問題：將 radio-widget 從隱藏清單移除 */
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
     }
     `;
     document.head.appendChild(style);
 }
 
-// ==========================================
-// 主題顏色設定
-// ==========================================
+function triggerHaptic() {
+    if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(10);
+}
+
+function stopViewVideo() {
+    const vIframe = document.getElementById('view-video-iframe');
+    const vVideo = document.getElementById('view-video-element');
+    if (vIframe) vIframe.src = ''; 
+    if (vVideo) { vVideo.pause(); vVideo.src = ''; }
+}
+
+const sidebar = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+function toggleSidebar() {
+    triggerHaptic();
+    const isOpen = !sidebar.classList.contains('-translate-x-full');
+    sidebar.classList.toggle('-translate-x-full', isOpen);
+    sidebarBackdrop.classList.toggle('hidden', isOpen);
+}
+document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSidebar);
+document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
+sidebarBackdrop.addEventListener('click', toggleSidebar);
+
+document.getElementById('btn-open-admin').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+
+document.getElementById('btn-manage-members').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-modal').classList.remove('hidden');
+});
+
+const galleryBtn = document.getElementById('btn-open-gallery');
+if (galleryBtn && !document.getElementById('btn-open-manual')) {
+    const manualBtn = document.createElement('button');
+    manualBtn.id = 'btn-open-manual';
+    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
+    manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
+    galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
+
+    manualBtn.addEventListener('click', () => {
+        triggerHaptic();
+        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
+        openManualModal();
+    });
+}
+
+function openManualModal() {
+    if (document.getElementById('manual-modal')) {
+        document.getElementById('manual-modal').classList.remove('hidden');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'manual-modal';
+    modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
+    
+    const manualContent = `
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
+        
+        <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
+            <section>
+                <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>點擊畫面右下角的 <b class="bg-warm-500 text-white px-1.5 py-0.5 rounded text-xs">＋</b> (手機版) 或側邊欄的 <b class="text-warm-600">新增活動</b>。</li>
+                    <li>輸入活動名稱、時間、並選擇「建立者」。</li>
+                    <li>可以自由挑選可愛的圖示，以及為行程自訂「標籤顏色」。</li>
+                    <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
+                </ul>
+            </section>
+            
+            <section>
+                <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
+                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
+                    <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
+                </ul>
+            </section>
+            
+            <section>
+                <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
+                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
+                    <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
+                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>系統內建一個隨時可以「自由拖曳移動」的音樂播放器。</li>
+                    <li>您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
+                    <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
+                </ul>
+            </section>
+            
+            <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
+                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
+            </section>
+        </div>
+    `;
+
+    modal.innerHTML = `
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-content" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-blue-900 flex items-center gap-2"><i class="fas fa-book-open text-blue-600"></i> 系統說明書</h3>
+                <button id="btn-close-manual-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 hide-scrollbar">
+                ${manualContent}
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-center shrink-0">
+                <button id="btn-understand-manual" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95">
+                    我了解了，開始使用！
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('btn-close-manual-modal').onclick = () => modal.classList.add('hidden');
+    document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
+    modal.onclick = () => modal.classList.add('hidden');
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', () => {
+        triggerHaptic();
+        backdrop.classList.add('hidden');
+        if (backdrop.id === 'day-modal') selectedDateForModal = null;
+        if (backdrop.id === 'view-modal') {
+            currentViewingId = null;
+            stopViewVideo(); 
+        }
+    });
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const openModals = document.querySelectorAll('.modal-backdrop:not(.hidden)');
+        if (openModals.length > 0) {
+            triggerHaptic();
+            openModals.forEach(modal => {
+                modal.classList.add('hidden');
+                if (modal.id === 'day-modal') selectedDateForModal = null;
+                if (modal.id === 'view-modal') {
+                    currentViewingId = null;
+                    stopViewVideo(); 
+                }
+            });
+        }
+    }
+});
+
+let touchStartX = 0;
+let touchEndX = 0;
+const swipeContainer = document.getElementById('calendar-swipe-container');
+
+if (swipeContainer) {
+    swipeContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    swipeContainer.addEventListener('touchend', (e) => { touchEndX = e.changedTouches[0].screenX; handleSwipeGesture(); }, { passive: true });
+}
+
+function handleSwipeGesture() {
+    const swipeThreshold = 50; 
+    if (touchEndX < touchStartX - swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
+    if (touchEndX > touchStartX + swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
+}
+
+const searchInputEl = document.getElementById('search-input');
+if (searchInputEl) {
+    searchInputEl.addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
+}
+
 const themePalettes = {
     warm: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
     forest: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d' },
@@ -167,186 +329,6 @@ if (themeSelectEl) {
     newSelectEl.addEventListener('change', (e) => { triggerHaptic(); setTheme(e.target.value); });
 }
 
-// ==========================================
-// 核心 UI 互動與事件監聽
-// ==========================================
-const sidebar = document.getElementById('sidebar');
-const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-function toggleSidebar() {
-    triggerHaptic();
-    const isOpen = !sidebar.classList.contains('-translate-x-full');
-    sidebar.classList.toggle('-translate-x-full', isOpen);
-    sidebarBackdrop.classList.toggle('hidden', isOpen);
-}
-document.getElementById('btn-toggle-sidebar').addEventListener('click', toggleSidebar);
-document.getElementById('btn-close-sidebar').addEventListener('click', toggleSidebar);
-sidebarBackdrop.addEventListener('click', toggleSidebar);
-
-document.getElementById('btn-open-admin').addEventListener('click', () => {
-    triggerHaptic();
-    document.getElementById('member-modal').classList.remove('hidden');
-});
-
-document.getElementById('btn-manage-members').addEventListener('click', () => {
-    triggerHaptic();
-    document.getElementById('member-modal').classList.remove('hidden');
-});
-
-const galleryBtn = document.getElementById('btn-open-gallery');
-if (galleryBtn && !document.getElementById('btn-open-manual')) {
-    const manualBtn = document.createElement('button');
-    manualBtn.id = 'btn-open-manual';
-    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
-    manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
-    galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
-
-    manualBtn.addEventListener('click', () => {
-        triggerHaptic();
-        if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) toggleSidebar();
-        openManualModal();
-    });
-}
-
-function openManualModal() {
-    if (document.getElementById('manual-modal')) {
-        document.getElementById('manual-modal').classList.remove('hidden');
-        return;
-    }
-
-    const modal = document.createElement('div');
-    modal.id = 'manual-modal';
-    modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
-    
-    const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
-        <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
-            <section>
-                <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
-                <ul class="list-disc pl-5 space-y-1">
-                    <li>點擊畫面右下角的 <b class="bg-warm-500 text-white px-1.5 py-0.5 rounded text-xs">＋</b> (手機版) 或側邊欄的 <b class="text-warm-600">新增活動</b>。</li>
-                    <li>輸入活動名稱、時間、並選擇「建立者」。</li>
-                    <li>可以自由挑選可愛的圖示，以及為行程自訂「標籤顏色」。</li>
-                    <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
-                </ul>
-            </section>
-            
-            <section>
-                <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
-                <ul class="list-disc pl-5 space-y-1">
-                    <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
-                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
-                    <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
-                </ul>
-            </section>
-            
-            <section>
-                <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
-                <ul class="list-disc pl-5 space-y-1">
-                    <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
-                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
-                    <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
-                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
-                </ul>
-            </section>
-
-            <section>
-                <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
-                <ul class="list-disc pl-5 space-y-1">
-                    <li>系統內建一個隨時可以「自由拖曳移動」的音樂播放器。</li>
-                    <li>您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
-                    <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
-                </ul>
-            </section>
-            
-            <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
-                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
-            </section>
-        </div>
-    `;
-
-    modal.innerHTML = `
-        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden modal-content" onclick="event.stopPropagation()">
-            <div class="px-6 py-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-blue-900 flex items-center gap-2"><i class="fas fa-book-open text-blue-600"></i> 系統說明書</h3>
-                <button id="btn-close-manual-modal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="p-6 overflow-y-auto flex-1 hide-scrollbar">
-                ${manualContent}
-            </div>
-            <div class="p-4 bg-gray-50 border-t flex justify-center shrink-0">
-                <button id="btn-understand-manual" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95">
-                    我了解了，開始使用！
-                </button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('btn-close-manual-modal').onclick = () => modal.classList.add('hidden');
-    document.getElementById('btn-understand-manual').onclick = () => modal.classList.add('hidden');
-    modal.onclick = () => modal.classList.add('hidden');
-}
-
-function stopViewVideo() {
-    const vIframe = document.getElementById('view-video-iframe');
-    const vVideo = document.getElementById('view-video-element');
-    if (vIframe) vIframe.src = ''; 
-    if (vVideo) { vVideo.pause(); vVideo.src = ''; }
-}
-
-document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-    backdrop.addEventListener('click', () => {
-        triggerHaptic();
-        backdrop.classList.add('hidden');
-        if (backdrop.id === 'day-modal') selectedDateForModal = null;
-        if (backdrop.id === 'view-modal') {
-            currentViewingId = null;
-            stopViewVideo(); 
-        }
-    });
-});
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        const openModals = document.querySelectorAll('.modal-backdrop:not(.hidden)');
-        if (openModals.length > 0) {
-            triggerHaptic();
-            openModals.forEach(modal => {
-                modal.classList.add('hidden');
-                if (modal.id === 'day-modal') selectedDateForModal = null;
-                if (modal.id === 'view-modal') {
-                    currentViewingId = null;
-                    stopViewVideo(); 
-                }
-            });
-        }
-    }
-});
-
-let touchStartX = 0;
-let touchEndX = 0;
-const swipeContainer = document.getElementById('calendar-swipe-container');
-
-if (swipeContainer) {
-    swipeContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    swipeContainer.addEventListener('touchend', (e) => { touchEndX = e.changedTouches[0].screenX; handleSwipeGesture(); }, { passive: true });
-}
-
-function handleSwipeGesture() {
-    const swipeThreshold = 50; 
-    if (touchEndX < touchStartX - swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
-    if (touchEndX > touchStartX + swipeThreshold) { triggerHaptic(); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
-}
-
-const searchInputEl = document.getElementById('search-input');
-if (searchInputEl) {
-    searchInputEl.addEventListener('input', (e) => { searchQuery = e.target.value.trim().toLowerCase(); renderApp(); });
-}
-
-// ==========================================
-// Firebase 資料庫監聽與連線
-// ==========================================
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
@@ -377,41 +359,10 @@ stickyNoteEl.addEventListener('input', () => {
 
 onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
-    snapshot.forEach(docSnap => familyMembers.push({ id: docSnap.id, name: docSnap.data().name }));
+    snapshot.forEach(doc => familyMembers.push({ id: doc.id, name: doc.data().name }));
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberManageList();
 });
-
-onSnapshot(eventsRef, (snapshot) => {
-    events = [];
-    snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        let sDate = data.startDate;
-        let eDate = data.endDate || data.startDate;
-        if (data.isLunarRecurring && data.lunarMonth && data.lunarDay) {
-            try {
-                const solar = Lunar.fromYmd(currentDate.getFullYear(), data.lunarMonth, data.lunarDay).getSolar();
-                sDate = `${solar.getYear()}-${String(solar.getMonth()).padStart(2, '0')}-${String(solar.getDay()).padStart(2, '0')}`;
-                eDate = sDate;
-            } catch(e) {}
-        }
-        events.push({
-            id: docSnap.id, title: data.title || '未命名活動', icon: data.icon || '',
-            startDate: sDate, endDate: eDate, originalStart: data.startDate,
-            isLunarRecurring: data.isLunarRecurring || false, lunarMonth: data.lunarMonth || null, lunarDay: data.lunarDay || null,
-            author: data.author || '家族成員', color: data.color || 'bg-rose-400',
-            photoUrl: data.photoUrl || null, videoUrl: data.videoUrl || null, fileUrl: data.fileUrl || null,
-            location: data.location || '', mapUrl: data.mapUrl || '',
-            isChecklist: data.isChecklist || false, checklist: data.checklist || [],
-            isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
-            isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || []
-        });
-    });
-    renderApp();
-    if (selectedDateForModal) openDayModal(selectedDateForModal, false);
-    if (currentViewingId) openViewModal(currentViewingId);
-});
-
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if (!container) return;
@@ -432,9 +383,16 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
 
-// ==========================================
-// 備份與匯入功能
-// ==========================================
+function requestAdminAccess(callback) {
+    const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
+    if (pwd === null) return; 
+    if (pwd === ADMIN_PASSWORD) {
+        callback();
+    } else {
+        alert('❌ 密碼錯誤！您無權執行此操作。');
+    }
+}
+
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
     importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
@@ -494,7 +452,7 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
                 }
                 if (duplicates.length === 0) return alert('✅ 目前行事曆中沒有發現重複的假日。');
                 if (confirm(`發現 ${duplicates.length} 筆重複的假日，確定要立即刪除嗎？`)) {
-                    for (const id of duplicates) await deleteDoc(doc(db, 'familyEvents', id));
+                    for (const id of duplicates) await deleteDoc(doc(eventsRef, id));
                     alert(`🎉 成功清除 ${duplicates.length} 筆重複假日！`);
                 }
             } catch (err) { alert('清除失敗，請檢查網路連線。'); }
@@ -502,16 +460,12 @@ if (importGovBtn && !document.getElementById('btn-cleanup-holidays')) {
     });
 }
 
-// ==========================================
-// ☁️ 雲端備份、本機 JSON 匯出與檔案匯入 (支援 Firebase 帳號轉移)
-// ==========================================
 const exportBtn = document.getElementById('btn-export-json');
 const importInput = document.getElementById('input-import-json');
 if (exportBtn && importInput) {
     const importLabel = importInput.parentElement;
     const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
-    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份與本機 JSON 檔案轉換';
-    
+    if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份與手機檔案匯入';
     exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
     exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
 
@@ -520,21 +474,14 @@ if (exportBtn && importInput) {
     cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
     cloudRestoreBtn.innerHTML = '<i class="fas fa-history"></i> 選擇歷史紀錄還原';
 
-    // 🌟 新增：下載本機 JSON 按鈕 (專門用來轉移 Firebase 帳號)
-    const downloadJsonBtn = document.createElement('button');
-    downloadJsonBtn.id = 'btn-download-local-json';
-    downloadJsonBtn.className = 'py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-purple-200';
-    downloadJsonBtn.innerHTML = '<i class="fas fa-file-download"></i> 匯出 JSON 備份檔 (轉移帳號用)';
-
     const gridContainer = exportBtn.closest('.grid');
     gridContainer.className = 'flex flex-col gap-2'; 
     gridContainer.insertBefore(cloudRestoreBtn, importLabel);
-    gridContainer.insertBefore(downloadJsonBtn, importLabel);
 
     const importBtn = document.createElement('button');
     importBtn.id = 'btn-local-import';
     importBtn.className = 'w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-blue-200';
-    importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從本機選擇 JSON 檔案匯入';
+    importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入';
     
     importLabel.parentNode.replaceChild(importBtn, importLabel);
     importBtn.parentNode.appendChild(importInput);
@@ -547,48 +494,11 @@ if (exportBtn && importInput) {
         });
     });
 
-    // 🌟 1. 下載 JSON 的功能實作：打包所有行程、成員、便利貼
-    downloadJsonBtn.addEventListener('click', () => {
-        requestAdminAccess(() => {
-            if (events.length === 0 && familyMembers.length === 0) return alert('目前沒有任何資料可以匯出喔！');
-            
-            triggerHaptic();
-            downloadJsonBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 產生檔案中...';
-            downloadJsonBtn.disabled = true;
-
-            try {
-                const exportData = { 
-                    exportDate: new Date().toISOString(), 
-                    events: events,
-                    members: familyMembers,
-                    note: stickyNoteEl.value || ''
-                };
-
-                // 轉換成 JSON 格式並觸發瀏覽器下載
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", `family_calendar_full_backup_${new Date().toISOString().split('T')[0]}.json`);
-                document.body.appendChild(downloadAnchorNode); 
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-                
-                alert('🎉 JSON 備份檔已成功下載！\n包含「所有行程」、「家族成員」與「便利貼」。\n請妥善保存，更換 Firebase 帳號後即可直接匯入。');
-            } catch (err) {
-                alert('匯出失敗，請檢查瀏覽器設定或重試。');
-            } finally {
-                downloadJsonBtn.innerHTML = '<i class="fas fa-file-download"></i> 匯出 JSON 備份檔 (轉移帳號用)';
-                downloadJsonBtn.disabled = false;
-            }
-        });
-    });
-
-    // 🌟 2. 強化版匯入功能：支援還原行程、成員與便利貼
     importInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!confirm('⚠️ 警告：匯入本機 JSON 檔案將會【完全覆蓋】目前行事曆上的所有資料（包含成員與行程）！\n此操作通常用於「轉移新帳號」或「重大還原」。\n確定要繼續嗎？')) {
+        if (!confirm('⚠️ 警告：匯入手機檔案將會【完全覆蓋】目前行事曆上的所有行程！確定要繼續嗎？')) {
             e.target.value = '';
             return;
         }
@@ -596,43 +506,24 @@ if (exportBtn && importInput) {
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
-                importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 匯入並轉移中...';
+                importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 匯入中...';
                 importBtn.style.pointerEvents = 'none';
 
                 const importedData = JSON.parse(event.target.result);
-                // 兼容舊版與新版資料結構
-                const eventsToImport = importedData.events || (Array.isArray(importedData) ? importedData : []);
-                const membersToImport = importedData.members || [];
-                const noteToImport = importedData.note || '';
+                const eventsToImport = importedData.events || importedData;
 
-                // A. 清除舊行程並寫入新行程
-                for (const evt of events) await deleteDoc(doc(db, 'familyEvents', evt.id));
+                for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
                 for (const ev of eventsToImport) {
                     delete ev.id;
                     await addDoc(eventsRef, ev);
                 }
 
-                // B. 覆蓋成員 (如果有備份到)
-                if (membersToImport.length > 0) {
-                    for (const m of familyMembers) await deleteDoc(doc(db, 'familyMembers', m.id));
-                    for (const mem of membersToImport) {
-                        delete mem.id;
-                        await addDoc(membersRef, mem);
-                    }
-                }
-
-                // C. 覆蓋便利貼 (如果有備份到)
-                if (noteToImport !== undefined) {
-                    await setDoc(noteRef, { content: noteToImport }, { merge: true });
-                }
-
-                alert('🎉 檔案匯入大成功！資料已完整轉移到此環境。');
+                alert('🎉 檔案匯入成功！已成功載入您上傳的紀錄。');
                 document.getElementById('member-modal').classList.add('hidden');
             } catch (err) {
                 alert('讀取檔案失敗，請確認是否為正確的 JSON 備份檔。');
-                console.error(err);
             } finally {
-                importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從本機選擇 JSON 檔案匯入';
+                importBtn.innerHTML = '<i class="fas fa-folder-open"></i> 從 iPhone/本機 選擇檔案匯入';
                 importBtn.style.pointerEvents = 'auto';
                 e.target.value = '';
             }
@@ -640,7 +531,6 @@ if (exportBtn && importInput) {
         reader.readAsText(file);
     });
 
-    // 🌟 3. 原有的雲端備份 (維持不變)
     exportBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
             if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
@@ -656,13 +546,12 @@ if (exportBtn && importInput) {
         });
     });
 
-    // 🌟 4. 原有的雲端歷史還原 (維持不變)
     cloudRestoreBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
             triggerHaptic();
             try {
                 cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 讀取歷史...'; cloudRestoreBtn.disabled = true;
-                const snap = await getDocs(backupsRef);
+                const snap = await getDocs(collection(db, 'familyBackups'));
                 if (snap.empty) { alert('☁️ 目前雲端沒有找到任何備份紀錄喔！請先建立備份。'); return; }
                 const backupsList = [];
                 snap.forEach(d => backupsList.push({ id: d.id, ...d.data() }));
@@ -702,7 +591,7 @@ if (exportBtn && importInput) {
                         if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
                             modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
                             try {
-                                for (const evt of events) await deleteDoc(doc(db, 'familyEvents', evt.id));
+                                for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
                                 for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
                                 alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
                                 document.getElementById('member-modal').classList.add('hidden');
@@ -716,9 +605,233 @@ if (exportBtn && importInput) {
     });
 }
 
+const galleryModal = document.getElementById('gallery-modal');
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+
 // ==========================================
-// 日曆渲染與主邏輯
+// 📸 升級版「拍立得/IG風格」相簿牆渲染函數 (含手機預設手帳風)
 // ==========================================
+function renderGalleryGrid() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    
+    // 過濾有照片的行程，並由新到舊排序
+    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    
+    // 🎨 網格底圖：改成可愛的「手帳方格紙」背景
+    container.style.cssText = 'background-color: #fdfbf9; background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;';
+    
+    // 空狀態設計
+    if (photoEvents.length === 0) {
+        container.className = 'flex flex-col items-center justify-center h-full w-full';
+        container.innerHTML = `
+            <div class="text-center animate-fade-in flex flex-col items-center">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
+                    <i class="fas fa-camera-retro text-3xl text-warm-300"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
+                <p class="text-sm text-gray-400">快去行程裡貼上相片網址吧！</p>
+            </div>`;
+        return;
+    }
+    
+    // 容器加上足夠的 padding，避免傾斜的相片被裁切
+    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-8 items-start content-start p-6 md:p-8 overflow-x-hidden';
+    
+    // 定義拍立得「永久隨機傾斜」與「紙膠帶顏色」 (這是手機版不單調的秘訣！)
+    const rotates = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-4', 'rotate-4'];
+    const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
+    const tapeRotates = ['rotate-2', '-rotate-3', 'rotate-1', '-rotate-2'];
+
+    photoEvents.forEach((evt, index) => {
+        const item = document.createElement('div');
+        
+        const cardRot = rotates[index % rotates.length];
+        const tColor = tapeColors[index % tapeColors.length];
+        const tRot = tapeRotates[index % tapeRotates.length];
+        const animDelay = (index * 50) + 'ms'; // 載入時有骨牌般的動畫
+        
+        // 📷 拍立得卡片本體：加上方型留白、陰影與永久傾斜
+        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-110 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot}`;
+        item.style.animationDelay = animDelay;
+        item.style.animationFillMode = 'both';
+        
+        const imgUrl = getDirectImageUrl(evt.photoUrl);
+        // 將日期轉為 2026.11.09 格式
+        const dateStr = evt.startDate.replace(/-/g, '.');
+
+        item.innerHTML = `
+            <!-- 🎗️ 裝飾紙膠帶 (隨機顏色與角度) -->
+            <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
+            
+            <!-- 相片區塊 (正方形) -->
+            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative shadow-inner">
+                <img src="${imgUrl}" class="w-full h-full object-cover filter contrast-[1.05] brightness-[1.02]" loading="lazy">
+                
+                <!-- 📸 復古底片日期 (橘色相機日期風格) -->
+                <div class="absolute bottom-1.5 right-1.5 z-10">
+                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter">
+                        '${dateStr.slice(2)}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- 標題與地點 (拍立得下方留白區) -->
+            <div class="absolute bottom-1 md:bottom-2 left-0 w-full text-center px-2 flex flex-col justify-center">
+                <h4 class="font-bold text-gray-800 text-[11px] md:text-sm truncate">
+                    ${evt.icon ? evt.icon + ' ' : ''}${evt.title}
+                </h4>
+                ${evt.location ? `<p class="text-[9px] md:text-[10px] text-gray-400 truncate mt-0.5"><i class="fas fa-map-marker-alt"></i> ${evt.location}</p>` : ''}
+            </div>
+        `;
+        
+        item.addEventListener('click', () => { 
+            if(typeof triggerHaptic === 'function') triggerHaptic(); 
+            document.getElementById('gallery-modal').classList.add('hidden'); 
+            openViewModal(evt.id); 
+        });
+        
+        container.appendChild(item);
+    });
+}
+// ==========================================
+
+function getMemberOptions(selected = '', defaultText = '請選擇...') {
+    let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
+    return html;
+}
+function getChecklistMemberOptions(selected = '') {
+    let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
+    return html;
+}
+function updateUniqueSelects(containerId, selectClass) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const selects = Array.from(container.querySelectorAll(selectClass));
+    const selectedValues = selects.map(s => s.value).filter(v => v !== '');
+    selects.forEach(select => {
+        const currentValue = select.value;
+        Array.from(select.options).forEach(option => {
+            if (option.value === '') return;
+            if (selectedValues.includes(option.value) && option.value !== currentValue) { option.disabled = true; option.textContent = `${option.value} (已選)`; } 
+            else { option.disabled = false; option.textContent = option.value; }
+        });
+    });
+}
+
+const checklistCheckbox = document.getElementById('event-is-checklist');
+const checklistFields = document.getElementById('checklist-fields');
+const checklistContainer = document.getElementById('checklist-items-container');
+checklistCheckbox.addEventListener('change', (e) => {
+    checklistFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
+});
+function addChecklistRow(text = '', assignee = '', done = false) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 checklist-row';
+    row.dataset.done = done ? 'true' : 'false';
+    row.innerHTML = `
+        <input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <select class="checklist-assignee w-24 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer">${getChecklistMemberOptions(assignee)}</select>
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    checklistContainer.appendChild(row);
+}
+document.getElementById('btn-add-checklist-item').addEventListener('click', () => addChecklistRow());
+
+const pollCheckbox = document.getElementById('event-is-poll');
+const pollFields = document.getElementById('poll-fields');
+const pollOptionsContainer = document.getElementById('poll-options-container');
+pollCheckbox.addEventListener('change', (e) => {
+    pollFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
+});
+function addPollOptionRow(title = '') {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 poll-row';
+    row.innerHTML = `<input type="text" placeholder="選項標題" value="${title}" class="poll-option-title flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    pollOptionsContainer.appendChild(row);
+}
+document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
+
+const expenseCheckbox = document.getElementById('event-is-expense');
+const expenseFields = document.getElementById('expense-fields');
+const payersContainer = document.getElementById('payers-container');
+const sharersContainer = document.getElementById('sharers-container');
+expenseCheckbox.addEventListener('change', (e) => {
+    expenseFields.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && payersContainer.children.length === 0) { addPayerRow(); addSharerRow(); }
+});
+
+function addPayerRow(name = '', amount = '', note = '') {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-1 payer-row';
+    row.innerHTML = `
+        <select class="payer-name w-[28%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '代墊人...')}</select>
+        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount w-[25%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
+        <input type="text" placeholder="備註(如:門票)" value="${note}" class="payer-note flex-1 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none">
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('payers-container', '.payer-name'); });
+    row.querySelector('.payer-name').addEventListener('change', () => { updateUniqueSelects('payers-container', '.payer-name'); });
+    payersContainer.appendChild(row);
+    updateUniqueSelects('payers-container', '.payer-name');
+}
+document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow('', '', ''));
+
+function addSharerRow(name = '', weight = 1) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 sharer-row';
+    row.innerHTML = `
+        <select class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '分攤對象...')}</select>
+        <div class="flex items-center bg-white border rounded-xl px-2 py-1">
+            <input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none">
+            <span class="text-[10px]">份</span>
+        </div>
+        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
+    `;
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('sharers-container', '.sharer-name'); });
+    row.querySelector('.sharer-name').addEventListener('change', () => { updateUniqueSelects('sharers-container', '.sharer-name'); });
+    sharersContainer.appendChild(row);
+    updateUniqueSelects('sharers-container', '.sharer-name');
+}
+document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
+
+onSnapshot(eventsRef, (snapshot) => {
+    events = [];
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        let sDate = data.startDate;
+        let eDate = data.endDate || data.startDate;
+        if (data.isLunarRecurring && data.lunarMonth && data.lunarDay) {
+            try {
+                const solar = Lunar.fromYmd(currentDate.getFullYear(), data.lunarMonth, data.lunarDay).getSolar();
+                sDate = `${solar.getYear()}-${String(solar.getMonth()).padStart(2, '0')}-${String(solar.getDay()).padStart(2, '0')}`;
+                eDate = sDate;
+            } catch(e) {}
+        }
+        events.push({
+            id: docSnap.id, title: data.title || '未命名活動', icon: data.icon || '',
+            startDate: sDate, endDate: eDate, originalStart: data.startDate,
+            isLunarRecurring: data.isLunarRecurring || false, lunarMonth: data.lunarMonth || null, lunarDay: data.lunarDay || null,
+            author: data.author || '家族成員', color: data.color || 'bg-rose-400',
+            photoUrl: data.photoUrl || null, videoUrl: data.videoUrl || null, fileUrl: data.fileUrl || null,
+            location: data.location || '', mapUrl: data.mapUrl || '',
+            isChecklist: data.isChecklist || false, checklist: data.checklist || [],
+            isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
+            isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || []
+        });
+    });
+    renderApp();
+    if (selectedDateForModal) openDayModal(selectedDateForModal, false);
+    if (currentViewingId) openViewModal(currentViewingId);
+});
+
 function renderApp() { renderCalendar(); renderUpcoming(); }
 
 function renderCalendar() {
@@ -932,9 +1045,6 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
     stopViewVideo(); openModal(id); 
 });
 
-// ==========================================
-// 相片預覽與基本邏輯
-// ==========================================
 const photoUrlInput = document.getElementById('event-photo-url');
 if(photoUrlInput) {
     photoUrlInput.addEventListener('input', (e) => {
@@ -1013,6 +1123,16 @@ function openModal(id = null) {
     document.getElementById('event-modal').classList.remove('hidden');
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
+
+const twLocations = {
+    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
+    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
+    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
+    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
+    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
+    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
+    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
+};
 
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
@@ -1268,12 +1388,14 @@ function openViewModal(id) {
         let balances = {};
         let totalExpense = 0;
 
+        // 1. 計算代墊的錢 (債權)
         evt.payers.forEach(p => {
             let amt = parseFloat(p.amount) || 0;
             balances[p.name] = (balances[p.name] || 0) + amt;
             totalExpense += amt;
         });
 
+        // 2. 計算應分攤的錢 (債務)
         let totalWeight = (evt.sharers || []).reduce((sum, s) => sum + (parseFloat(s.weight) || 1), 0) || 1;
         let perWeightAmount = totalExpense / totalWeight;
 
@@ -1282,6 +1404,7 @@ function openViewModal(id) {
             balances[s.name] = (balances[s.name] || 0) - shareAmt;
         });
 
+        // 3. 分出債權人(正數)與債務人(負數)
         let debtors = [];
         let creditors = [];
         for (let name in balances) {
@@ -1290,6 +1413,7 @@ function openViewModal(id) {
             else if (b > 1) creditors.push({ name, amount: b });
         }
 
+        // 4. 開始互抵撮合
         let transactions = [];
         let d = 0, c = 0;
         while (d < debtors.length && c < creditors.length) {
@@ -1350,111 +1474,6 @@ function openViewModal(id) {
 
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
-
-function getMemberOptions(selected = '', defaultText = '請選擇...') {
-    let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
-    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
-    return html;
-}
-function getChecklistMemberOptions(selected = '') {
-    let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
-    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
-    return html;
-}
-function updateUniqueSelects(containerId, selectClass) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const selects = Array.from(container.querySelectorAll(selectClass));
-    const selectedValues = selects.map(s => s.value).filter(v => v !== '');
-    selects.forEach(select => {
-        const currentValue = select.value;
-        Array.from(select.options).forEach(option => {
-            if (option.value === '') return;
-            if (selectedValues.includes(option.value) && option.value !== currentValue) { option.disabled = true; option.textContent = `${option.value} (已選)`; } 
-            else { option.disabled = false; option.textContent = option.value; }
-        });
-    });
-}
-
-const checklistCheckbox = document.getElementById('event-is-checklist');
-const checklistFields = document.getElementById('checklist-fields');
-const checklistContainer = document.getElementById('checklist-items-container');
-checklistCheckbox.addEventListener('change', (e) => {
-    checklistFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && checklistContainer.children.length === 0) addChecklistRow();
-});
-function addChecklistRow(text = '', assignee = '', done = false) {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 checklist-row';
-    row.dataset.done = done ? 'true' : 'false';
-    row.innerHTML = `
-        <input type="text" placeholder="裝備/任務" value="${text}" class="checklist-text flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
-        <select class="checklist-assignee w-24 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer">${getChecklistMemberOptions(assignee)}</select>
-        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
-    `;
-    row.querySelector('button').addEventListener('click', () => row.remove());
-    checklistContainer.appendChild(row);
-}
-document.getElementById('btn-add-checklist-item').addEventListener('click', () => addChecklistRow());
-
-const pollCheckbox = document.getElementById('event-is-poll');
-const pollFields = document.getElementById('poll-fields');
-const pollOptionsContainer = document.getElementById('poll-options-container');
-pollCheckbox.addEventListener('change', (e) => {
-    pollFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && pollOptionsContainer.children.length === 0) addPollOptionRow();
-});
-function addPollOptionRow(title = '') {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 poll-row';
-    row.innerHTML = `<input type="text" placeholder="選項標題" value="${title}" class="poll-option-title flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none" required><button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>`;
-    row.querySelector('button').addEventListener('click', () => row.remove());
-    pollOptionsContainer.appendChild(row);
-}
-document.getElementById('btn-add-poll-option').addEventListener('click', () => addPollOptionRow());
-
-const expenseCheckbox = document.getElementById('event-is-expense');
-const expenseFields = document.getElementById('expense-fields');
-const payersContainer = document.getElementById('payers-container');
-const sharersContainer = document.getElementById('sharers-container');
-expenseCheckbox.addEventListener('change', (e) => {
-    expenseFields.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && payersContainer.children.length === 0) { addPayerRow(); addSharerRow(); }
-});
-
-function addPayerRow(name = '', amount = '', note = '') {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-1 payer-row';
-    row.innerHTML = `
-        <select class="payer-name w-[28%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '代墊人...')}</select>
-        <input type="number" placeholder="金額 $" value="${amount}" class="payer-amount w-[25%] px-2 py-1.5 bg-white border rounded-xl text-xs outline-none" required>
-        <input type="text" placeholder="備註(如:門票)" value="${note}" class="payer-note flex-1 px-2 py-1.5 bg-white border rounded-xl text-xs outline-none">
-        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
-    `;
-    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('payers-container', '.payer-name'); });
-    row.querySelector('.payer-name').addEventListener('change', () => { updateUniqueSelects('payers-container', '.payer-name'); });
-    payersContainer.appendChild(row);
-    updateUniqueSelects('payers-container', '.payer-name');
-}
-document.getElementById('btn-add-payer').addEventListener('click', () => addPayerRow('', '', ''));
-
-function addSharerRow(name = '', weight = 1) {
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-2 sharer-row';
-    row.innerHTML = `
-        <select class="sharer-name flex-1 px-3 py-1.5 bg-white border rounded-xl text-xs outline-none cursor-pointer" required>${getMemberOptions(name, '分攤對象...')}</select>
-        <div class="flex items-center bg-white border rounded-xl px-2 py-1">
-            <input type="number" min="0.5" step="0.5" value="${weight}" class="sharer-weight w-12 text-center text-xs font-bold outline-none">
-            <span class="text-[10px]">份</span>
-        </div>
-        <button type="button" class="text-rose-400 p-1"><i class="fas fa-trash-alt"></i></button>
-    `;
-    row.querySelector('button').addEventListener('click', () => { row.remove(); updateUniqueSelects('sharers-container', '.sharer-name'); });
-    row.querySelector('.sharer-name').addEventListener('change', () => { updateUniqueSelects('sharers-container', '.sharer-name'); });
-    sharersContainer.appendChild(row);
-    updateUniqueSelects('sharers-container', '.sharer-name');
-}
-document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
 
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1529,76 +1548,394 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
-const galleryModal = document.getElementById('gallery-modal');
-document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
-document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
+function initRadioPlayer() {
+    if (document.getElementById('radio-widget')) return;
 
-function renderGalleryGrid() {
-    const container = document.getElementById('gallery-grid-container');
-    container.innerHTML = '';
+    let stations = [
+        { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
+        { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
+        { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
+    ];
+
+    try {
+        const customStations = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
+        stations = [...stations, ...customStations];
+    } catch (e) {}
+
+    let currentStationIdx = 0;
+    let hlsInstance = null; 
+
+    const radioContainer = document.createElement('div');
+    radioContainer.id = 'radio-widget';
+    radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
     
-    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
-    container.style.cssText = 'background-color: #fdfbf9; background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;';
-    
-    if (photoEvents.length === 0) {
-        container.className = 'flex flex-col items-center justify-center h-full w-full';
-        container.innerHTML = `
-            <div class="text-center animate-fade-in flex flex-col items-center">
-                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
-                    <i class="fas fa-camera-retro text-3xl text-warm-300"></i>
-                </div>
-                <h4 class="text-lg font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
-                <p class="text-sm text-gray-400">快去行程裡貼上相片網址吧！</p>
-            </div>`;
-        return;
+    const savedPos = localStorage.getItem('radio_widget_pos');
+    if (savedPos) {
+        try {
+            const pos = JSON.parse(savedPos);
+            let nx = pos.left, ny = pos.top;
+            if (nx < 0) nx = 20; if (ny < 0) ny = 20;
+            if (nx > window.innerWidth - 100) nx = window.innerWidth - 150;
+            if (ny > window.innerHeight - 50) ny = window.innerHeight - 100;
+            radioContainer.style.left = nx + 'px';
+            radioContainer.style.top = ny + 'px';
+        } catch(e) {}
+    } else {
+        radioContainer.style.bottom = '24px';
+        radioContainer.style.right = '24px';
     }
-    
-    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-8 items-start content-start p-6 md:p-8 overflow-x-hidden';
-    
-    const rotates = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-4', 'rotate-4'];
-    const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
-    const tapeRotates = ['rotate-2', '-rotate-3', 'rotate-1', '-rotate-2'];
 
-    photoEvents.forEach((evt, index) => {
-        const item = document.createElement('div');
-        const cardRot = rotates[index % rotates.length];
-        const tColor = tapeColors[index % tapeColors.length];
-        const tRot = tapeRotates[index % tapeRotates.length];
-        const animDelay = (index * 50) + 'ms'; 
-        
-        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-110 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot}`;
-        item.style.animationDelay = animDelay;
-        item.style.animationFillMode = 'both';
-        
-        const imgUrl = getDirectImageUrl(evt.photoUrl);
-        const dateStr = evt.startDate.replace(/-/g, '.');
+    radioContainer.innerHTML = `
+        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
+            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
+        </div>
+        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1 pointer-events-none">
+            <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
+            <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
+        </div>
+        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
+            <i class="fas fa-list-ul text-[10px] md:text-xs pointer-events-none"></i>
+        </button>
+        <audio id="radio-audio" preload="none"></audio>
+        <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
+    `;
+    document.body.appendChild(radioContainer);
 
-        item.innerHTML = `
-            <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
-            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative shadow-inner">
-                <img src="${imgUrl}" class="w-full h-full object-cover filter contrast-[1.05] brightness-[1.02]" loading="lazy">
-                <div class="absolute bottom-1.5 right-1.5 z-10">
-                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter">
-                        '${dateStr.slice(2)}
-                    </span>
+    const menuContainer = document.createElement('div');
+    menuContainer.id = 'radio-menu';
+    menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
+    document.body.appendChild(menuContainer);
+    
+    const audio = document.getElementById('radio-audio');
+    const ytContainer = document.getElementById('yt-radio-container');
+    const playBtn = document.getElementById('btn-radio-play');
+    const menuBtn = document.getElementById('btn-radio-menu');
+    const icon = document.getElementById('radio-icon');
+    const text = document.getElementById('radio-text');
+    const statusText = document.getElementById('radio-status');
+    let isPlaying = false;
+
+    let isDragging = false;
+    let hasDragged = false;
+    let dragStartX = 0, dragStartY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    const onDragStart = (e) => {
+        if (e.type === 'touchstart') {
+            dragStartX = e.touches[0].clientX;
+            dragStartY = e.touches[0].clientY;
+        } else {
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+        }
+        isDragging = true;
+        hasDragged = false;
+        
+        const rect = radioContainer.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        radioContainer.style.bottom = 'auto';
+        radioContainer.style.right = 'auto';
+        radioContainer.style.left = initialLeft + 'px';
+        radioContainer.style.top = initialTop + 'px';
+        radioContainer.style.transition = 'none';
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - dragStartX;
+        const dy = clientY - dragStartY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+
+        const rect = radioContainer.getBoundingClientRect();
+        if (newLeft < 0) newLeft = 0;
+        if (newTop < 0) newTop = 0;
+        if (newLeft + rect.width > window.innerWidth) newLeft = window.innerWidth - rect.width;
+        if (newTop + rect.height > window.innerHeight) newTop = window.innerHeight - rect.height;
+
+        radioContainer.style.left = newLeft + 'px';
+        radioContainer.style.top = newTop + 'px';
+    };
+
+    const onDragEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        radioContainer.style.transition = 'all 0.3s ease';
+        if (hasDragged) {
+            const rect = radioContainer.getBoundingClientRect();
+            localStorage.setItem('radio_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+        }
+    };
+
+    radioContainer.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove, { passive: false });
+    document.addEventListener('mouseup', onDragEnd);
+
+    radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+
+    radioContainer.addEventListener('click', (e) => {
+        if (hasDragged) {
+            e.preventDefault();
+            e.stopPropagation();
+            hasDragged = false;
+        }
+    }, true);
+
+    function renderMenu() {
+        menuContainer.innerHTML = '';
+        stations.forEach((station, idx) => {
+            const item = document.createElement('button');
+            const isActive = (idx === currentStationIdx);
+            item.className = `w-full text-left px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-colors flex items-center justify-between ${isActive ? 'bg-warm-50 text-warm-700' : 'text-gray-600 hover:bg-warm-50 hover:text-warm-700'}`;
+            
+            const isCustom = idx >= 4; 
+            const deleteBtnHtml = isCustom ? `<i class="fas fa-trash-alt text-rose-400 hover:text-rose-600 ml-2" data-delete="${idx}"></i>` : '';
+
+            item.innerHTML = `
+                <div class="flex items-center truncate">
+                    <span class="truncate pr-2">${station.name}</span>
                 </div>
-            </div>
-            <div class="absolute bottom-1 md:bottom-2 left-0 w-full text-center px-2 flex flex-col justify-center">
-                <h4 class="font-bold text-gray-800 text-[11px] md:text-sm truncate">
-                    ${evt.icon ? evt.icon + ' ' : ''}${evt.title}
-                </h4>
-                ${evt.location ? `<p class="text-[9px] md:text-[10px] text-gray-400 truncate mt-0.5"><i class="fas fa-map-marker-alt"></i> ${evt.location}</p>` : ''}
-            </div>
-        `;
-        
-        item.addEventListener('click', () => { 
-            triggerHaptic(); 
-            document.getElementById('gallery-modal').classList.add('hidden'); 
-            openViewModal(evt.id); 
+                <div class="flex items-center shrink-0">
+                    <i class="fas fa-volume-up text-warm-500 ${isActive ? 'opacity-100' : 'opacity-0'}"></i>
+                    ${deleteBtnHtml}
+                </div>
+            `;
+            
+            item.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                if (e.target.dataset.delete) {
+                    if (confirm(`確定要刪除自訂電台「${station.name}」嗎？`)) {
+                        stations.splice(idx, 1);
+                        const customStations = stations.slice(4);
+                        localStorage.setItem('my_custom_stations', JSON.stringify(customStations));
+                        
+                        if (currentStationIdx === idx) {
+                            audio.pause();
+                            ytContainer.innerHTML = '';
+                            if(hlsInstance) hlsInstance.destroy();
+                            isPlaying = false;
+                            currentStationIdx = 0;
+                            text.innerText = stations[0].name;
+                            statusText.innerText = '點擊播放';
+                            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+                            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+                        } else if (currentStationIdx > idx) currentStationIdx--;
+                        
+                        renderMenu();
+                    }
+                    return;
+                }
+
+                triggerHaptic();
+                currentStationIdx = idx;
+                renderMenu(); 
+                loadAndPlayStation(idx);
+                menuContainer.classList.add('hidden');
+            });
+            menuContainer.appendChild(item);
         });
-        container.appendChild(item);
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const newName = prompt('請輸入電台名稱 (例如：飛碟聯播網)：');
+            if (!newName) return;
+            const newUrl = prompt('請貼上網址 (支援 YouTube 直播連結、.mp3 或 .m3u8)：\n例如：https://www.youtube.com/watch?v=...');
+            if (!newUrl) return;
+            
+            const newStation = { name: '📺 ' + newName, url: newUrl, type: 'live' };
+            stations.push(newStation);
+            
+            const custom = JSON.parse(localStorage.getItem('my_custom_stations') || '[]');
+            custom.push(newStation);
+            localStorage.setItem('my_custom_stations', JSON.stringify(custom));
+            
+            alert('🎉 新增成功！請在選單中點選播放。');
+            renderMenu();
+        });
+        menuContainer.appendChild(addBtn);
+    }
+
+    renderMenu();
+
+    menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); 
+        triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
+        
+        if (menuContainer.classList.contains('hidden')) {
+            const rect = radioContainer.getBoundingClientRect();
+            let menuTop = rect.top - 260;
+            if (menuTop < 10) menuTop = rect.bottom + 10;
+            
+            let menuLeft = rect.right - 256;
+            if (menuLeft < 10) menuLeft = 10;
+            
+            menuContainer.style.top = menuTop + 'px';
+            menuContainer.style.left = menuLeft + 'px';
+        }
+        menuContainer.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) menuContainer.classList.add('hidden');
+    });
+
+    function loadAndPlayStation(index) {
+        const station = stations[index];
+        text.innerText = station.name;
+        audio.volume = 0.4;
+        statusText.innerText = '連線中...';
+        icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
+        isPlaying = true;
+
+        audio.pause();
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        ytContainer.innerHTML = '';
+
+        const onPlaySuccess = () => {
+            icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
+            statusText.innerText = '正在播放';
+            radioContainer.classList.add('ring-2', 'ring-warm-400');
+        };
+
+        const onPlayError = (e) => {
+            console.log('Stream Error:', e);
+            statusText.innerText = '網址失效或阻擋連線';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+            isPlaying = false;
+        };
+
+        let isYouTube = false;
+        let ytId = '';
+        if (station.url.includes('youtube.com/watch?v=')) {
+            isYouTube = true;
+            ytId = new URL(station.url).searchParams.get('v');
+        } else if (station.url.includes('youtu.be/')) {
+            isYouTube = true;
+            ytId = station.url.split('youtu.be/')[1].split('?')[0];
+        }
+
+        if (isYouTube && ytId) {
+            ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
+            setTimeout(onPlaySuccess, 1500); 
+        } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(station.url);
+            hlsInstance.attachMedia(audio);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                audio.play().then(onPlaySuccess).catch(onPlayError);
+            });
+            hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) onPlayError(data);
+            });
+        } else {
+            audio.src = station.url;
+            audio.loop = (station.type === 'bgm'); 
+            audio.play().then(onPlaySuccess).catch(onPlayError);
+        }
+    }
+
+    playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerHaptic();
+        if (hasDragged) { hasDragged = false; return; }
+        
+        if (isPlaying) {
+            audio.pause();
+            ytContainer.innerHTML = ''; 
+            icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
+            statusText.innerText = '已暫停';
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+        } else {
+            loadAndPlayStation(currentStationIdx);
+        }
+        isPlaying = !isPlaying;
+    });
+
+    audio.addEventListener('error', () => {
+        if (isPlaying) {
+            statusText.innerText = '電台斷線，請換台';
+            icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
+            isPlaying = false;
+            radioContainer.classList.remove('ring-2', 'ring-warm-400');
+        }
     });
 }
+
+function initFunAnimations() {
+    if (document.getElementById('fun-animation-style')) return;
+    
+    if (!window.confetti) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+        document.head.appendChild(script);
+    }
+    
+    const style = document.createElement('style');
+    style.id = 'fun-animation-style';
+    style.innerHTML = `
+    @keyframes driveCar { 0% { transform: translateX(120vw); } 100% { transform: translateX(-30vw); } }
+    @keyframes bounceCar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px) rotate(-1deg); } }
+    @keyframes flyDrone { 0% { transform: translateX(-20vw) translateY(20px) rotate(5deg); } 25% { transform: translateX(30vw) translateY(-10px) rotate(0deg); } 50% { transform: translateX(70vw) translateY(15px) rotate(-5deg); } 100% { transform: translateX(120vw) translateY(-5px) rotate(0deg); } }
+    
+    .vehicle-wrapper { position: fixed; bottom: 90px; left: 0; z-index: 15; pointer-events: none; display: flex; align-items: flex-end; animation: driveCar 35s linear infinite; opacity: 0.85; }
+    .vehicle-body { font-size: 3.5rem; animation: bounceCar 0.8s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); position: relative; z-index: 2; }
+    
+    .drone-wrapper { position: fixed; top: 15%; left: 0; z-index: 15; pointer-events: none; display: flex; flex-direction: column; align-items: center; animation: flyDrone 45s linear infinite; opacity: 0.75; filter: drop-shadow(0 15px 5px rgba(0,0,0,0.2)); }
+    .drone-body { font-size: 2.5rem; animation: bounceCar 1.5s ease-in-out infinite alternate; }
+    
+    .click-ripple { position: fixed; border-radius: 50%; border: 2px solid var(--color-500); width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; animation: rippleAnim 0.5s ease-out forwards; }
+    @keyframes rippleAnim { 0% { width: 0; height: 0; opacity: 0.8; } 100% { width: 60px; height: 60px; opacity: 0; border-width: 0px; } }
+    `;
+    document.head.appendChild(style);
+
+    const vehicleDiv = document.createElement('div');
+    vehicleDiv.className = 'vehicle-wrapper';
+    const isTesla = Math.random() > 0.5;
+    if (isTesla) {
+        vehicleDiv.innerHTML = `<div class="vehicle-body">🚗</div><div style="font-size:1.5rem; margin-left: 10px; animation: bounceCar 0.5s infinite">⚡</div>`;
+    } else {
+        vehicleDiv.innerHTML = `<div style="position: relative;"><div class="vehicle-body">🚐</div></div><div style="font-size: 2rem; margin-left: 20px; margin-bottom: 2px; animation: bounceCar 0.5s infinite;">🐕</div>`;
+    }
+    document.body.appendChild(vehicleDiv);
+
+    if (Math.random() > 0.7) {
+        const droneDiv = document.createElement('div');
+        droneDiv.className = 'drone-wrapper';
+        droneDiv.innerHTML = `<div class="drone-body">🚁</div><div style="font-size:0.7rem; background:white; padding:2px 6px; border-radius:10px; margin-top:-5px; font-weight:bold; color:#666; display:flex; align-items:center; gap:3px;"><span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>REC</div>`;
+        document.body.appendChild(droneDiv);
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#radio-widget') || e.target.closest('#radio-menu')) return;
+        let ripple = document.createElement('div');
+        ripple.className = 'click-ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY + 'px';
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 500);
+    });
+}
+
+initRadioPlayer();
+initFunAnimations();
 
 const exportIcsBtn = document.createElement('button');
 exportIcsBtn.id = 'btn-export-ics';
@@ -1609,7 +1946,9 @@ setTimeout(() => {
     const btnExportJson = document.getElementById('btn-export-json');
     if (btnExportJson) {
         const backupSection = btnExportJson.closest('.space-y-2');
-        if (backupSection) { backupSection.appendChild(exportIcsBtn); }
+        if (backupSection) {
+            backupSection.appendChild(exportIcsBtn);
+        }
     }
 }, 500);
 
@@ -1617,6 +1956,7 @@ exportIcsBtn.addEventListener('click', () => {
     triggerHaptic();
     requestAdminAccess(() => {
         if (events.length === 0) return alert('目前沒有任何行程可以匯出喔！');
+        
         exportIcsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 產生檔案中...';
         exportIcsBtn.style.pointerEvents = 'none';
         
@@ -1649,6 +1989,7 @@ exportIcsBtn.addEventListener('click', () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            
             alert('🎉 成功匯出 iOS 行事曆檔案！');
         } catch (err) {
             alert('匯出失敗，請重試。');
@@ -1658,7 +1999,3 @@ exportIcsBtn.addEventListener('click', () => {
         }
     });
 });
-
-// 啟動分離的模組
-initRadioPlayer();
-initFunAnimations();
