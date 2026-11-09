@@ -1,7 +1,7 @@
 // ==========================================
-// 模組引入區 (乾淨俐落！)
+// 模組引入區 (修正版：移除會導致崩潰的多餘模組)
 // ==========================================
-import { db, eventsRef, membersRef, noteRef, backupsRef, addDoc, updateDoc, deleteDoc, doc, setDoc, getDocs, onSnapshot, storage, ref, uploadBytesResumable, getDownloadURL } from './modules/firebase.js';
+import { db, eventsRef, membersRef, noteRef, backupsRef, addDoc, updateDoc, deleteDoc, doc, setDoc, getDocs, onSnapshot } from './modules/firebase.js';
 import { initFunAnimations } from './modules/effects.js';
 import { initRadioPlayer } from './modules/radio.js';
 
@@ -933,79 +933,34 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
 });
 
 // ==========================================
-// 📸 相片直接上傳邏輯 (Firebase Storage)
+// 相片預覽與基本邏輯 (還原為原本正常功能)
 // ==========================================
-const photoUploadInput = document.getElementById('event-photo-upload');
 const photoUrlInput = document.getElementById('event-photo-url');
-const uploadProgressContainer = document.getElementById('upload-progress-container');
-const uploadProgressBar = document.getElementById('upload-progress-bar');
-const photoPreview = document.getElementById('photo-preview');
-const btnSaveEvent = document.getElementById('btn-save-event');
-
-if (photoUploadInput) {
-    photoUploadInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const fileName = `photos/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, fileName);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadProgressContainer.classList.remove('hidden');
-        btnSaveEvent.disabled = true;
-        btnSaveEvent.innerText = '照片上傳中...';
-        btnSaveEvent.classList.add('opacity-50', 'cursor-not-allowed');
-
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                uploadProgressBar.style.width = progress + '%';
-            }, 
-            (error) => {
-                alert('照片上傳失敗：' + error.message);
-                uploadProgressContainer.classList.add('hidden');
-                btnSaveEvent.disabled = false;
-                btnSaveEvent.innerText = '儲存';
-                btnSaveEvent.classList.remove('opacity-50', 'cursor-not-allowed');
-            }, 
-            () => {
-                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                    photoUrlInput.value = downloadURL;
-                    const imgEl = photoPreview.querySelector('img');
-                    imgEl.src = downloadURL;
-                    photoPreview.classList.remove('hidden');
-                    uploadProgressContainer.classList.add('hidden');
-                    
-                    btnSaveEvent.disabled = false;
-                    btnSaveEvent.innerText = '儲存';
-                    btnSaveEvent.classList.remove('opacity-50', 'cursor-not-allowed');
-                    triggerHaptic();
-                });
-            }
-        );
+if(photoUrlInput) {
+    photoUrlInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        const previewBox = document.getElementById('photo-preview');
+        const imgEl = previewBox.querySelector('img');
+        if (val) { imgEl.src = getDirectImageUrl(val); previewBox.classList.remove('hidden'); } 
+        else { previewBox.classList.add('hidden'); imgEl.src = ''; }
     });
     
     document.getElementById('btn-remove-photo').addEventListener('click', () => {
         triggerHaptic();
-        photoUrlInput.value = '';
-        photoUploadInput.value = '';
-        photoPreview.classList.add('hidden');
-        photoPreview.querySelector('img').src = '';
+        document.getElementById('event-photo-url').value = '';
+        document.getElementById('photo-preview').classList.add('hidden');
+        document.querySelector('#photo-preview img').src = '';
     });
 }
 
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
-    if(document.getElementById('event-photo-upload')) document.getElementById('event-photo-upload').value = ''; 
     document.getElementById('event-video-url').value = '';
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
-    
-    if (uploadProgressContainer) uploadProgressContainer.classList.add('hidden');
-    if (uploadProgressBar) uploadProgressBar.style.width = '0%';
     
     checklistCheckbox.checked = false; checklistFields.classList.add('hidden'); checklistContainer.innerHTML = '';
     pollCheckbox.checked = false; pollFields.classList.add('hidden'); pollOptionsContainer.innerHTML = '';
