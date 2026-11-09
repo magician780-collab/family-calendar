@@ -610,7 +610,7 @@ document.getElementById('btn-open-gallery').addEventListener('click', () => { tr
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
 // ==========================================
-// 📸 升級版「拍立得/IG風格」相簿牆渲染函數
+// 📸 升級版「拍立得/IG風格」相簿牆渲染函數 (含手機預設手帳風)
 // ==========================================
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
@@ -619,60 +619,70 @@ function renderGalleryGrid() {
     // 過濾有照片的行程，並由新到舊排序
     const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
     
-    // 升級版：空狀態設計
+    // 🎨 網格底圖：改成可愛的「手帳方格紙」背景
+    container.style.cssText = 'background-color: #fdfbf9; background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;';
+    
+    // 空狀態設計
     if (photoEvents.length === 0) {
-        container.className = 'p-6 flex flex-col items-center justify-center h-full w-full';
+        container.className = 'flex flex-col items-center justify-center h-full w-full';
         container.innerHTML = `
-            <div class="text-center animate-fade-in">
-                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
-                    <i class="fas fa-camera text-4xl text-gray-300"></i>
+            <div class="text-center animate-fade-in flex flex-col items-center">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
+                    <i class="fas fa-camera-retro text-3xl text-warm-300"></i>
                 </div>
-                <h4 class="text-lg font-bold text-gray-600 mb-1">還沒有任何照片喔</h4>
-                <p class="text-sm text-gray-400">快去行程裡新增相片網址，打造專屬相簿牆！</p>
+                <h4 class="text-lg font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
+                <p class="text-sm text-gray-400">快去行程裡貼上相片網址吧！</p>
             </div>`;
         return;
     }
     
-    // 套用防拉伸的網格設定
-    container.className = 'p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-start content-start';
+    // 容器加上足夠的 padding，避免傾斜的相片被裁切
+    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-8 items-start content-start p-6 md:p-8 overflow-x-hidden';
     
-    const rotateClasses = ['hover:-rotate-2', 'hover:rotate-2', 'hover:-rotate-1', 'hover:rotate-1'];
+    // 定義拍立得「永久隨機傾斜」與「紙膠帶顏色」 (這是手機版不單調的秘訣！)
+    const rotates = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-4', 'rotate-4'];
+    const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
+    const tapeRotates = ['rotate-2', '-rotate-3', 'rotate-1', '-rotate-2'];
 
     photoEvents.forEach((evt, index) => {
         const item = document.createElement('div');
-        // 加入隨機微傾斜動畫，模擬真實相片散落感
-        const randomRotate = rotateClasses[index % rotateClasses.length];
         
-        item.className = `bg-white p-2.5 md:p-3 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-warm-500/20 border border-gray-100 cursor-pointer flex flex-col group transition-all duration-300 transform hover:-translate-y-1.5 ${randomRotate}`;
+        const cardRot = rotates[index % rotates.length];
+        const tColor = tapeColors[index % tapeColors.length];
+        const tRot = tapeRotates[index % tapeRotates.length];
+        const animDelay = (index * 50) + 'ms'; // 載入時有骨牌般的動畫
+        
+        // 📷 拍立得卡片本體：加上方型留白、陰影與永久傾斜
+        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-110 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot}`;
+        item.style.animationDelay = animDelay;
+        item.style.animationFillMode = 'both';
         
         const imgUrl = getDirectImageUrl(evt.photoUrl);
+        // 將日期轉為 2026.11.09 格式
         const dateStr = evt.startDate.replace(/-/g, '.');
 
         item.innerHTML = `
-            <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 relative shadow-inner">
-                <img src="${imgUrl}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" loading="lazy" alt="活動相片">
+            <!-- 🎗️ 裝飾紙膠帶 (隨機顏色與角度) -->
+            <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
+            
+            <!-- 相片區塊 (正方形) -->
+            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative shadow-inner">
+                <img src="${imgUrl}" class="w-full h-full object-cover filter contrast-[1.05] brightness-[1.02]" loading="lazy">
                 
-                <!-- 底部暗角與搜尋圖示動畫 -->
-                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <div class="w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/50 transform scale-50 group-hover:scale-100 transition-transform duration-300">
-                        <i class="fas fa-search-plus"></i>
-                    </div>
-                </div>
-                
-                <!-- 日期標籤 -->
-                <div class="absolute top-2 left-2">
-                    <span class="bg-white/90 backdrop-blur-sm text-warm-700 text-[10px] md:text-xs font-extrabold px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
-                        <i class="far fa-calendar-alt"></i> ${dateStr}
+                <!-- 📸 復古底片日期 (橘色相機日期風格) -->
+                <div class="absolute bottom-1.5 right-1.5 z-10">
+                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter">
+                        '${dateStr.slice(2)}
                     </span>
                 </div>
             </div>
             
-            <div class="pt-3 pb-1 px-1 flex flex-col gap-1">
-                <h4 class="font-bold text-gray-800 text-xs md:text-sm truncate flex items-center gap-1.5">
-                    ${evt.icon ? `<span class="text-base">${evt.icon}</span>` : ''} 
-                    <span>${evt.title}</span>
+            <!-- 標題與地點 (拍立得下方留白區) -->
+            <div class="absolute bottom-1 md:bottom-2 left-0 w-full text-center px-2 flex flex-col justify-center">
+                <h4 class="font-bold text-gray-800 text-[11px] md:text-sm truncate">
+                    ${evt.icon ? evt.icon + ' ' : ''}${evt.title}
                 </h4>
-                ${evt.location ? `<p class="text-[10px] text-gray-400 truncate flex items-center gap-1"><i class="fas fa-map-marker-alt text-rose-400"></i> ${evt.location}</p>` : ''}
+                ${evt.location ? `<p class="text-[9px] md:text-[10px] text-gray-400 truncate mt-0.5"><i class="fas fa-map-marker-alt"></i> ${evt.location}</p>` : ''}
             </div>
         `;
         
@@ -686,7 +696,6 @@ function renderGalleryGrid() {
     });
 }
 // ==========================================
-
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
