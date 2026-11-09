@@ -68,7 +68,6 @@ function requestAdminAccess(callback) {
     }
 }
 
-// 🌟 修復表單標籤點擊異常 Bug
 document.querySelectorAll('input[name="event-color"]').forEach(radio => {
     radio.classList.remove('sr-only');
     radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10');
@@ -929,7 +928,7 @@ if (photoUploadInput) {
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
-    document.getElementById('event-photo-upload').value = ''; 
+    if(document.getElementById('event-photo-upload')) document.getElementById('event-photo-upload').value = ''; 
     document.getElementById('event-video-url').value = '';
     document.getElementById('photo-preview').classList.add('hidden');
     document.getElementById('event-file-url').value = '';
