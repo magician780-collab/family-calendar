@@ -1,5 +1,5 @@
 // ==========================================
-// 模組引入區 (修正版：移除會導致崩潰的多餘模組)
+// 模組引入區 (修正版：移除會導致崩潰的 Storage 模組)
 // ==========================================
 import { db, eventsRef, membersRef, noteRef, backupsRef, addDoc, updateDoc, deleteDoc, doc, setDoc, getDocs, onSnapshot } from './modules/firebase.js';
 import { initFunAnimations } from './modules/effects.js';
@@ -933,7 +933,7 @@ document.getElementById('btn-edit-from-view').addEventListener('click', () => {
 });
 
 // ==========================================
-// 相片預覽與基本邏輯 (還原為原本正常功能)
+// 相片預覽與基本邏輯
 // ==========================================
 const photoUrlInput = document.getElementById('event-photo-url');
 if(photoUrlInput) {
