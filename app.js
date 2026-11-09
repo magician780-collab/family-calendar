@@ -609,23 +609,84 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
+// ==========================================
+// 📸 升級版「拍立得/IG風格」相簿牆渲染函數
+// ==========================================
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
+    
+    // 過濾有照片的行程，並由新到舊排序
     const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    
+    // 升級版：空狀態設計
     if (photoEvents.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-400"><i class="far fa-images text-4xl mb-3 opacity-50"></i><p class="text-sm">目前還沒有任何相片記錄喔！</p></div>`;
+        container.className = 'p-6 flex flex-col items-center justify-center h-full w-full';
+        container.innerHTML = `
+            <div class="text-center animate-fade-in">
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                    <i class="fas fa-camera text-4xl text-gray-300"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-600 mb-1">還沒有任何照片喔</h4>
+                <p class="text-sm text-gray-400">快去行程裡新增相片網址，打造專屬相簿牆！</p>
+            </div>`;
         return;
     }
-    photoEvents.forEach(evt => {
+    
+    // 套用防拉伸的網格設定
+    container.className = 'p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-start content-start';
+    
+    const rotateClasses = ['hover:-rotate-2', 'hover:rotate-2', 'hover:-rotate-1', 'hover:rotate-1'];
+
+    photoEvents.forEach((evt, index) => {
         const item = document.createElement('div');
-        item.className = 'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer flex flex-col group';
+        // 加入隨機微傾斜動畫，模擬真實相片散落感
+        const randomRotate = rotateClasses[index % rotateClasses.length];
+        
+        item.className = `bg-white p-2.5 md:p-3 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-warm-500/20 border border-gray-100 cursor-pointer flex flex-col group transition-all duration-300 transform hover:-translate-y-1.5 ${randomRotate}`;
+        
         const imgUrl = getDirectImageUrl(evt.photoUrl);
-        item.innerHTML = `<div class="aspect-square w-full overflow-hidden bg-gray-100 relative"><img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform"><div class="absolute top-2 left-2 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">${evt.startDate}</div></div><div class="p-3"><h4 class="font-bold text-gray-800 text-xs truncate">${evt.icon ? evt.icon+' ' : ''}${evt.title}</h4></div>`;
-        item.addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); openViewModal(evt.id); });
+        const dateStr = evt.startDate.replace(/-/g, '.');
+
+        item.innerHTML = `
+            <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-gray-100 relative shadow-inner">
+                <img src="${imgUrl}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" loading="lazy" alt="活動相片">
+                
+                <!-- 底部暗角與搜尋圖示動畫 -->
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div class="w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/50 transform scale-50 group-hover:scale-100 transition-transform duration-300">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+                
+                <!-- 日期標籤 -->
+                <div class="absolute top-2 left-2">
+                    <span class="bg-white/90 backdrop-blur-sm text-warm-700 text-[10px] md:text-xs font-extrabold px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                        <i class="far fa-calendar-alt"></i> ${dateStr}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="pt-3 pb-1 px-1 flex flex-col gap-1">
+                <h4 class="font-bold text-gray-800 text-xs md:text-sm truncate flex items-center gap-1.5">
+                    ${evt.icon ? `<span class="text-base">${evt.icon}</span>` : ''} 
+                    <span>${evt.title}</span>
+                </h4>
+                ${evt.location ? `<p class="text-[10px] text-gray-400 truncate flex items-center gap-1"><i class="fas fa-map-marker-alt text-rose-400"></i> ${evt.location}</p>` : ''}
+            </div>
+        `;
+        
+        item.addEventListener('click', () => { 
+            if(typeof triggerHaptic === 'function') triggerHaptic(); 
+            document.getElementById('gallery-modal').classList.add('hidden'); 
+            openViewModal(evt.id); 
+        });
+        
         container.appendChild(item);
     });
 }
+// ==========================================
+
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
