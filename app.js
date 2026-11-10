@@ -1557,7 +1557,7 @@ function initRadioPlayer() {
 
     let stations = [
         { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=BkSSOGNeWTM", type: "live" },
-        { name: "🏠 我們家的專屬主題曲 (Suno AI)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "🏠 露營家族背景音樂 (Suno)", url: "https://github.com/magician780-collab/family-calendar/raw/refs/heads/main/%E9%9C%B2%E7%87%9F%E5%AE%B6%E6%97%8F%E8%83%8C%E6%99%AF%E9%9F%B3%E6%A8%82.mp3", type: "bgm" },
         { name: "📻 A-Line 青春電台 (FM 98.7)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
         { name: "📻 城市廣播網 (FM 97.1)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" }
     ];
@@ -1574,7 +1574,6 @@ function initRadioPlayer() {
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
-    // 固定在右下角，完全移除拖曳用的絕對座標
     radioContainer.className = 'fixed right-4 bottom-24 md:bottom-8 z-[100] flex items-center bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-warm-200 select-none transition-all duration-300 ease-in-out overflow-hidden';
     
     radioContainer.style.width = 'max-content';
