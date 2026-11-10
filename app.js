@@ -1551,7 +1551,7 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
-// === 家族專屬：固定吸附式電台播放器 (內建專屬歌單版) ===
+// === 家族專屬：固定吸附式電台播放器 (真正移除拖曳，防誤觸版) ===
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
@@ -1574,6 +1574,7 @@ function initRadioPlayer() {
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
+    // 固定在右下角，完全移除拖曳用的絕對座標
     radioContainer.className = 'fixed right-4 bottom-24 md:bottom-8 z-[100] flex items-center bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-warm-200 select-none transition-all duration-300 ease-in-out overflow-hidden';
     
     radioContainer.style.width = 'max-content';
@@ -1748,6 +1749,7 @@ function initRadioPlayer() {
         };
 
         const onPlayError = (e) => {
+            console.log('Stream Error:', e);
             statusText.innerText = '網址失效或阻擋連線';
             icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
