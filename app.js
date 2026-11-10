@@ -492,7 +492,6 @@ if (exportBtn && importInput) {
         });
     });
 
-    // === 更新匯入邏輯：支援匯入行程、成員與便利貼 ===
     importInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -511,15 +510,12 @@ if (exportBtn && importInput) {
                 const eventsToImport = importedData.events || (Array.isArray(importedData) ? importedData : []);
                 const membersToImport = importedData.familyMembers || [];
 
-                // 1. 清空並匯入新行程
                 for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
                 for (const ev of eventsToImport) { delete ev.id; await addDoc(eventsRef, ev); }
 
-                // 2. 清空並匯入新成員
                 for (const m of familyMembers) await deleteDoc(doc(membersRef, m.id));
                 for (const m of membersToImport) { delete m.id; await addDoc(membersRef, m); }
 
-                // 3. 匯入便利貼 (如果有)
                 if (importedData.note !== undefined) {
                     await setDoc(noteRef, { content: importedData.note }, { merge: true });
                 }
@@ -537,7 +533,6 @@ if (exportBtn && importInput) {
         reader.readAsText(file);
     });
 
-    // === 更新雲端備份邏輯：同時備份行程、成員與便利貼 ===
     exportBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
             if(!confirm('確定要將目前的「所有行程與成員」建立一份新備份到雲端嗎？')) return;
@@ -594,7 +589,6 @@ if (exportBtn && importInput) {
                 document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
                 modal.onclick = () => modal.remove();
 
-                // === 更新雲端還原邏輯：同時還原行程、成員與便利貼 ===
                 modal.querySelectorAll('button[data-id]').forEach(btn => {
                     btn.onclick = async (e) => {
                         e.stopPropagation();
@@ -1557,14 +1551,15 @@ document.getElementById('btn-delete').addEventListener('click', async () => {
     if (currentEditingId && confirm('確定要刪除嗎？')) { await deleteDoc(doc(eventsRef, currentEditingId)); closeModal(); }
 });
 
+// === 家族專屬：固定吸附式電台播放器 (內建專屬歌單版) ===
 function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
     let stations = [
-        { name: "🎵 輕鬆背景音 (MP3)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
-        { name: "📺 微微笑廣播網 (YouTube Live)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
-        { name: "📻 台北愛樂 (古典樂 MP3)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" },
-        { name: "📻 K-POP 流行音樂 (MP3)", url: "https://listen.moe/kpop/fallback", type: "live" }
+        { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=BkSSOGNeWTM", type: "live" },
+        { name: "🏠 我們家的專屬主題曲 (Suno AI)", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", type: "bgm" },
+        { name: "📻 A-Line 青春電台 (FM 98.7)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
+        { name: "📻 城市廣播網 (FM 97.1)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" }
     ];
 
     try {
@@ -1574,38 +1569,32 @@ function initRadioPlayer() {
 
     let currentStationIdx = 0;
     let hlsInstance = null; 
+    let isPlaying = false;
+    let isExpanded = true;
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
-    radioContainer.className = 'fixed z-[100] flex items-center gap-1.5 md:gap-2 bg-white/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-lg border border-warm-200 select-none cursor-grab active:cursor-grabbing hover:scale-105';
+    radioContainer.className = 'fixed right-4 bottom-24 md:bottom-8 z-[100] flex items-center bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-warm-200 select-none transition-all duration-300 ease-in-out overflow-hidden';
     
-    const savedPos = localStorage.getItem('radio_widget_pos');
-    if (savedPos) {
-        try {
-            const pos = JSON.parse(savedPos);
-            let nx = pos.left, ny = pos.top;
-            if (nx < 0) nx = 20; if (ny < 0) ny = 20;
-            if (nx > window.innerWidth - 100) nx = window.innerWidth - 150;
-            if (ny > window.innerHeight - 50) ny = window.innerHeight - 100;
-            radioContainer.style.left = nx + 'px';
-            radioContainer.style.top = ny + 'px';
-        } catch(e) {}
-    } else {
-        radioContainer.style.bottom = '24px';
-        radioContainer.style.right = '24px';
-    }
+    radioContainer.style.width = 'max-content';
+    radioContainer.style.maxWidth = '300px';
 
     radioContainer.innerHTML = `
-        <div id="btn-radio-play" class="relative flex items-center justify-center w-7 h-7 md:w-9 md:h-9 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
-            <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
-        </div>
-        <div class="flex flex-col justify-center max-w-[110px] md:max-w-[140px] pr-1 pointer-events-none">
-            <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
-            <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
-        </div>
-        <button id="btn-radio-menu" class="w-6 h-6 md:w-8 md:h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
-            <i class="fas fa-list-ul text-[10px] md:text-xs pointer-events-none"></i>
+        <button id="btn-radio-toggle" class="w-10 h-10 shrink-0 flex items-center justify-center text-warm-500 hover:text-warm-700 bg-white/50 hover:bg-warm-100 transition-colors z-10 rounded-full cursor-pointer">
+            <i class="fas fa-chevron-right text-xs transition-transform duration-300" id="radio-toggle-icon"></i>
         </button>
+        <div id="radio-content" class="flex items-center gap-1.5 md:gap-2 pr-4 md:pr-4 py-1.5 md:py-2 opacity-100 transition-opacity duration-300 w-auto">
+            <div id="btn-radio-play" class="relative flex items-center justify-center w-8 h-8 rounded-full bg-warm-100 hover:bg-warm-200 transition-colors shrink-0 cursor-pointer">
+                <i id="radio-icon" class="fas fa-play text-warm-600 text-xs md:text-sm pl-0.5 pointer-events-none"></i>
+            </div>
+            <div class="flex flex-col justify-center min-w-[90px] max-w-[120px] pointer-events-none">
+                <span id="radio-text" class="text-[10px] md:text-xs font-bold text-warm-700 truncate">${stations[0].name}</span>
+                <span id="radio-status" class="text-[9px] md:text-[10px] text-warm-500 font-medium truncate">點擊播放</span>
+            </div>
+            <button id="btn-radio-menu" class="w-8 h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
+                <i class="fas fa-list-ul text-xs pointer-events-none"></i>
+            </button>
+        </div>
         <audio id="radio-audio" preload="none"></audio>
         <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
     `;
@@ -1613,95 +1602,41 @@ function initRadioPlayer() {
 
     const menuContainer = document.createElement('div');
     menuContainer.id = 'radio-menu';
-    menuContainer.className = 'fixed z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1';
+    menuContainer.className = 'fixed right-4 bottom-[calc(6rem+40px)] md:bottom-[calc(2rem+50px)] z-[101] bg-white/95 backdrop-blur-lg border border-warm-200 rounded-2xl shadow-xl p-2 w-64 max-h-[60vh] overflow-y-auto hidden animate-fade-in flex flex-col gap-1 hide-scrollbar';
     document.body.appendChild(menuContainer);
     
     const audio = document.getElementById('radio-audio');
     const ytContainer = document.getElementById('yt-radio-container');
     const playBtn = document.getElementById('btn-radio-play');
     const menuBtn = document.getElementById('btn-radio-menu');
+    const toggleBtn = document.getElementById('btn-radio-toggle');
+    const contentArea = document.getElementById('radio-content');
+    const toggleIcon = document.getElementById('radio-toggle-icon');
+    
     const icon = document.getElementById('radio-icon');
     const text = document.getElementById('radio-text');
     const statusText = document.getElementById('radio-status');
-    let isPlaying = false;
 
-    let isDragging = false;
-    let hasDragged = false;
-    let dragStartX = 0, dragStartY = 0;
-    let initialLeft = 0, initialTop = 0;
-
-    const onDragStart = (e) => {
-        if (e.type === 'touchstart') {
-            dragStartX = e.touches[0].clientX;
-            dragStartY = e.touches[0].clientY;
+    toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerHaptic();
+        isExpanded = !isExpanded;
+        
+        if (isExpanded) {
+            radioContainer.style.maxWidth = '300px';
+            contentArea.style.opacity = '1';
+            contentArea.style.width = 'auto';
+            contentArea.style.paddingRight = '1rem';
+            toggleIcon.style.transform = 'rotate(0deg)'; 
         } else {
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
+            radioContainer.style.maxWidth = '40px'; 
+            contentArea.style.opacity = '0';
+            contentArea.style.width = '0px';
+            contentArea.style.paddingRight = '0px';
+            toggleIcon.style.transform = 'rotate(180deg)'; 
+            menuContainer.classList.add('hidden'); 
         }
-        isDragging = true;
-        hasDragged = false;
-        
-        const rect = radioContainer.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
-
-        radioContainer.style.bottom = 'auto';
-        radioContainer.style.right = 'auto';
-        radioContainer.style.left = initialLeft + 'px';
-        radioContainer.style.top = initialTop + 'px';
-        radioContainer.style.transition = 'none';
-    };
-
-    const onDragMove = (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-        
-        const dx = clientX - dragStartX;
-        const dy = clientY - dragStartY;
-
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
-
-        let newLeft = initialLeft + dx;
-        let newTop = initialTop + dy;
-
-        const rect = radioContainer.getBoundingClientRect();
-        if (newLeft < 0) newLeft = 0;
-        if (newTop < 0) newTop = 0;
-        if (newLeft + rect.width > window.innerWidth) newLeft = window.innerWidth - rect.width;
-        if (newTop + rect.height > window.innerHeight) newTop = window.innerHeight - rect.height;
-
-        radioContainer.style.left = newLeft + 'px';
-        radioContainer.style.top = newTop + 'px';
-    };
-
-    const onDragEnd = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        radioContainer.style.transition = 'all 0.3s ease';
-        if (hasDragged) {
-            const rect = radioContainer.getBoundingClientRect();
-            localStorage.setItem('radio_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
-        }
-    };
-
-    radioContainer.addEventListener('mousedown', onDragStart);
-    document.addEventListener('mousemove', onDragMove, { passive: false });
-    document.addEventListener('mouseup', onDragEnd);
-
-    radioContainer.addEventListener('touchstart', onDragStart, { passive: true });
-    document.addEventListener('touchmove', onDragMove, { passive: false });
-    document.addEventListener('touchend', onDragEnd);
-
-    radioContainer.addEventListener('click', (e) => {
-        if (hasDragged) {
-            e.preventDefault();
-            e.stopPropagation();
-            hasDragged = false;
-        }
-    }, true);
+    });
 
     function renderMenu() {
         menuContainer.innerHTML = '';
@@ -1757,12 +1692,12 @@ function initRadioPlayer() {
             menuContainer.appendChild(item);
         });
 
-        const addBtn = document.createElement('button');
-        addBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
-        addBtn.innerHTML = '<i class="fas fa-plus"></i> 手動輸入電台/YouTube網址';
-        addBtn.addEventListener('click', (e) => {
+        const addUrlBtn = document.createElement('button');
+        addUrlBtn.className = 'w-full mt-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs md:text-sm font-bold border border-dashed border-gray-300 transition-colors flex items-center justify-center gap-1';
+        addUrlBtn.innerHTML = '<i class="fas fa-link"></i> 輸入新電台/YouTube網址';
+        addUrlBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const newName = prompt('請輸入電台名稱 (例如：飛碟聯播網)：');
+            const newName = prompt('請輸入新曲目名稱：');
             if (!newName) return;
             const newUrl = prompt('請貼上網址 (支援 YouTube 直播連結、.mp3 或 .m3u8)：\n例如：https://www.youtube.com/watch?v=...');
             if (!newUrl) return;
@@ -1777,7 +1712,7 @@ function initRadioPlayer() {
             alert('🎉 新增成功！請在選單中點選播放。');
             renderMenu();
         });
-        menuContainer.appendChild(addBtn);
+        menuContainer.appendChild(addUrlBtn);
     }
 
     renderMenu();
@@ -1785,24 +1720,13 @@ function initRadioPlayer() {
     menuBtn.addEventListener('click', (e) => {
         e.stopPropagation(); 
         triggerHaptic();
-        if (hasDragged) { hasDragged = false; return; }
-        
-        if (menuContainer.classList.contains('hidden')) {
-            const rect = radioContainer.getBoundingClientRect();
-            let menuTop = rect.top - 260;
-            if (menuTop < 10) menuTop = rect.bottom + 10;
-            
-            let menuLeft = rect.right - 256;
-            if (menuLeft < 10) menuLeft = 10;
-            
-            menuContainer.style.top = menuTop + 'px';
-            menuContainer.style.left = menuLeft + 'px';
-        }
         menuContainer.classList.toggle('hidden');
     });
 
     document.addEventListener('click', (e) => {
-        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) menuContainer.classList.add('hidden');
+        if (!radioContainer.contains(e.target) && !menuContainer.contains(e.target)) {
+            menuContainer.classList.add('hidden');
+        }
     });
 
     function loadAndPlayStation(index) {
@@ -1824,7 +1748,6 @@ function initRadioPlayer() {
         };
 
         const onPlayError = (e) => {
-            console.log('Stream Error:', e);
             statusText.innerText = '網址失效或阻擋連線';
             icon.className = 'fas fa-exclamation-triangle text-rose-500 text-xs md:text-sm';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
@@ -1864,7 +1787,6 @@ function initRadioPlayer() {
     playBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerHaptic();
-        if (hasDragged) { hasDragged = false; return; }
         
         if (isPlaying) {
             audio.pause();
@@ -1946,7 +1868,6 @@ function initFunAnimations() {
 initRadioPlayer();
 initFunAnimations();
 
-// === 整合區塊：新增「Apple Watch 匯出」與「本機 JSON 下載」按鈕 ===
 const exportIcsBtn = document.createElement('button');
 exportIcsBtn.id = 'btn-export-ics';
 exportIcsBtn.className = 'w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer mt-3';
@@ -1966,7 +1887,6 @@ if (btnExportJson) {
     }
 }
 
-// 綁定事件：Apple Watch ICS 匯出
 exportIcsBtn.addEventListener('click', () => {
     if (typeof triggerHaptic === 'function') triggerHaptic();
     requestAdminAccess(() => {
@@ -2012,7 +1932,6 @@ exportIcsBtn.addEventListener('click', () => {
     });
 });
 
-// 綁定事件：下載包含成員與便利貼的 JSON 本機備份
 localExportBtn.addEventListener('click', () => {
     if (typeof triggerHaptic === 'function') triggerHaptic();
     requestAdminAccess(() => {
