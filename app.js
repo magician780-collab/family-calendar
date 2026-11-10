@@ -14,13 +14,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
-// 🌟 修復 1：解決「新增活動」點擊顏色標籤時，瀏覽器因焦點捕捉導致畫面亂跳/顯示不全的 Bug
 document.querySelectorAll('input[name="event-color"]').forEach(radio => {
     radio.classList.remove('sr-only');
-    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10'); // 改用安全隱藏法，拔除強制捲動
+    radio.classList.add('absolute', 'opacity-0', 'w-0', 'h-0', '-z-10'); 
 });
 const eventForm = document.getElementById('event-form');
-if (eventForm) eventForm.classList.add('pb-8'); // 增加底部彈性留白，防止按鈕被截斷
+if (eventForm) eventForm.classList.add('pb-8'); 
 
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
@@ -78,7 +77,6 @@ if (!document.getElementById('ai-border-style')) {
         body#app-body, main { height: auto !important; min-height: 100vh !important; overflow-y: auto !important; }
         #calendar-swipe-container { min-height: 120vw !important; overflow: visible !important; }
         #calendar-grid { min-height: 400px !important; }
-        /* 🌟 修復手機橫向隱藏問題：將 radio-widget 從隱藏清單移除 */
         .vehicle-wrapper, .drone-wrapper { display: none !important; }
     }
     `;
@@ -494,13 +492,13 @@ if (exportBtn && importInput) {
         });
     });
 
+    // === 更新匯入邏輯：支援匯入行程、成員與便利貼 ===
     importInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (!confirm('⚠️ 警告：匯入手機檔案將會【完全覆蓋】目前行事曆上的所有行程！確定要繼續嗎？')) {
-            e.target.value = '';
-            return;
+        if (!confirm('⚠️ 警告：匯入手機檔案將會【完全覆蓋】目前行事曆上的所有行程與成員！確定要繼續嗎？')) {
+            e.target.value = ''; return;
         }
 
         const reader = new FileReader();
@@ -510,15 +508,23 @@ if (exportBtn && importInput) {
                 importBtn.style.pointerEvents = 'none';
 
                 const importedData = JSON.parse(event.target.result);
-                const eventsToImport = importedData.events || importedData;
+                const eventsToImport = importedData.events || (Array.isArray(importedData) ? importedData : []);
+                const membersToImport = importedData.familyMembers || [];
 
+                // 1. 清空並匯入新行程
                 for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
-                for (const ev of eventsToImport) {
-                    delete ev.id;
-                    await addDoc(eventsRef, ev);
+                for (const ev of eventsToImport) { delete ev.id; await addDoc(eventsRef, ev); }
+
+                // 2. 清空並匯入新成員
+                for (const m of familyMembers) await deleteDoc(doc(membersRef, m.id));
+                for (const m of membersToImport) { delete m.id; await addDoc(membersRef, m); }
+
+                // 3. 匯入便利貼 (如果有)
+                if (importedData.note !== undefined) {
+                    await setDoc(noteRef, { content: importedData.note }, { merge: true });
                 }
 
-                alert('🎉 檔案匯入成功！已成功載入您上傳的紀錄。');
+                alert('🎉 檔案匯入成功！已成功載入您的完整紀錄。');
                 document.getElementById('member-modal').classList.add('hidden');
             } catch (err) {
                 alert('讀取檔案失敗，請確認是否為正確的 JSON 備份檔。');
@@ -531,16 +537,22 @@ if (exportBtn && importInput) {
         reader.readAsText(file);
     });
 
+    // === 更新雲端備份邏輯：同時備份行程、成員與便利貼 ===
     exportBtn.addEventListener('click', () => {
         requestAdminAccess(async () => {
-            if(!confirm('確定要將目前的「所有行程」建立一份新備份到雲端嗎？')) return;
+            if(!confirm('確定要將目前的「所有行程與成員」建立一份新備份到雲端嗎？')) return;
             triggerHaptic();
             try {
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 備份中...'; exportBtn.disabled = true;
-                const backupData = { exportDate: new Date().toISOString(), events: events };
+                const backupData = { 
+                    exportDate: new Date().toISOString(), 
+                    events: events,
+                    familyMembers: familyMembers,
+                    note: document.getElementById('family-sticky-note').value
+                };
                 const backupId = Date.now().toString();
                 await setDoc(doc(db, 'familyBackups', backupId), backupData);
-                alert('🎉 雲端備份成功！已建立一份全新的備份存檔。');
+                alert('🎉 雲端備份成功！已建立一份包含成員的全新備份存檔。');
             } catch (err) { alert('備份失敗，請檢查網路連線。'); } 
             finally { exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端'; exportBtn.disabled = false; }
         });
@@ -582,17 +594,29 @@ if (exportBtn && importInput) {
                 document.getElementById('btn-close-backup-modal').onclick = () => modal.remove();
                 modal.onclick = () => modal.remove();
 
+                // === 更新雲端還原邏輯：同時還原行程、成員與便利貼 ===
                 modal.querySelectorAll('button[data-id]').forEach(btn => {
                     btn.onclick = async (e) => {
                         e.stopPropagation();
                         const bId = btn.getAttribute('data-id');
                         const selectedBackup = backupsList.find(b => b.id === bId);
                         const timeStr = new Date(selectedBackup.exportDate).toLocaleString('zh-TW');
-                        if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
+                        if(confirm(`⚠️ 嚴重警告：\n還原將會【完全覆蓋】您目前行事曆上的所有行程與成員！\n\n確定要時光倒流，還原到 ${timeStr} 的版本嗎？`)) {
                             modal.remove(); cloudRestoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 還原中...'; cloudRestoreBtn.disabled = true;
                             try {
+                                const eventsToRestore = selectedBackup.events || [];
+                                const membersToRestore = selectedBackup.familyMembers || [];
+
                                 for (const evt of events) await deleteDoc(doc(eventsRef, evt.id));
-                                for (const ev of selectedBackup.events) { delete ev.id; await addDoc(eventsRef, ev); }
+                                for (const ev of eventsToRestore) { delete ev.id; await addDoc(eventsRef, ev); }
+
+                                for (const m of familyMembers) await deleteDoc(doc(membersRef, m.id));
+                                for (const m of membersToRestore) { delete m.id; await addDoc(membersRef, m); }
+
+                                if (selectedBackup.note !== undefined) {
+                                    await setDoc(noteRef, { content: selectedBackup.note }, { merge: true });
+                                }
+
                                 alert('🎉 雲端還原大成功！已成功回到您選擇的歷史時間點。');
                                 document.getElementById('member-modal').classList.add('hidden');
                             } catch (err) { alert('寫入資料失敗，請檢查網路。'); }
@@ -609,20 +633,14 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
-// ==========================================
-// 📸 升級版「拍立得/IG風格」相簿牆渲染函數 (含手機預設手帳風)
-// ==========================================
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
     
-    // 過濾有照片的行程，並由新到舊排序
     const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
     
-    // 🎨 網格底圖：改成可愛的「手帳方格紙」背景
     container.style.cssText = 'background-color: #fdfbf9; background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;';
     
-    // 空狀態設計
     if (photoEvents.length === 0) {
         container.className = 'flex flex-col items-center justify-center h-full w-full';
         container.innerHTML = `
@@ -636,10 +654,8 @@ function renderGalleryGrid() {
         return;
     }
     
-    // 容器加上足夠的 padding，避免傾斜的相片被裁切
     container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-8 items-start content-start p-6 md:p-8 overflow-x-hidden';
     
-    // 定義拍立得「永久隨機傾斜」與「紙膠帶顏色」 (這是手機版不單調的秘訣！)
     const rotates = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-4', 'rotate-4'];
     const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
     const tapeRotates = ['rotate-2', '-rotate-3', 'rotate-1', '-rotate-2'];
@@ -650,26 +666,21 @@ function renderGalleryGrid() {
         const cardRot = rotates[index % rotates.length];
         const tColor = tapeColors[index % tapeColors.length];
         const tRot = tapeRotates[index % tapeRotates.length];
-        const animDelay = (index * 50) + 'ms'; // 載入時有骨牌般的動畫
+        const animDelay = (index * 50) + 'ms'; 
         
-        // 📷 拍立得卡片本體：加上方型留白、陰影與永久傾斜
         item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-110 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot}`;
         item.style.animationDelay = animDelay;
         item.style.animationFillMode = 'both';
         
         const imgUrl = getDirectImageUrl(evt.photoUrl);
-        // 將日期轉為 2026.11.09 格式
         const dateStr = evt.startDate.replace(/-/g, '.');
 
         item.innerHTML = `
-            <!-- 🎗️ 裝飾紙膠帶 (隨機顏色與角度) -->
             <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
             
-            <!-- 相片區塊 (正方形) -->
             <div class="aspect-square w-full overflow-hidden bg-gray-100 relative shadow-inner">
                 <img src="${imgUrl}" class="w-full h-full object-cover filter contrast-[1.05] brightness-[1.02]" loading="lazy">
                 
-                <!-- 📸 復古底片日期 (橘色相機日期風格) -->
                 <div class="absolute bottom-1.5 right-1.5 z-10">
                     <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter">
                         '${dateStr.slice(2)}
@@ -677,7 +688,6 @@ function renderGalleryGrid() {
                 </div>
             </div>
             
-            <!-- 標題與地點 (拍立得下方留白區) -->
             <div class="absolute bottom-1 md:bottom-2 left-0 w-full text-center px-2 flex flex-col justify-center">
                 <h4 class="font-bold text-gray-800 text-[11px] md:text-sm truncate">
                     ${evt.icon ? evt.icon + ' ' : ''}${evt.title}
@@ -695,7 +705,6 @@ function renderGalleryGrid() {
         container.appendChild(item);
     });
 }
-// ==========================================
 
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
@@ -1948,12 +1957,12 @@ localExportBtn.id = 'btn-export-local-json';
 localExportBtn.className = 'w-full py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-purple-200 mt-2';
 localExportBtn.innerHTML = '<i class="fas fa-file-download"></i> 下載備份檔至本機 (手機/電腦)';
 
-// 安全地將兩顆按鈕加入後台介面 (移除舊的 setTimeout，確保不干擾畫面渲染)
-if (exportBtn) {
-    const backupSection = exportBtn.closest('.space-y-2');
+const btnExportJson = document.getElementById('btn-export-json');
+if (btnExportJson) {
+    const backupSection = btnExportJson.closest('.space-y-2');
     if (backupSection) {
-        backupSection.appendChild(localExportBtn); // 加入紫色的 JSON 本機備份
-        backupSection.appendChild(exportIcsBtn);   // 加入黑色的 Apple Watch 匯出
+        backupSection.appendChild(localExportBtn); 
+        backupSection.appendChild(exportIcsBtn);   
     }
 }
 
@@ -2003,16 +2012,21 @@ exportIcsBtn.addEventListener('click', () => {
     });
 });
 
-// 綁定事件：下載 JSON 本機備份
+// 綁定事件：下載包含成員與便利貼的 JSON 本機備份
 localExportBtn.addEventListener('click', () => {
     if (typeof triggerHaptic === 'function') triggerHaptic();
     requestAdminAccess(() => {
-        if (events.length === 0) return alert('目前沒有任何行程可以備份喔！');
+        if (events.length === 0 && familyMembers.length === 0) return alert('目前沒有任何資料可以備份喔！');
         try {
             localExportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 產生檔案中...';
             localExportBtn.style.pointerEvents = 'none';
 
-            const backupData = { exportDate: new Date().toISOString(), events: events };
+            const backupData = { 
+                exportDate: new Date().toISOString(), 
+                events: events,
+                familyMembers: familyMembers,
+                note: document.getElementById('family-sticky-note').value
+            };
             const dataStr = JSON.stringify(backupData, null, 2);
             
             const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
@@ -2027,7 +2041,7 @@ localExportBtn.addEventListener('click', () => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            alert('🎉 成功下載 JSON 備份檔案至您的本機裝置！');
+            alert('🎉 成功下載包含「家族成員」的完整 JSON 備份檔案！');
         } catch (err) {
             alert('匯出失敗，請重試。');
         } finally {
