@@ -1937,29 +1937,33 @@ function initFunAnimations() {
 initRadioPlayer();
 initFunAnimations();
 
+// === 整合區塊：新增「Apple Watch 匯出」與「本機 JSON 下載」按鈕 ===
 const exportIcsBtn = document.createElement('button');
 exportIcsBtn.id = 'btn-export-ics';
 exportIcsBtn.className = 'w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer mt-3';
 exportIcsBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch (iOS 行事曆)';
 
-setTimeout(() => {
-    const btnExportJson = document.getElementById('btn-export-json');
-    if (btnExportJson) {
-        const backupSection = btnExportJson.closest('.space-y-2');
-        if (backupSection) {
-            backupSection.appendChild(exportIcsBtn);
-        }
-    }
-}, 500);
+const localExportBtn = document.createElement('button');
+localExportBtn.id = 'btn-export-local-json';
+localExportBtn.className = 'w-full py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-purple-200 mt-2';
+localExportBtn.innerHTML = '<i class="fas fa-file-download"></i> 下載備份檔至本機 (手機/電腦)';
 
+// 安全地將兩顆按鈕加入後台介面 (移除舊的 setTimeout，確保不干擾畫面渲染)
+if (exportBtn) {
+    const backupSection = exportBtn.closest('.space-y-2');
+    if (backupSection) {
+        backupSection.appendChild(localExportBtn); // 加入紫色的 JSON 本機備份
+        backupSection.appendChild(exportIcsBtn);   // 加入黑色的 Apple Watch 匯出
+    }
+}
+
+// 綁定事件：Apple Watch ICS 匯出
 exportIcsBtn.addEventListener('click', () => {
-    triggerHaptic();
+    if (typeof triggerHaptic === 'function') triggerHaptic();
     requestAdminAccess(() => {
         if (events.length === 0) return alert('目前沒有任何行程可以匯出喔！');
-        
         exportIcsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 產生檔案中...';
         exportIcsBtn.style.pointerEvents = 'none';
-        
         try {
             let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Family Calendar//TW\nCALSCALE:GREGORIAN\n";
             events.forEach(e => {
@@ -1989,13 +1993,46 @@ exportIcsBtn.addEventListener('click', () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
             alert('🎉 成功匯出 iOS 行事曆檔案！');
         } catch (err) {
             alert('匯出失敗，請重試。');
         } finally {
             exportIcsBtn.innerHTML = '<i class="fab fa-apple text-base"></i> 匯出至 Apple Watch (iOS 行事曆)';
             exportIcsBtn.style.pointerEvents = 'auto';
+        }
+    });
+});
+
+// 綁定事件：下載 JSON 本機備份
+localExportBtn.addEventListener('click', () => {
+    if (typeof triggerHaptic === 'function') triggerHaptic();
+    requestAdminAccess(() => {
+        if (events.length === 0) return alert('目前沒有任何行程可以備份喔！');
+        try {
+            localExportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 產生檔案中...';
+            localExportBtn.style.pointerEvents = 'none';
+
+            const backupData = { exportDate: new Date().toISOString(), events: events };
+            const dataStr = JSON.stringify(backupData, null, 2);
+            
+            const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `family_calendar_backup_${new Date().toISOString().split('T')[0]}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('🎉 成功下載 JSON 備份檔案至您的本機裝置！');
+        } catch (err) {
+            alert('匯出失敗，請重試。');
+        } finally {
+            localExportBtn.innerHTML = '<i class="fas fa-file-download"></i> 下載備份檔至本機 (手機/電腦)';
+            localExportBtn.style.pointerEvents = 'auto';
         }
     });
 });
