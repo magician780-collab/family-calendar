@@ -2,12 +2,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, getDocs, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAN8GWRVvtLWH1HzyTDhJnUf_-h4Jp-UhA",
-    authDomain: "all-family-calendar.firebaseapp.com",
-    projectId: "all-family-calendar",
-    storageBucket: "all-family-calendar.firebasestorage.app",
-    messagingSenderId: "790336816938",
-    appId: "1:790336816938:web:b3b06b1c9877e5ba46c053"
+  apiKey: "AIzaSyDYGym07ekiZgikCqVsAA9OfylxGAAvUp8",
+  authDomain: "family-calendar-2026-90f16.firebaseapp.com",
+  projectId: "family-calendar-2026-90f16",
+  storageBucket: "family-calendar-2026-90f16.firebasestorage.app",
+  messagingSenderId: "289688020199",
+  appId: "1:289688020199:web:0ccb2b321c7f437744ae42"
 };
 
 const app = initializeApp(firebaseConfig);
