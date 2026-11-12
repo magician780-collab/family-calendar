@@ -36,8 +36,7 @@ let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
 
-// === 🚨 新增：氣象署 CWA 警報系統設定 ===
-const CWA_API_KEY = "CWA-A6EF9D61-B6BA-4F86-BEF6-83103A2A52C2"; // 已填入授權碼
+const CWA_API_KEY = "CWA-A6EF9D61-B6BA-4F86-BEF6-83103A2A52C2"; 
 let activeCWAAlerts = {};
 
 async function fetchCWAAlerts() {
@@ -57,7 +56,6 @@ async function fetchCWAAlerts() {
         }
     } catch (e) { console.warn("CWA API 警報讀取失敗", e); }
 }
-// ==========================================
 
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
@@ -165,14 +163,14 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.1 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.2 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> v7.1 最新升級亮點</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> v7.2 最新升級亮點</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
-                    <li><b>巨無霸相簿牆：</b>縮圖全面放大！版面改為更清晰的 1~3 欄配置，不用點開也能一目了然。</li>
-                    <li><b>空拍與動態視角：</b>新增「寬螢幕」勾選功能，相簿自動以兩倍大瀑布流展示，並加上專屬徽章。</li>
+                    <li><b>📍 家族足跡地圖：</b>全新地圖模式！自動將過往有填寫地點的行程釘在地圖上，點擊即可回味全台走透透的成就感。</li>
+                    <li><b>🐻 專屬成員頭像：</b>現在在「管理員後台」新增成員時，可以設定專屬 Emoji！不管是代墊結算還是保密投票，畫面都會自動帶入每個人的可愛大頭貼。</li>
                     <li><b>極端天氣警報：</b>串接氣象署即時資料，行程地點若發布特報（如大雨/強風），日曆將亮起紅燈警告。</li>
                 </ul>
             </section>
@@ -189,7 +187,7 @@ function openManualModal() {
             <section>
                 <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 2. 影音相簿與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>智慧相簿牆：</b> 貼上 Google Drive (設為公開) 或照片網址，即可在「家庭回憶相簿牆」大圖回味。</li>
+                    <li><b>智慧相簿牆：</b> 貼上 Google Drive (設為公開) 或照片網址，即可在「家庭回憶相簿牆」大圖回味。支援寬螢幕與空拍標籤展示。</li>
                     <li><b>劇院級影片：</b> 支援 YouTube (含 Shorts) 及 Drive 影片，系統內建無廣告全螢幕播放器。</li>
                     <li><b>氣象與導航：</b> 依據地點自動精準預報 14 天內氣象；點擊地點即可開啟 Google Maps 導航。</li>
                 </ul>
@@ -372,12 +370,17 @@ stickyNoteEl.addEventListener('input', () => {
     }, 1000);
 });
 
+// === 更新：成員資料庫加入 Emoji ===
 onSnapshot(membersRef, (snapshot) => {
     familyMembers = [];
-    snapshot.forEach(doc => familyMembers.push({ id: doc.id, name: doc.data().name }));
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        familyMembers.push({ id: doc.id, name: data.name, emoji: data.emoji || '👤' });
+    });
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberManageList();
 });
+
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if (!container) return;
@@ -385,15 +388,22 @@ function renderMemberManageList() {
     familyMembers.forEach(m => {
         const item = document.createElement('div');
         item.className = 'flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm';
-        item.innerHTML = `<span>${m.name}</span><button class="text-rose-400 px-2 py-1"><i class="fas fa-trash-alt"></i></button>`;
+        item.innerHTML = `<span><span class="text-lg mr-1">${m.emoji}</span> ${m.name}</span><button class="text-rose-400 px-2 py-1"><i class="fas fa-trash-alt"></i></button>`;
         item.querySelector('button').addEventListener('click', async () => { if (confirm(`刪除 ${m.name}？`)) await deleteDoc(doc(db, 'familyMembers', m.id)); });
         container.appendChild(item);
     });
 }
+
 document.getElementById('btn-add-member').addEventListener('click', async () => {
-    const input = document.getElementById('new-member-name');
-    if (input.value.trim() && !familyMembers.some(m => m.name === input.value.trim())) {
-        await addDoc(membersRef, { name: input.value.trim() }); input.value = '';
+    const nameInput = document.getElementById('new-member-name');
+    const emojiInput = document.getElementById('new-member-emoji');
+    const nameStr = nameInput.value.trim();
+    const emojiStr = emojiInput.value.trim() || '👤';
+    
+    if (nameStr && !familyMembers.some(m => m.name === nameStr)) {
+        await addDoc(membersRef, { name: nameStr, emoji: emojiStr });
+        nameInput.value = '';
+        emojiInput.value = '👤';
     }
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
@@ -733,14 +743,21 @@ function renderGalleryGrid() {
     });
 }
 
+// === 新增：取得成員專屬 Emoji ===
+function getMemberEmoji(name) {
+    const member = familyMembers.find(m => m.name === name);
+    return member ? (member.emoji || '👤') : '👤';
+}
+
 function getMemberOptions(selected = '', defaultText = '請選擇...') {
     let html = `<option value="" disabled ${!selected ? 'selected' : ''}>${defaultText}</option>`;
-    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
+    // 選單 value 依舊只傳名字，但在顯示時加上 Emoji
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.emoji} ${m.name}</option>`; });
     return html;
 }
 function getChecklistMemberOptions(selected = '') {
     let html = `<option value="" ${!selected ? 'selected' : ''}>(未認領)</option>`;
-    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.name}</option>`; });
+    familyMembers.forEach(m => { html += `<option value="${m.name}" ${m.name === selected ? 'selected' : ''}>${m.emoji} ${m.name}</option>`; });
     return html;
 }
 function updateUniqueSelects(containerId, selectClass) {
@@ -753,7 +770,11 @@ function updateUniqueSelects(containerId, selectClass) {
         Array.from(select.options).forEach(option => {
             if (option.value === '') return;
             if (selectedValues.includes(option.value) && option.value !== currentValue) { option.disabled = true; option.textContent = `${option.value} (已選)`; } 
-            else { option.disabled = false; option.textContent = option.value; }
+            else { 
+                // 恢復帶 Emoji 的名稱
+                option.disabled = false; 
+                option.textContent = `${getMemberEmoji(option.value)} ${option.value}`; 
+            }
         });
     });
 }
@@ -869,6 +890,12 @@ onSnapshot(eventsRef, (snapshot) => {
         });
     });
     renderApp();
+    
+    // 更新地圖標記 (如果地圖有被打開過)
+    if (document.getElementById('map-modal') && !document.getElementById('map-modal').classList.contains('hidden')) {
+        renderFootprintMap();
+    }
+    
     if (selectedDateForModal) openDayModal(selectedDateForModal, false);
     if (currentViewingId) openViewModal(currentViewingId);
 });
@@ -919,7 +946,6 @@ function createDayCell(dayNum, dateStr, isToday) {
     let isSelected = (dateStr === activeCellDate);
     let activeRingClass = isSelected ? 'ai-active-cell transition-all duration-300' : '';
 
-    // === 🚨 CWA 特報警告視覺判斷 ===
     const todayObj2 = new Date();
     const todayS = getLocalYMD(todayObj2);
     const tomorrowObj2 = new Date(todayObj2); tomorrowObj2.setDate(tomorrowObj2.getDate() + 1);
@@ -934,7 +960,6 @@ function createDayCell(dayNum, dateStr, isToday) {
         cellBgClass = 'bg-rose-50 border-rose-400';
         activeRingClass += ' ring-2 ring-rose-500 shadow-md'; 
     }
-    // ================================
 
     const cell = document.createElement('div');
     cell.className = `day-cell border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass} ${activeRingClass}`;
@@ -1207,7 +1232,9 @@ function openViewModal(id) {
     document.getElementById('view-modal-header').className = `h-20 w-full ${evt.color}`;
     document.getElementById('view-title').innerText = (evt.icon ? evt.icon + ' ' : '') + evt.title;
     document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
-    document.getElementById('view-author').innerText = `建立者：${evt.author}`;
+    
+    // === 加入發起人的 Emoji ===
+    document.getElementById('view-author').innerHTML = `建立者：${getMemberEmoji(evt.author)} ${evt.author}`;
 
     const pBox = document.getElementById('view-photo-container');
     if (evt.photoUrl) { pBox.classList.remove('hidden'); document.getElementById('view-photo').src = getDirectImageUrl(evt.photoUrl); } else pBox.classList.add('hidden');
@@ -1305,7 +1332,6 @@ function openViewModal(id) {
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
                         let weatherTips = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
 
-                        // === 🚨 檢查是否符合氣象署 (CWA) 的極端天氣警報 ===
                         let localAlert = null;
                         for (const city in activeCWAAlerts) {
                             if ((evt.location && evt.location.includes(city)) || locName.includes(city)) {
@@ -1347,8 +1373,6 @@ function openViewModal(id) {
                                 </div>
                             `;
                         }
-                        // ==========================================
-
                     } else {
                         const tDate = new Date(evt.startDate);
                         const nDate = new Date();
@@ -1380,12 +1404,13 @@ function openViewModal(id) {
             if (item.done) doneCount++;
             const row = document.createElement('label');
             row.className = 'flex items-center justify-between bg-white p-2 rounded-xl border cursor-pointer';
+            // === 加入任務負責人的 Emoji ===
             row.innerHTML = `
                 <div class="flex items-center gap-2">
                     <input type="checkbox" ${item.done ? 'checked' : ''} class="w-4 h-4 text-emerald-600 rounded cursor-pointer">
                     <span class="${item.done ? 'line-through text-gray-400' : 'text-gray-700 font-bold'}">${item.text}</span>
                 </div>
-                <span class="text-[10px] bg-warm-50 text-warm-700 px-2 py-0.5 rounded-full font-bold">${item.assignee || '未認領'}</span>
+                <span class="text-[10px] bg-warm-50 text-warm-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${getMemberEmoji(item.assignee)} ${item.assignee || '未認領'}</span>
             `;
             row.querySelector('input').addEventListener('change', async (e) => {
                 let updatedChecklist = [...evt.checklist]; updatedChecklist[idx].done = e.target.checked;
@@ -1418,12 +1443,14 @@ function openViewModal(id) {
             const hasVoted = allVotedMembersArr.includes(m.name);
             const opt = document.createElement('option');
             opt.value = m.name;
-            if (hasVoted) { opt.disabled = true; opt.textContent = `${m.name} (已投票，不可再選)`; } else opt.textContent = m.name;
+            // Emoji 同步
+            if (hasVoted) { opt.disabled = true; opt.textContent = `${m.emoji} ${m.name} (已投票)`; } else opt.textContent = `${m.emoji} ${m.name}`;
             voterSelect.appendChild(opt);
         });
 
-        const voter = voterSelect.value;
-        votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票成員：<strong>${allVotedMembersArr.join(', ')}</strong>` : `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
+        // === 投票成員加入 Emoji ===
+        const votedWithEmoji = allVotedMembersArr.map(name => `${getMemberEmoji(name)}${name}`);
+        votedMembersBanner.innerHTML = allVotedMembersArr.length > 0 ? `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> 已投票：<strong>${votedWithEmoji.join(', ')}</strong>` : `<i class="far fa-clock text-indigo-500 mr-1"></i> 尚無成員投票`;
 
         let maxVotes = -1; evt.pollOptions.forEach(opt => { if (opt.voters.length > maxVotes) maxVotes = opt.voters.length; });
 
@@ -1509,8 +1536,9 @@ function openViewModal(id) {
         let detailsHtml = `<div class="mb-3 space-y-1.5 bg-white/60 p-2.5 rounded-xl border border-amber-200/60 shadow-sm">
                             <div class="text-[11px] font-bold text-amber-800 mb-1 flex items-center gap-1"><i class="fas fa-clipboard-list"></i> 代墊明細紀錄：</div>`;
         evt.payers.forEach(p => {
+            // === 代墊紀錄加入 Emoji ===
             detailsHtml += `<div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-700"><strong>${p.name}</strong> 墊付${p.note ? '：「<span class="text-amber-700 font-medium">'+p.note+'</span>」' : ''}</span>
+                                <span class="text-gray-700"><strong>${getMemberEmoji(p.name)} ${p.name}</strong> 墊付${p.note ? '：「<span class="text-amber-700 font-medium">'+p.note+'</span>」' : ''}</span>
                                 <span class="font-bold text-amber-700">$${p.amount}</span>
                             </div>`;
         });
@@ -1526,11 +1554,12 @@ function openViewModal(id) {
             html += `<div class="text-center text-sm text-gray-500 py-3">🎉 無須互相轉帳，帳目已完美平衡！</div>`;
         } else {
             transactions.forEach(t => {
+                // === 轉帳結算加入 Emoji ===
                 html += `
                     <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
                         <div class="flex flex-col">
-                            <span class="font-bold text-sm text-gray-800">👤 ${t.from}</span>
-                            <span class="text-xs text-gray-500 mt-0.5">應轉給 <strong class="text-gray-700">${t.to}</strong></span>
+                            <span class="font-bold text-sm text-gray-800">${getMemberEmoji(t.from)} ${t.from}</span>
+                            <span class="text-xs text-gray-500 mt-0.5">應轉給 <strong class="text-gray-700">${getMemberEmoji(t.to)} ${t.to}</strong></span>
                         </div>
                         <div class="font-extrabold text-amber-600 text-base">
                             $${t.amount.toLocaleString()}
@@ -1548,6 +1577,101 @@ function openViewModal(id) {
 
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
+
+// === 新增功能：家族足跡地圖 ===
+let footprintMap = null;
+let mapMarkersLayer = null;
+
+document.getElementById('btn-open-map').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('map-modal').classList.remove('hidden');
+    renderFootprintMap();
+    if (window.innerWidth < 768 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) {
+        toggleSidebar(); // 手機版開啟地圖時收起側邊欄
+    }
+});
+
+document.getElementById('btn-close-map').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('map-modal').classList.add('hidden');
+});
+
+function renderFootprintMap() {
+    if (!footprintMap) {
+        // 初始化 Leaflet 地圖，預設視角為台灣中心
+        footprintMap = L.map('map-container').setView([23.7, 120.9], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(footprintMap);
+        mapMarkersLayer = L.layerGroup().addTo(footprintMap);
+    }
+    
+    // 清除舊標記
+    mapMarkersLayer.clearLayers();
+    
+    // 解決 Modal 動畫導致地圖大小計算錯誤的問題
+    setTimeout(() => { footprintMap.invalidateSize(); }, 300);
+
+    // 建立簡易快取，避免重複請求 Open-Meteo
+    if (!window.geocache) window.geocache = {};
+
+    events.forEach(evt => {
+        if (!evt.location) return;
+
+        let locCoords = null;
+        // 1. 先從內建字典尋找
+        const matchKey = Object.keys(twLocations).find(k => evt.location.includes(k));
+        if (matchKey) {
+            locCoords = twLocations[matchKey];
+        }
+
+        if (locCoords) {
+            addMarkerToMap(locCoords, evt);
+        } else {
+            // 2. 找不到的話，看快取有沒有
+            if (window.geocache[evt.location]) {
+                addMarkerToMap(window.geocache[evt.location], evt);
+            } else {
+                // 3. 真的沒有才呼叫 API (背景默默執行)
+                fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.results && data.results.length > 0) {
+                        const l = { lat: data.results[0].latitude, lng: data.results[0].longitude };
+                        window.geocache[evt.location] = l;
+                        addMarkerToMap(l, evt);
+                    }
+                }).catch(() => {}); // 找不到或斷線就算了
+            }
+        }
+    });
+}
+
+function addMarkerToMap(coords, evt) {
+    // 建立圖釘
+    const marker = L.marker([coords.lat, coords.lng]).addTo(mapMarkersLayer);
+    
+    // 彈出視窗內容
+    let imgHtml = '';
+    if (evt.photoUrl) {
+        imgHtml = `<img src="${getDirectImageUrl(evt.photoUrl)}" class="w-full h-24 object-cover rounded mt-2 mb-2 shadow-sm">`;
+    }
+    
+    const popupContent = `
+        <div class="text-center w-48 font-sans">
+            <div class="font-extrabold text-sm text-gray-800">${evt.icon || ''} ${evt.title}</div>
+            <div class="text-[10px] text-gray-500 font-bold mb-1">${evt.startDate}</div>
+            ${imgHtml}
+            <button class="w-full bg-emerald-500 text-white text-xs font-bold py-1.5 rounded mt-1 shadow-sm active:scale-95 transition-transform" 
+                onclick="document.getElementById('map-modal').classList.add('hidden'); openViewModal('${evt.id}')">
+                查看行程
+            </button>
+        </div>
+    `;
+    marker.bindPopup(popupContent);
+}
+// ===================================
 
 document.getElementById('event-form').addEventListener('submit', async (e) => {
     e.preventDefault();

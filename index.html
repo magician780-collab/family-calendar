@@ -16,6 +16,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
 
+    <!-- 新增：Leaflet.js 地圖套件 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         tailwind.config = {
             theme: { 
@@ -74,6 +78,10 @@
             <button id="btn-open-gallery" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
             </button>
+            <!-- 新增：地圖按鈕 -->
+            <button id="btn-open-map" class="w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-map-marked-alt text-emerald-600"></i> 🗺️ 家族足跡地圖
+            </button>
         </div>
 
         <div class="p-5 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
@@ -90,7 +98,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.1 Gallery</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.2 Emoji & Map</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -179,7 +187,6 @@
                     </div>
                 </div>
 
-                <!-- 升級功能：空拍/寬螢幕模式切換 -->
                 <div class="flex items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
                     <input type="checkbox" id="event-is-wide" class="w-4 h-4 text-warm-500 rounded cursor-pointer">
                     <label for="event-is-wide" class="text-sm font-bold text-gray-700 cursor-pointer flex items-center gap-1.5">
@@ -320,7 +327,6 @@
     <div id="gallery-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="gallery-modal">
         <div class="bg-[#f8f9fa] w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50" onclick="event.stopPropagation()">
             
-            <!-- 質感標題區 -->
             <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm relative">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warm-400 to-rose-400 flex items-center justify-center text-white shadow-md">
@@ -336,10 +342,28 @@
                 </button>
             </div>
             
-            <!-- 內容網格區 (由 JS 動態生成排版) -->
-            <div id="gallery-grid-container" class="overflow-y-auto flex-1 relative">
-                <!-- 相片將透過 JS 動態生成至此 -->
+            <div id="gallery-grid-container" class="overflow-y-auto flex-1 relative"></div>
+        </div>
+    </div>
+
+    <!-- 新增：地圖 Modal -->
+    <div id="map-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="map-modal">
+        <div class="bg-white w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50" onclick="event.stopPropagation()">
+            <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm relative">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-md">
+                        <i class="fas fa-map-marked-alt text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-extrabold text-gray-800 tracking-wide">家族足跡地圖</h3>
+                        <p class="text-xs text-gray-400 font-medium mt-0.5">台灣走透透！點擊圖釘查看回憶</p>
+                    </div>
+                </div>
+                <button id="btn-close-map" class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-200 text-gray-500 transition-colors flex items-center justify-center active:scale-95">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
+            <div id="map-container" class="w-full flex-1 z-0 bg-gray-100 relative"></div>
         </div>
     </div>
 
@@ -426,7 +450,9 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">家族成員管理</label>
                     <div class="flex gap-2 mb-2">
-                        <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
+                        <!-- 新增：Emoji 選擇器 -->
+                        <input type="text" id="new-member-emoji" placeholder="🐻" class="w-12 px-2 py-2 bg-gray-50 border rounded-xl text-center text-base outline-none focus:ring-2 focus:ring-warm-400" value="👤" maxlength="2" title="設定頭像 Emoji">
+                        <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-warm-400">
                         <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
                     </div>
                     <div id="member-list-container" class="space-y-2 max-h-36 overflow-y-auto bg-gray-50 p-2 rounded-xl border"></div>
