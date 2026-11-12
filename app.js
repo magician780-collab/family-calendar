@@ -36,6 +36,29 @@ let currentViewingId = null;
 let selectedDateForModal = null;
 let searchQuery = '';
 
+// === 🚨 新增：氣象署 CWA 警報系統設定 ===
+const CWA_API_KEY = "CWA-A6EF9D61-B6BA-4F86-BEF6-83103A2A52C2"; // 已填入授權碼
+let activeCWAAlerts = {};
+
+async function fetchCWAAlerts() {
+    if (!CWA_API_KEY) return;
+    try {
+        const res = await fetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-001?Authorization=${CWA_API_KEY}&format=JSON`);
+        const data = await res.json();
+        if (data?.records?.location) {
+            data.records.location.forEach(loc => {
+                const locName = loc.locationName;
+                const hazards = loc.hazardConditions?.hazards;
+                if (hazards && hazards.length > 0) {
+                    const eventsList = hazards.map(h => h.info?.event || (h.info?.phenomena ? h.info.phenomena + h.info.significance : '極端氣候')).filter(Boolean);
+                    if (eventsList.length > 0) activeCWAAlerts[locName] = [...new Set(eventsList)].join('、');
+                }
+            });
+        }
+    } catch (e) { console.warn("CWA API 警報讀取失敗", e); }
+}
+// ==========================================
+
 const initDate = new Date();
 let activeCellDate = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`;
 
@@ -141,7 +164,6 @@ function openManualModal() {
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
-    // v7.1 全新說名書內容
     const manualContent = `
         <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.1 說明書</h2>
         
@@ -151,7 +173,7 @@ function openManualModal() {
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>巨無霸相簿牆：</b>縮圖全面放大！版面改為更清晰的 1~3 欄配置，不用點開也能一目了然。</li>
                     <li><b>空拍與動態視角：</b>新增「寬螢幕」勾選功能，相簿自動以兩倍大瀑布流展示，並加上專屬徽章。</li>
-                    <li><b>效能與穩定度提升：</b>精簡介面邏輯，確保在所有手機與瀏覽器上都能流暢載入。</li>
+                    <li><b>極端天氣警報：</b>串接氣象署即時資料，行程地點若發布特報（如大雨/強風），日曆將亮起紅燈警告。</li>
                 </ul>
             </section>
             
@@ -334,7 +356,8 @@ async function fetchWeather() {
         }
     } catch (e) {}
 }
-fetchWeather().then(() => renderCalendar());
+
+Promise.all([fetchWeather(), fetchCWAAlerts()]).then(() => renderCalendar());
 
 const stickyNoteEl = document.getElementById('family-sticky-note');
 const noteStatusEl = document.getElementById('note-status');
@@ -621,12 +644,10 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
-// === 相簿牆升級：支援寬螢幕展示、巨大縮圖與動態標籤 ===
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
     
-    // 現在允許相片 OR 影片的行程進入相簿牆
     const mediaEvents = events
         .filter(e => (e.photoUrl && e.photoUrl.trim() !== '') || (e.videoUrl && e.videoUrl.trim() !== ''))
         .sort((a, b) => b.startDate.localeCompare(a.startDate));
@@ -646,7 +667,6 @@ function renderGalleryGrid() {
         return;
     }
     
-    // 為了讓縮圖「一目了然」，將欄位縮減為 1~3 欄，並改為 grid-flow-dense 瀑布流填補
     container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-start content-start p-4 md:p-8 overflow-x-hidden grid-flow-dense';
     
     const rotates = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2', 'rotate-0', '-rotate-3'];
@@ -661,7 +681,6 @@ function renderGalleryGrid() {
         const tRot = tapeRotates[index % tapeRotates.length];
         const animDelay = (index * 50) + 'ms'; 
         
-        // 若勾選為寬螢幕，在平板與電腦版上會跨越兩欄與兩列，手機版維持單欄滿版
         const spanClass = evt.isWide ? 'md:col-span-2 md:row-span-2 col-span-1 row-span-1' : 'col-span-1 row-span-1';
         
         item.className = `relative bg-white p-3 md:p-4 pb-12 md:pb-14 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-[1.03] hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot} ${spanClass}`;
@@ -669,14 +688,12 @@ function renderGalleryGrid() {
         item.style.animationFillMode = 'both';
         
         let imgUrl = getDirectImageUrl(evt.photoUrl);
-        // 若只有影片沒有照片，顯示高質感預設漸層底圖
         if (!imgUrl && evt.videoUrl) {
             imgUrl = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop';
         }
         
         const dateStr = evt.startDate.replace(/-/g, '.');
 
-        // 智慧標籤徽章
         let badgeHtml = '';
         if (evt.isWide) {
             badgeHtml = `<div class="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-md shadow"><i class="fas fa-plane"></i> 空拍 / 寬景</div>`;
@@ -821,6 +838,10 @@ function addSharerRow(name = '', weight = 1) {
 }
 document.getElementById('btn-add-sharer').addEventListener('click', () => addSharerRow('', 1));
 
+function getLocalYMD(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
     snapshot.forEach((docSnap) => {
@@ -844,7 +865,7 @@ onSnapshot(eventsRef, (snapshot) => {
             isChecklist: data.isChecklist || false, checklist: data.checklist || [],
             isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
             isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || [],
-            isWide: data.isWide || false // 新增寬螢幕模式標記
+            isWide: data.isWide || false
         });
     });
     renderApp();
@@ -865,7 +886,7 @@ function renderCalendar() {
     const totalDays = new Date(y, m + 1, 0).getDate();
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = '';
-    const todayStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+    const todayStr = getLocalYMD(new Date());
 
     for (let i = 0; i < firstDay; i++) {
         const empty = document.createElement('div');
@@ -898,6 +919,23 @@ function createDayCell(dayNum, dateStr, isToday) {
     let isSelected = (dateStr === activeCellDate);
     let activeRingClass = isSelected ? 'ai-active-cell transition-all duration-300' : '';
 
+    // === 🚨 CWA 特報警告視覺判斷 ===
+    const todayObj2 = new Date();
+    const todayS = getLocalYMD(todayObj2);
+    const tomorrowObj2 = new Date(todayObj2); tomorrowObj2.setDate(tomorrowObj2.getDate() + 1);
+    const tomorrowS = getLocalYMD(tomorrowObj2);
+
+    let hasWeatherAlert = false;
+    if (dateStr === todayS || dateStr === tomorrowS) {
+        hasWeatherAlert = dayEvents.some(e => e.location && Object.keys(activeCWAAlerts).some(city => e.location.includes(city)));
+    }
+
+    if (hasWeatherAlert) {
+        cellBgClass = 'bg-rose-50 border-rose-400';
+        activeRingClass += ' ring-2 ring-rose-500 shadow-md'; 
+    }
+    // ================================
+
     const cell = document.createElement('div');
     cell.className = `day-cell border border-warm-100 rounded-xl p-1 flex flex-col gap-1 cursor-pointer relative ${cellBgClass} ${activeRingClass}`;
     
@@ -927,8 +965,11 @@ function createDayCell(dayNum, dateStr, isToday) {
     }
     
     const lunarStyle = isLunarHighlight ? 'text-rose-500 font-bold' : 'text-gray-400 font-medium';
+    
+    const alertBadgeHtml = hasWeatherAlert ? `<div class="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-20"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-rose-600 text-white text-[8px] items-center justify-center"><i class="fas fa-exclamation-triangle"></i></span></div>` : '';
 
     cell.innerHTML = `
+        ${alertBadgeHtml}
         <div class="flex flex-col px-0.5 w-full shrink-0">
             <div class="flex justify-between items-start w-full">
                 <span class="text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${dateNumColor} shrink-0">${dayNum}</span>
@@ -992,7 +1033,7 @@ function renderUpcoming() {
     const empty = document.getElementById('no-upcoming');
     container.innerHTML = '';
     const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
-    const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+    const todayStr = getLocalYMD(todayObj);
     
     const upcoming = events.filter(e => {
         if (e.endDate < todayStr) return false;
@@ -1038,7 +1079,7 @@ const goToToday = () => {
     triggerHaptic();
     const now = new Date();
     currentDate = new Date(); 
-    activeCellDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    activeCellDate = getLocalYMD(now);
     renderCalendar();
 };
 
@@ -1092,7 +1133,7 @@ function openModal(id = null) {
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
     
-    document.getElementById('event-is-wide').checked = false; // 重置寬螢幕模式
+    document.getElementById('event-is-wide').checked = false;
 
     checklistCheckbox.checked = false; checklistFields.classList.add('hidden'); checklistContainer.innerHTML = '';
     pollCheckbox.checked = false; pollFields.classList.add('hidden'); pollOptionsContainer.innerHTML = '';
@@ -1142,7 +1183,7 @@ function openModal(id = null) {
         }
     } else {
         document.getElementById('modal-title').innerText = '新增活動'; document.getElementById('btn-delete').classList.add('hidden');
-        document.getElementById('event-start-date').value = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+        document.getElementById('event-start-date').value = getLocalYMD(currentDate);
         authorSelect.innerHTML = getMemberOptions('', '請選擇建立者...');
     }
     document.getElementById('event-modal').classList.remove('hidden');
@@ -1229,7 +1270,6 @@ function openViewModal(id) {
     if (!weatherBox) {
         weatherBox = document.createElement('div');
         weatherBox.id = 'view-weather-box';
-        weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
         mMapBox.appendChild(weatherBox);
     }
     weatherBox.classList.add('hidden');
@@ -1244,58 +1284,71 @@ function openViewModal(id) {
             weatherBox.classList.remove('hidden');
             weatherBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在為您查詢當地氣象...';
             
-            let foundCoord = null;
-            let foundName = evt.location;
-            
-            for (const [key, coords] of Object.entries(twLocations)) {
-                if (evt.location.includes(key)) {
-                    foundCoord = coords;
-                    foundName = key;
-                    break;
-                }
-            }
-
-            const weatherFetchPromise = foundCoord 
-                ? fetch(`https://api.open-meteo.com/v1/forecast?latitude=${foundCoord.lat}&longitude=${foundCoord.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
-                    .then(r => r.json())
-                    .then(wData => ({ wData, locName: foundName }))
-                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
-                    .then(r => r.json())
-                    .then(geo => {
-                        if(geo.results && geo.results.length > 0) {
-                            const { latitude, longitude, name } = geo.results[0];
-                            return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
-                                .then(r => r.json())
-                                .then(wData => ({ wData, locName: name }));
-                        }
-                        throw new Error('找不到地點');
-                    });
-
-            weatherFetchPromise
+            fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+                .then(r => r.json())
+                .then(geo => {
+                    if(geo.results && geo.results.length > 0) {
+                        const { latitude, longitude, name } = geo.results[0];
+                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
+                            .then(r => r.json())
+                            .then(wData => ({ wData, locName: name }));
+                    }
+                    throw new Error('找不到地點');
+                })
                 .then(({ wData, locName }) => {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
                         const wCode = wData.daily.weathercode[idx];
                         const desc = weatherDescMap[wCode] || '☁️ 未知';
                         const isRainy = [51,53,55,61,63,65,80,81,82,95].includes(wCode);
-                        
-                        if (isRainy) {
-                            weatherBox.className = 'w-full py-2.5 bg-indigo-100 text-indigo-900 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md mt-2 px-2 text-center ring-2 ring-indigo-400 animate-pulse transition-all';
-                        } else {
-                            weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
-                        }
-
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
                         let weatherTips = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
-                        
-                        weatherBox.innerHTML = `
-                            <div class="flex flex-col items-center">
-                                <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
-                                <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
-                                <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
-                            </div>
-                        `;
+
+                        // === 🚨 檢查是否符合氣象署 (CWA) 的極端天氣警報 ===
+                        let localAlert = null;
+                        for (const city in activeCWAAlerts) {
+                            if ((evt.location && evt.location.includes(city)) || locName.includes(city)) {
+                                localAlert = activeCWAAlerts[city]; 
+                                break;
+                            }
+                        }
+
+                        const todayS = getLocalYMD(new Date());
+                        const tObj = new Date(); tObj.setDate(tObj.getDate() + 1);
+                        const tomorrowS = getLocalYMD(tObj);
+                        const isTodayOrTomorrow = (evt.startDate === todayS || evt.startDate === tomorrowS);
+
+                        if (localAlert && isTodayOrTomorrow) {
+                            weatherBox.className = 'w-full py-2.5 bg-rose-100 text-rose-900 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md mt-2 px-2 text-center ring-2 ring-rose-500 animate-pulse transition-all';
+                            weatherBox.innerHTML = `
+                                <div class="flex flex-col items-center">
+                                    <div class="flex items-center gap-1.5 text-rose-700 font-black"><i class="fas fa-exclamation-triangle text-base"></i> 氣象署特報生效中</div>
+                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="bg-rose-600 text-white text-[11px] px-2.5 py-0.5 rounded-full mt-1 animate-bounce shadow-sm">${localAlert}</div>
+                                </div>
+                            `;
+                        } else if (isRainy) {
+                            weatherBox.className = 'w-full py-2.5 bg-indigo-100 text-indigo-900 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md mt-2 px-2 text-center ring-2 ring-indigo-400 animate-pulse transition-all';
+                            weatherBox.innerHTML = `
+                                <div class="flex flex-col items-center">
+                                    <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
+                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
+                                </div>
+                            `;
+                        } else {
+                            weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
+                            weatherBox.innerHTML = `
+                                <div class="flex flex-col items-center">
+                                    <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
+                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
+                                </div>
+                            `;
+                        }
+                        // ==========================================
+
                     } else {
                         const tDate = new Date(evt.startDate);
                         const nDate = new Date();
@@ -1546,7 +1599,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         });
     }
 
-    const isWideChecked = document.getElementById('event-is-wide').checked; // 儲存寬螢幕標記
+    const isWideChecked = document.getElementById('event-is-wide').checked;
 
     const eventData = {
         title: titleVal, icon: document.getElementById('event-icon').value,
