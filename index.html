@@ -245,6 +245,27 @@
                     </div>
                 </div>
 
+                <!-- 新增：營地視覺化配置圖 -->
+                <div class="bg-teal-50/50 p-3.5 rounded-2xl border border-teal-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-bold text-teal-900 flex items-center gap-1.5 cursor-pointer">
+                            <i class="fas fa-campground text-teal-600"></i> 啟用 19x19 營地視覺配置圖
+                        </label>
+                        <input type="checkbox" id="event-is-campsite" class="w-4 h-4 text-teal-500 rounded cursor-pointer">
+                    </div>
+                    <div id="campsite-fields" class="hidden space-y-2 pt-1">
+                        <p class="text-[11px] text-teal-700 font-bold bg-teal-100/50 p-2 rounded-lg">💡 請直接拖曳下方 5 頂 (7x7) 帳篷來安排營位。中央虛線區為建議的「兒童跑跳保留區」。</p>
+                        <div id="campsite-canvas" class="relative w-full aspect-square bg-teal-50 border-2 border-teal-200 rounded-lg overflow-hidden touch-none" 
+                             style="background-image: linear-gradient(#99f6e4 1px, transparent 1px), linear-gradient(90deg, #99f6e4 1px, transparent 1px); background-size: calc(100%/19) calc(100%/19);">
+                            <!-- 兒童遊憩區 (視覺提示) -->
+                            <div class="absolute border-2 border-dashed border-teal-400 bg-teal-400/10 pointer-events-none flex items-center justify-center"
+                                 style="left: calc(100%/19 * 5); top: calc(100%/19 * 5); width: calc(100%/19 * 9); height: calc(100%/19 * 9);">
+                                <span class="text-teal-700/60 font-bold text-xs"><i class="fas fa-child"></i> 兒童遊憩區</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <label class="text-sm font-bold text-indigo-900 flex items-center gap-1.5 cursor-pointer">
@@ -397,6 +418,17 @@
                 <div id="view-expense-container" class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 space-y-2 hidden text-amber-900">
                     <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800"><i class="fas fa-receipt"></i> 代墊與分帳結算</div>
                     <div id="view-expense-details" class="text-xs space-y-1.5"></div>
+                </div>
+
+                <!-- 新增：檢視模式下的營地唯讀配置圖 -->
+                <div id="view-campsite-container" class="bg-teal-50 p-3.5 rounded-2xl border border-teal-200 space-y-2.5 hidden mt-2">
+                    <div class="font-bold flex items-center justify-between text-xs text-teal-800 border-b border-teal-100 pb-2">
+                        <span><i class="fas fa-map-marked-alt text-sm mr-1"></i> 營區搭設配置圖</span>
+                    </div>
+                    <div id="view-campsite-canvas" class="relative w-full aspect-square bg-teal-100/50 border border-teal-200 rounded overflow-hidden" 
+                         style="background-image: linear-gradient(#99f6e4 1px, transparent 1px), linear-gradient(90deg, #99f6e4 1px, transparent 1px); background-size: calc(100%/19) calc(100%/19);">
+                        <!-- 唯讀帳篷將渲染於此 -->
+                    </div>
                 </div>
 
                 <div class="pt-4 flex gap-2">
