@@ -141,51 +141,45 @@ function openManualModal() {
     modal.id = 'manual-modal';
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
+    // v7.1 全新說名書內容
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - 快速上手指南</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.1 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
-            <section>
-                <h3 class="font-bold text-lg text-rose-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 新增與管理行程</h3>
-                <ul class="list-disc pl-5 space-y-1">
-                    <li>點擊畫面右下角的 <b class="bg-warm-500 text-white px-1.5 py-0.5 rounded text-xs">＋</b> (手機版) 或側邊欄的 <b class="text-warm-600">新增活動</b>。</li>
-                    <li>輸入活動名稱、時間、並選擇「建立者」。</li>
-                    <li>可以自由挑選可愛的圖示，以及為行程自訂「標籤顏色」。</li>
-                    <li><b>進階功能：</b> 點開行程時，點擊底部的「編輯」即可修改，或點擊左下角「刪除」移除行程。</li>
+            <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> v7.1 最新升級亮點</h3>
+                <ul class="list-disc pl-5 space-y-1 text-rose-900">
+                    <li><b>巨無霸相簿牆：</b>縮圖全面放大！版面改為更清晰的 1~3 欄配置，不用點開也能一目了然。</li>
+                    <li><b>空拍與動態視角：</b>新增「寬螢幕」勾選功能，相簿自動以兩倍大瀑布流展示，並加上專屬徽章。</li>
+                    <li><b>效能與穩定度提升：</b>精簡介面邏輯，確保在所有手機與瀏覽器上都能流暢載入。</li>
                 </ul>
             </section>
             
             <section>
-                <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-users"></i> 2. 家族專屬功能</h3>
+                <h3 class="font-bold text-lg text-indigo-600 mb-2 flex items-center gap-2"><i class="fas fa-calendar-plus"></i> 1. 行程與家族互動功能</h3>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b class="text-indigo-600">保密投票：</b> 旅遊不知道要去哪？在新增活動時勾選「啟用活動意願投票」，輸入選項。大家就能在行程內投票，最高票的選項可以由發起人一鍵「拍板定案」！</li>
-                    <li><b class="text-emerald-600">裝備任務清單：</b> 露營時誰帶帳篷？勾選「裝備/任務清單」，指定負責人，完成後還能打勾確認。全部完成會有驚喜喔！</li>
-                    <li><b class="text-amber-600">代墊分帳：</b> 出去玩有人先墊錢？勾選「分帳功能」，輸入誰代墊、總額多少，以及大家的分攤份數（小孩算 0.5 份），系統會自動幫你算好每個人該給多少錢。</li>
+                    <li><b>保密投票：</b> 行程不知道去哪？開啟投票功能，最高票選項一鍵「拍板定案」！</li>
+                    <li><b>裝備與任務清單：</b> 露營裝備誰帶？指派負責人，打勾完成後還有慶祝特效！</li>
+                    <li><b>代墊分帳系統：</b> 支援多人代墊、不同分攤份數(小孩算0.5份)，系統自動計算出最少筆數的「互抵結算」明細。</li>
                 </ul>
             </section>
             
             <section>
-                <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 3. 影音回憶與地圖導航</h3>
+                <h3 class="font-bold text-lg text-purple-600 mb-2 flex items-center gap-2"><i class="fas fa-photo-video"></i> 2. 影音相簿與地圖導航</h3>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>放入相片：</b> 將 Google Drive 的相片權限設為「知道連結的人皆可檢視」，把網址貼入「相片網址」欄位，行程就會出現漂亮的預覽圖。</li>
-                    <li><b>放入影片：</b> 支援 YouTube 連結（包含 Shorts 短影音）與 Google Drive 影片，貼上後可直接在系統內點開觀看，並支援全螢幕！</li>
-                    <li><b>相簿牆：</b> 點擊左側選單的 <b class="text-warm-600">📸 家庭回憶相簿牆</b>，就能一次回味所有帶有相片的精彩行程。</li>
-                    <li><b class="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">智慧導航與天氣：</b> 系統是根據「地點名稱」來抓取天氣。系統已內建全台縣市與大景點，只要在名稱內包含大範圍地名（如：<b>南投</b>白石馬露營區），就能精準預報！詳細地址可貼在導航網址欄位。</li>
+                    <li><b>智慧相簿牆：</b> 貼上 Google Drive (設為公開) 或照片網址，即可在「家庭回憶相簿牆」大圖回味。</li>
+                    <li><b>劇院級影片：</b> 支援 YouTube (含 Shorts) 及 Drive 影片，系統內建無廣告全螢幕播放器。</li>
+                    <li><b>氣象與導航：</b> 依據地點自動精準預報 14 天內氣象；點擊地點即可開啟 Google Maps 導航。</li>
                 </ul>
             </section>
 
             <section>
-                <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-radio"></i> 4. 隱藏彩蛋：專屬廣播電台</h3>
+                <h3 class="font-bold text-lg text-blue-600 mb-2 flex items-center gap-2"><i class="fas fa-mobile-alt"></i> 3. 跨裝置與隱藏彩蛋</h3>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li>系統內建一個隨時可以「自由拖曳移動」的音樂播放器。</li>
-                    <li>您可以點擊選單，選擇 <b class="text-blue-600">手動輸入電台/YouTube網址</b>。</li>
-                    <li>不管是喜歡的 MP3 音樂，或是 <b>YouTube 上的 24 小時新聞/音樂直播</b>，貼上網址就能讓系統邊播音樂邊看行事曆囉！</li>
+                    <li><b>手錶同步：</b> 支援匯出 ICS 檔，直接同步至 Apple Watch (iOS 行事曆)。</li>
+                    <li><b>專屬廣播電台：</b> 右下角內建音樂播放器，支援 YouTube 24H 直播與音樂網址，可邊看行程邊聽歌。</li>
+                    <li><b>離線備份：</b> 支援 JSON 檔案匯出至本機，或上傳至雲端備份，隨時可以時光倒流。</li>
                 </ul>
-            </section>
-            
-            <section class="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                <h3 class="font-bold text-lg text-amber-800 mb-1 flex items-center gap-2"><i class="fas fa-shield-alt"></i> 管理員專區</h3>
-                <p class="text-amber-700">左側選單的 <i class="fas fa-cog"></i> 齒輪圖示是管理員後台。內含「一鍵匯入政府國定假日」與「雲端備份還原」功能。這些功能可能會覆蓋重要資料，因此已加上密碼鎖保護，確保家族紀錄的安全。</p>
             </section>
         </div>
     `;
@@ -627,7 +621,7 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
-// === 相簿牆升級：支援寬螢幕展示與動態標籤 ===
+// === 相簿牆升級：支援寬螢幕展示、巨大縮圖與動態標籤 ===
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
@@ -643,17 +637,17 @@ function renderGalleryGrid() {
         container.className = 'flex flex-col items-center justify-center h-full w-full';
         container.innerHTML = `
             <div class="text-center animate-fade-in flex flex-col items-center">
-                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
-                    <i class="fas fa-camera-retro text-3xl text-warm-300"></i>
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
+                    <i class="fas fa-camera-retro text-4xl text-warm-300"></i>
                 </div>
-                <h4 class="text-lg font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
+                <h4 class="text-xl font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
                 <p class="text-sm text-gray-400">快去行程裡貼上相片或影片網址吧！</p>
             </div>`;
         return;
     }
     
-    // 改為 grid-flow-dense 讓不同大小的方塊完美自動填補空隙
-    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-start content-start p-4 md:p-6 overflow-x-hidden grid-flow-dense';
+    // 為了讓縮圖「一目了然」，將欄位縮減為 1~3 欄，並改為 grid-flow-dense 瀑布流填補
+    container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-start content-start p-4 md:p-8 overflow-x-hidden grid-flow-dense';
     
     const rotates = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2', 'rotate-0', '-rotate-3'];
     const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
@@ -667,15 +661,15 @@ function renderGalleryGrid() {
         const tRot = tapeRotates[index % tapeRotates.length];
         const animDelay = (index * 50) + 'ms'; 
         
-        // 若勾選為寬螢幕，則跨越兩欄與兩列
-        const spanClass = evt.isWide ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1';
+        // 若勾選為寬螢幕，在平板與電腦版上會跨越兩欄與兩列，手機版維持單欄滿版
+        const spanClass = evt.isWide ? 'md:col-span-2 md:row-span-2 col-span-1 row-span-1' : 'col-span-1 row-span-1';
         
-        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-105 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot} ${spanClass}`;
+        item.className = `relative bg-white p-3 md:p-4 pb-12 md:pb-14 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-[1.03] hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot} ${spanClass}`;
         item.style.animationDelay = animDelay;
         item.style.animationFillMode = 'both';
         
         let imgUrl = getDirectImageUrl(evt.photoUrl);
-        // 若只有影片沒有照片，顯示預設漸層底圖
+        // 若只有影片沒有照片，顯示高質感預設漸層底圖
         if (!imgUrl && evt.videoUrl) {
             imgUrl = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop';
         }
@@ -685,30 +679,30 @@ function renderGalleryGrid() {
         // 智慧標籤徽章
         let badgeHtml = '';
         if (evt.isWide) {
-            badgeHtml = `<div class="absolute top-2 left-2 z-20 bg-black/60 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded shadow"><i class="fas fa-plane"></i> 空拍/寬景</div>`;
+            badgeHtml = `<div class="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-md shadow"><i class="fas fa-plane"></i> 空拍 / 寬景</div>`;
         } else if (evt.videoUrl) {
-            badgeHtml = `<div class="absolute top-2 left-2 z-20 bg-rose-500/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"><i class="fas fa-play"></i> 動態影像</div>`;
+            badgeHtml = `<div class="absolute top-3 left-3 z-20 bg-rose-500/80 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-md shadow"><i class="fas fa-play"></i> 動態影像</div>`;
         }
 
         item.innerHTML = `
             ${badgeHtml}
-            <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
+            <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-16 md:w-20 h-5 md:h-6 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
             
-            <div class="w-full h-full min-h-[100px] overflow-hidden bg-gray-100 relative shadow-inner rounded-sm flex-1">
+            <div class="w-full h-full min-h-[240px] md:min-h-[300px] aspect-[4/3] md:aspect-auto overflow-hidden bg-gray-100 relative shadow-inner rounded-sm flex-1">
                 <img src="${imgUrl}" class="absolute inset-0 w-full h-full object-cover filter contrast-[1.05] brightness-[1.02] transition-transform duration-700 hover:scale-110" loading="lazy">
                 
-                <div class="absolute bottom-1.5 right-1.5 z-10">
-                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter bg-white/60 px-1 rounded backdrop-blur-sm">
+                <div class="absolute bottom-2 right-2 z-10">
+                    <span class="text-orange-500 font-mono text-xs md:text-sm font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter bg-white/70 px-1.5 py-0.5 rounded backdrop-blur-sm">
                         '${dateStr.slice(2)}
                     </span>
                 </div>
             </div>
             
-            <div class="absolute bottom-1 md:bottom-2 left-0 w-full text-center px-2 flex flex-col justify-center">
-                <h4 class="font-bold text-gray-800 text-[11px] md:text-sm truncate">
+            <div class="absolute bottom-2 md:bottom-3 left-0 w-full text-center px-3 flex flex-col justify-center">
+                <h4 class="font-bold text-gray-800 text-sm md:text-base truncate drop-shadow-sm">
                     ${evt.icon ? evt.icon + ' ' : ''}${evt.title}
                 </h4>
-                ${evt.location ? `<p class="text-[9px] md:text-[10px] text-gray-400 truncate mt-0.5"><i class="fas fa-map-marker-alt"></i> ${evt.location}</p>` : ''}
+                ${evt.location ? `<p class="text-xs text-gray-500 truncate mt-1 font-semibold"><i class="fas fa-map-marker-alt"></i> ${evt.location}</p>` : ''}
             </div>
         `;
         
