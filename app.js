@@ -627,15 +627,19 @@ const galleryModal = document.getElementById('gallery-modal');
 document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
+// === 相簿牆升級：支援寬螢幕展示與動態標籤 ===
 function renderGalleryGrid() {
     const container = document.getElementById('gallery-grid-container');
     container.innerHTML = '';
     
-    const photoEvents = events.filter(e => e.photoUrl && e.photoUrl.trim() !== '').sort((a, b) => b.startDate.localeCompare(a.startDate));
+    // 現在允許相片 OR 影片的行程進入相簿牆
+    const mediaEvents = events
+        .filter(e => (e.photoUrl && e.photoUrl.trim() !== '') || (e.videoUrl && e.videoUrl.trim() !== ''))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate));
     
     container.style.cssText = 'background-color: #fdfbf9; background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;';
     
-    if (photoEvents.length === 0) {
+    if (mediaEvents.length === 0) {
         container.className = 'flex flex-col items-center justify-center h-full w-full';
         container.innerHTML = `
             <div class="text-center animate-fade-in flex flex-col items-center">
@@ -643,18 +647,19 @@ function renderGalleryGrid() {
                     <i class="fas fa-camera-retro text-3xl text-warm-300"></i>
                 </div>
                 <h4 class="text-lg font-bold text-gray-700 mb-1">相簿牆空空如也</h4>
-                <p class="text-sm text-gray-400">快去行程裡貼上相片網址吧！</p>
+                <p class="text-sm text-gray-400">快去行程裡貼上相片或影片網址吧！</p>
             </div>`;
         return;
     }
     
-    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-8 items-start content-start p-6 md:p-8 overflow-x-hidden';
+    // 改為 grid-flow-dense 讓不同大小的方塊完美自動填補空隙
+    container.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-start content-start p-4 md:p-6 overflow-x-hidden grid-flow-dense';
     
-    const rotates = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-4', 'rotate-4'];
+    const rotates = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2', 'rotate-0', '-rotate-3'];
     const tapeColors = ['bg-rose-200/80 border-rose-300', 'bg-amber-200/80 border-amber-300', 'bg-blue-200/80 border-blue-300', 'bg-emerald-200/80 border-emerald-300'];
     const tapeRotates = ['rotate-2', '-rotate-3', 'rotate-1', '-rotate-2'];
 
-    photoEvents.forEach((evt, index) => {
+    mediaEvents.forEach((evt, index) => {
         const item = document.createElement('div');
         
         const cardRot = rotates[index % rotates.length];
@@ -662,21 +667,38 @@ function renderGalleryGrid() {
         const tRot = tapeRotates[index % tapeRotates.length];
         const animDelay = (index * 50) + 'ms'; 
         
-        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-110 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot}`;
+        // 若勾選為寬螢幕，則跨越兩欄與兩列
+        const spanClass = evt.isWide ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1';
+        
+        item.className = `relative bg-white p-2 md:p-3 pb-8 md:pb-10 rounded-sm shadow-md border border-gray-100 cursor-pointer flex flex-col transform transition-all duration-300 hover:z-20 hover:scale-105 hover:rotate-0 hover:shadow-2xl animate-fade-in ${cardRot} ${spanClass}`;
         item.style.animationDelay = animDelay;
         item.style.animationFillMode = 'both';
         
-        const imgUrl = getDirectImageUrl(evt.photoUrl);
+        let imgUrl = getDirectImageUrl(evt.photoUrl);
+        // 若只有影片沒有照片，顯示預設漸層底圖
+        if (!imgUrl && evt.videoUrl) {
+            imgUrl = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop';
+        }
+        
         const dateStr = evt.startDate.replace(/-/g, '.');
 
+        // 智慧標籤徽章
+        let badgeHtml = '';
+        if (evt.isWide) {
+            badgeHtml = `<div class="absolute top-2 left-2 z-20 bg-black/60 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded shadow"><i class="fas fa-plane"></i> 空拍/寬景</div>`;
+        } else if (evt.videoUrl) {
+            badgeHtml = `<div class="absolute top-2 left-2 z-20 bg-rose-500/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"><i class="fas fa-play"></i> 動態影像</div>`;
+        }
+
         item.innerHTML = `
+            ${badgeHtml}
             <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 md:w-16 h-4 md:h-5 ${tColor} border-x-2 border-dashed z-10 ${tRot}" style="mix-blend-mode: multiply;"></div>
             
-            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative shadow-inner">
-                <img src="${imgUrl}" class="w-full h-full object-cover filter contrast-[1.05] brightness-[1.02]" loading="lazy">
+            <div class="w-full h-full min-h-[100px] overflow-hidden bg-gray-100 relative shadow-inner rounded-sm flex-1">
+                <img src="${imgUrl}" class="absolute inset-0 w-full h-full object-cover filter contrast-[1.05] brightness-[1.02] transition-transform duration-700 hover:scale-110" loading="lazy">
                 
                 <div class="absolute bottom-1.5 right-1.5 z-10">
-                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter">
+                    <span class="text-orange-500 font-mono text-[10px] md:text-xs font-bold drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-tighter bg-white/60 px-1 rounded backdrop-blur-sm">
                         '${dateStr.slice(2)}
                     </span>
                 </div>
@@ -722,109 +744,6 @@ function updateUniqueSelects(containerId, selectClass) {
             if (selectedValues.includes(option.value) && option.value !== currentValue) { option.disabled = true; option.textContent = `${option.value} (已選)`; } 
             else { option.disabled = false; option.textContent = option.value; }
         });
-    });
-}
-
-// === 營地視覺化配置邏輯 ===
-const campsiteCheckbox = document.getElementById('event-is-campsite');
-const campsiteFields = document.getElementById('campsite-fields');
-const campsiteCanvas = document.getElementById('campsite-canvas');
-
-const gridSize = 19;
-const tentSize = 7;
-let tentsData = [];
-
-function resetTentsData() {
-    tentsData = [
-        { id: 't1', name: '帳篷 A', x: 0, y: 0, color: 'bg-rose-400' },
-        { id: 't2', name: '帳篷 B', x: 12, y: 0, color: 'bg-blue-400' },
-        { id: 't3', name: '帳篷 C', x: 0, y: 12, color: 'bg-amber-400' },
-        { id: 't4', name: '帳篷 D', x: 12, y: 12, color: 'bg-purple-400' },
-        { id: 't5', name: '客廳帳', x: 6, y: 0, color: 'bg-emerald-500' }
-    ];
-}
-resetTentsData();
-
-if (campsiteCheckbox) {
-    campsiteCheckbox.addEventListener('change', (e) => {
-        campsiteFields.classList.toggle('hidden', !e.target.checked);
-        if (e.target.checked) renderCampsiteEditor();
-    });
-}
-
-function renderCampsiteEditor() {
-    if (!campsiteCanvas) return;
-    const childrenNodes = Array.from(campsiteCanvas.children);
-    childrenNodes.forEach(child => { if(child.classList.contains('tent-element')) child.remove(); });
-
-    tentsData.forEach((tent, index) => {
-        const tentEl = document.createElement('div');
-        tentEl.className = `tent-element absolute ${tent.color} text-white flex flex-col items-center justify-center rounded shadow-md cursor-grab border-2 border-white/50`;
-        tentEl.style.width = `calc(100% / ${gridSize} * ${tentSize})`;
-        tentEl.style.height = `calc(100% / ${gridSize} * ${tentSize})`;
-        tentEl.style.left = `calc(100% / ${gridSize} * ${tent.x})`;
-        tentEl.style.top = `calc(100% / ${gridSize} * ${tent.y})`;
-        tentEl.innerHTML = `<i class="fas fa-campground text-xl drop-shadow-md pointer-events-none"></i><span class="text-xs font-bold mt-1 drop-shadow-md pointer-events-none">${tent.name}</span>`;
-
-        let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
-
-        tentEl.addEventListener('pointerdown', (e) => {
-            isDragging = true;
-            tentEl.setPointerCapture(e.pointerId);
-            tentEl.style.zIndex = 10;
-            tentEl.style.transform = 'scale(1.05)';
-            tentEl.classList.remove('cursor-grab');
-            tentEl.classList.add('cursor-grabbing');
-
-            const rect = tentEl.getBoundingClientRect();
-            const canvasRect = campsiteCanvas.getBoundingClientRect();
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = rect.left - canvasRect.left;
-            initialTop = rect.top - canvasRect.top;
-            
-            if (typeof triggerHaptic === 'function') triggerHaptic();
-        });
-
-        tentEl.addEventListener('pointermove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            tentEl.style.left = `${initialLeft + dx}px`;
-            tentEl.style.top = `${initialTop + dy}px`;
-        });
-
-        tentEl.addEventListener('pointerup', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            tentEl.releasePointerCapture(e.pointerId);
-            tentEl.style.zIndex = 1;
-            tentEl.style.transform = 'scale(1)';
-            tentEl.classList.add('cursor-grab');
-            tentEl.classList.remove('cursor-grabbing');
-
-            const canvasRect = campsiteCanvas.getBoundingClientRect();
-            const elRect = tentEl.getBoundingClientRect();
-            const cellPx = canvasRect.width / gridSize;
-
-            let newX = Math.round((elRect.left - canvasRect.left) / cellPx);
-            let newY = Math.round((elRect.top - canvasRect.top) / cellPx);
-
-            const maxPos = gridSize - tentSize;
-            newX = Math.max(0, Math.min(newX, maxPos));
-            newY = Math.max(0, Math.min(newY, maxPos));
-
-            tentsData[index].x = newX;
-            tentsData[index].y = newY;
-            tentEl.style.left = `calc(100% / ${gridSize} * ${newX})`;
-            tentEl.style.top = `calc(100% / ${gridSize} * ${newY})`;
-            
-            if (typeof triggerHaptic === 'function') triggerHaptic();
-        });
-
-        campsiteCanvas.appendChild(tentEl);
     });
 }
 
@@ -931,7 +850,7 @@ onSnapshot(eventsRef, (snapshot) => {
             isChecklist: data.isChecklist || false, checklist: data.checklist || [],
             isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
             isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || [],
-            isCampsite: data.isCampsite || false, campsiteLayout: data.campsiteLayout || []
+            isWide: data.isWide || false // 新增寬螢幕模式標記
         });
     });
     renderApp();
@@ -1179,15 +1098,11 @@ function openModal(id = null) {
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
     
+    document.getElementById('event-is-wide').checked = false; // 重置寬螢幕模式
+
     checklistCheckbox.checked = false; checklistFields.classList.add('hidden'); checklistContainer.innerHTML = '';
     pollCheckbox.checked = false; pollFields.classList.add('hidden'); pollOptionsContainer.innerHTML = '';
     expenseCheckbox.checked = false; expenseFields.classList.add('hidden'); payersContainer.innerHTML = ''; sharersContainer.innerHTML = '';
-
-    // 營地功能重置
-    campsiteCheckbox.checked = false;
-    campsiteFields.classList.add('hidden');
-    resetTentsData();
-    renderCampsiteEditor();
 
     currentEditingId = id;
     const authorSelect = document.getElementById('event-author');
@@ -1204,6 +1119,9 @@ function openModal(id = null) {
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
+            
+            if (evt.isWide) document.getElementById('event-is-wide').checked = true;
+
             if (evt.photoUrl) {
                 document.getElementById('event-photo-url').value = evt.photoUrl;
                 document.querySelector('#photo-preview img').src = getDirectImageUrl(evt.photoUrl);
@@ -1226,12 +1144,6 @@ function openModal(id = null) {
                 expenseCheckbox.checked = true; expenseFields.classList.remove('hidden');
                 (evt.payers || []).forEach(p => addPayerRow(p.name, p.amount, p.note));
                 (evt.sharers || []).forEach(s => addSharerRow(s.name, s.weight));
-            }
-            if (evt.isCampsite && evt.campsiteLayout) {
-                campsiteCheckbox.checked = true;
-                campsiteFields.classList.remove('hidden');
-                tentsData = JSON.parse(JSON.stringify(evt.campsiteLayout));
-                renderCampsiteEditor();
             }
         }
     } else {
@@ -1587,28 +1499,6 @@ function openViewModal(id) {
         expenseContainer.classList.add('hidden');
     }
 
-    // 處理檢視模式下的營地唯讀圖
-    const campContainer = document.getElementById('view-campsite-container');
-    const viewCampCanvas = document.getElementById('view-campsite-canvas');
-
-    if (evt.isCampsite && evt.campsiteLayout && evt.campsiteLayout.length > 0) {
-        viewCampCanvas.innerHTML = `<div class="absolute border-2 border-dashed border-teal-400 bg-teal-400/10 flex items-center justify-center" style="left: calc(100%/19 * 5); top: calc(100%/19 * 5); width: calc(100%/19 * 9); height: calc(100%/19 * 9);"><span class="text-teal-700/60 font-bold text-xs"><i class="fas fa-child"></i> 遊憩區</span></div>`;
-
-        evt.campsiteLayout.forEach(tent => {
-            const tentEl = document.createElement('div');
-            tentEl.className = `absolute ${tent.color} text-white flex flex-col items-center justify-center rounded shadow-sm border border-white/50`;
-            tentEl.style.width = `calc(100% / 19 * 7)`;
-            tentEl.style.height = `calc(100% / 19 * 7)`;
-            tentEl.style.left = `calc(100% / 19 * ${tent.x})`;
-            tentEl.style.top = `calc(100% / 19 * ${tent.y})`;
-            tentEl.innerHTML = `<i class="fas fa-campground text-sm drop-shadow-sm"></i><span class="text-[9px] font-bold mt-0.5 drop-shadow-sm">${tent.name}</span>`;
-            viewCampCanvas.appendChild(tentEl);
-        });
-        campContainer.classList.remove('hidden');
-    } else {
-        campContainer.classList.add('hidden');
-    }
-
     document.getElementById('view-modal').classList.add('hidden'); document.getElementById('view-modal').classList.remove('hidden');
 }
 
@@ -1662,8 +1552,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         });
     }
 
-    const isCampsiteChecked = document.getElementById('event-is-campsite').checked;
-    const layoutToSave = isCampsiteChecked ? tentsData : [];
+    const isWideChecked = document.getElementById('event-is-wide').checked; // 儲存寬螢幕標記
 
     const eventData = {
         title: titleVal, icon: document.getElementById('event-icon').value,
@@ -1677,7 +1566,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         isChecklist: checklistCheckbox.checked && checklistArr.length > 0, checklist: checklistArr,
         isPoll: pollCheckbox.checked && pollOpts.length > 0, pollOptions: pollOpts,
         isExpense: expenseCheckbox.checked && payersArr.length > 0, payers: payersArr, sharers: sharersArr,
-        isCampsite: isCampsiteChecked, campsiteLayout: layoutToSave
+        isWide: isWideChecked
     };
 
     if (currentEditingId) { await updateDoc(doc(eventsRef, currentEditingId), eventData); } 
