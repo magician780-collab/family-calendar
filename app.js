@@ -157,7 +157,6 @@ function openManualModal() {
         document.getElementById('manual-modal').classList.remove('hidden');
         return;
     }
-    // 說明書已在 HTML
 }
 
 document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
@@ -318,7 +317,6 @@ function requestAdminAccess(callback) {
 
 const importGovBtn = document.getElementById('btn-import-gov-holidays');
 if (importGovBtn) {
-    importGovBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> 一鍵匯入年度國定假日 (可自訂年份)';
     importGovBtn.addEventListener('click', () => {
         triggerHaptic();
         requestAdminAccess(async () => {
@@ -389,9 +387,7 @@ if (exportBtn && importInput) {
     const importLabel = importInput.parentElement;
     const sectionLabel = exportBtn.closest('.space-y-2').querySelector('label');
     if (sectionLabel) sectionLabel.innerHTML = '☁️ 雲端備份與手機檔案匯入';
-    exportBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 建立新備份至雲端';
-    exportBtn.className = 'py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
-
+    
     const cloudRestoreBtn = document.createElement('button');
     cloudRestoreBtn.id = 'btn-cloud-restore';
     cloudRestoreBtn.className = 'py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer';
@@ -551,7 +547,6 @@ if (exportBtn && importInput) {
 // ============================================
 // 🚨 核心升級：統一精準定位解析引擎 (地圖與天氣共用)
 // ============================================
-
 const twLocations = {
     "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
     "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
@@ -580,40 +575,40 @@ function extractCoordsFromUrl(url) {
 }
 
 async function resolveLocationCoords(evt) {
-    // 1. 優先從網址提取精準座標
+    // 1. 優先從網址或地點字串中提取經緯度
     let coords = extractCoordsFromUrl(evt.mapUrl) || extractCoordsFromUrl(evt.location);
-    if (coords) return { coords, name: evt.location || '網址精準定位', source: 'url' };
+    if (coords) return { coords, name: evt.location || '精準定位', source: 'url' };
 
     if (evt.location) {
-        // 2. 快取
         if (window.geocache && window.geocache[evt.location]) {
             return { coords: window.geocache[evt.location], name: evt.location, source: 'cache' };
         }
-
-        // 3. 呼叫更精準的 Nominatim API (對台灣營地、景點辨識度高很多，並鎖定台灣)
+        
         try {
+            // 2. 使用 Open-Meteo Geocoding API, 擴大搜尋並手動過濾出台灣結果 (防迷航)
             const query = evt.location.includes('台') || evt.location.includes('縣') || evt.location.includes('市') ? evt.location : evt.location + ' 台灣';
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=tw`);
+            const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=zh`);
             const geo = await r.json();
-            if (geo && geo.length > 0) {
-                const loc = { lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) };
+            if (geo.results && geo.results.length > 0) {
+                const best = geo.results.find(res => res.country_code === 'TW') || geo.results[0];
+                const loc = { lat: best.latitude, lng: best.longitude };
                 if (!window.geocache) window.geocache = {};
                 window.geocache[evt.location] = loc;
-                return { coords: loc, name: evt.location, source: 'api' };
+                return { coords: loc, name: best.name || evt.location, source: 'api' };
             }
         } catch(e) {}
-
-        // 4. 字典比對 (最後防線：只能給出縣市大範圍，天氣勉強可用，但地圖會只在縣市中心)
+        
+        // 3. 字典比對 (最後防線)
         const matchKey = Object.keys(twLocations).find(k => evt.location.includes(k));
         if (matchKey) return { coords: twLocations[matchKey], name: matchKey, source: 'dict' };
     }
     return null;
 }
-// ============================================
 
 function getLocalYMD(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+// ============================================
 
 onSnapshot(eventsRef, (snapshot) => {
     events = [];
@@ -643,6 +638,7 @@ onSnapshot(eventsRef, (snapshot) => {
     });
     renderApp();
     
+    // 如果地圖開著，資料更新時同步刷新地圖
     if (document.getElementById('map-modal') && !document.getElementById('map-modal').classList.contains('hidden')) {
         renderFootprintMap();
     }
@@ -1128,16 +1124,16 @@ function openViewModal(id) {
                         const nDate = new Date();
                         const diff = Math.ceil((tDate - nDate) / (1000 * 60 * 60 * 24));
                         if (diff > 14) {
-                            weatherBox.innerHTML = `<i class="fas fa-calendar-check text-sky-600"></i> 已定位 [${evt.location||'此地點'}]：預報僅支援14天內，快出發時再來看！`;
+                            weatherBox.innerHTML = `<i class="fas fa-calendar-check text-sky-600"></i> 已定位 [${locName}]：預報僅支援14天內，快出發時再來看！`;
                         } else if (diff < -7) {
-                            weatherBox.innerHTML = `<i class="fas fa-history text-sky-600"></i> 已定位 [${evt.location||'此地點'}]：這是過去的行程囉。`;
+                            weatherBox.innerHTML = `<i class="fas fa-history text-sky-600"></i> 已定位 [${locName}]：這是過去的行程囉。`;
                         } else {
-                            weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-600"></i> 已定位 [${evt.location||'此地點'}]：當日無氣象資料。`;
+                            weatherBox.innerHTML = `<i class="fas fa-info-circle text-sky-600"></i> 已定位 [${locName}]：當日無氣象資料。`;
                         }
                     }
                 })
                 .catch(() => {
-                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-600"></i> 查無定位，請貼上含 @經緯度 完整導航網址或加上縣市`;
+                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-600"></i> 查無精準定位，請貼上含 @經緯度 完整網址，或加上縣市(如:南投白石馬)`;
                     weatherBox.className = 'w-full py-2.5 bg-amber-50 text-amber-800 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
                 });
         }
@@ -1353,17 +1349,21 @@ function renderFootprintMap() {
     }
     
     mapMarkersLayer.clearLayers();
-    setTimeout(() => { footprintMap.invalidateSize(); }, 300);
+    
+    // 解決 Modal 動畫導致地圖大小計算錯誤的問題，並延遲渲染避免阻塞 UI
+    setTimeout(() => { 
+        footprintMap.invalidateSize(); 
+        
+        events.forEach(evt => {
+            if (!evt.location && !evt.mapUrl) return;
 
-    events.forEach(evt => {
-        if (!evt.location && !evt.mapUrl) return;
-
-        resolveLocationCoords(evt).then(result => {
-            if (result) {
-                addMarkerToMap(result.coords, evt);
-            }
+            resolveLocationCoords(evt).then(result => {
+                if (result) {
+                    addMarkerToMap(result.coords, evt);
+                }
+            });
         });
-    });
+    }, 300);
 }
 
 function addMarkerToMap(coords, evt) {
