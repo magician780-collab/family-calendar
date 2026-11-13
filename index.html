@@ -16,7 +16,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.js"></script>
 
-    <!-- 新增：Leaflet.js 地圖套件 -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -78,7 +77,6 @@
             <button id="btn-open-gallery" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
             </button>
-            <!-- 新增：地圖按鈕 -->
             <button id="btn-open-map" class="w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-map-marked-alt text-emerald-600"></i> 🗺️ 家族足跡地圖
             </button>
@@ -98,7 +96,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.2 Emoji & Map</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.3 SmartGeo</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -141,7 +139,6 @@
         </div>
     </main>
     
-    <!-- 新增/編輯活動 Modal -->
     <div id="event-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="event-modal">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[90vh] flex flex-col modal-content" onclick="event.stopPropagation()">
             <div class="px-6 py-4 bg-warm-50 border-b border-warm-100 flex justify-between items-center shrink-0">
@@ -200,10 +197,14 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fas fa-map-marker-alt text-rose-500"></i> 地點名稱與導航連結 (可選)</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1.5"><i class="fas fa-map-marker-alt text-rose-500"></i> 地點名稱與導航連結 (可選)</label>
+                    <!-- 新增：定位防呆提示 -->
+                    <p class="text-[10px] text-gray-500 mb-2 leading-tight bg-gray-100 p-2 rounded-lg">
+                        💡 <b>定位小撇步：</b>貼上含有 <b class="text-rose-500">@經緯度</b> 的完整 Google Maps 網址定位最準確！若使用短網址，地點名稱請務必加上縣市 (如：南投白石馬)。
+                    </p>
                     <div class="space-y-2">
                         <input type="text" id="event-location" placeholder="例如：台南市美術館二館" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
-                        <input type="url" id="event-map-url" placeholder="貼上 Google Maps 導航網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
+                        <input type="url" id="event-map-url" placeholder="貼上 Google Maps 完整導航網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
                     </div>
                 </div>
 
@@ -323,10 +324,8 @@
         </div>
     </div>
 
-    <!-- Gallery Modal (手帳拍立得升級版) -->
     <div id="gallery-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="gallery-modal">
         <div class="bg-[#f8f9fa] w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50" onclick="event.stopPropagation()">
-            
             <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm relative">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warm-400 to-rose-400 flex items-center justify-center text-white shadow-md">
@@ -341,12 +340,10 @@
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            
             <div id="gallery-grid-container" class="overflow-y-auto flex-1 relative"></div>
         </div>
     </div>
 
-    <!-- 新增：地圖 Modal -->
     <div id="map-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="map-modal">
         <div class="bg-white w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50" onclick="event.stopPropagation()">
             <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm relative">
@@ -367,7 +364,6 @@
         </div>
     </div>
 
-    <!-- Day Modal -->
     <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content" onclick="event.stopPropagation()">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center"><h3 id="day-modal-title" class="text-lg font-bold">當日行程</h3><button id="btn-close-day-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button></div>
@@ -375,7 +371,6 @@
         </div>
     </div>
 
-    <!-- View Modal -->
     <div id="view-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="view-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative modal-content flex flex-col max-h-[90vh]" onclick="event.stopPropagation()">
             <div id="view-modal-header" class="h-16 w-full shrink-0"></div>
@@ -385,7 +380,6 @@
                 
                 <div id="view-photo-container" class="hidden mb-2"><img id="view-photo" class="w-full object-cover max-h-48 rounded-xl"></div>
                 
-                <!-- 影片播放器 (智慧內嵌) -->
                 <div id="view-video-container" class="hidden mb-2">
                     <iframe id="view-video-iframe" class="w-full aspect-video rounded-xl shadow-sm hidden" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     <video id="view-video-element" class="w-full aspect-video rounded-xl bg-black shadow-sm hidden" controls playsinline></video>
@@ -438,7 +432,7 @@
         </div>
     </div>
 
-    <!-- Member Modal (管理成員與備份/匯入後台) -->
+    <!-- Member Modal -->
     <div id="member-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] modal-content" onclick="event.stopPropagation()">
             <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center">
@@ -450,7 +444,6 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">家族成員管理</label>
                     <div class="flex gap-2 mb-2">
-                        <!-- 新增：Emoji 選擇器 -->
                         <input type="text" id="new-member-emoji" placeholder="🐻" class="w-12 px-2 py-2 bg-gray-50 border rounded-xl text-center text-base outline-none focus:ring-2 focus:ring-warm-400" value="👤" maxlength="2" title="設定頭像 Emoji">
                         <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-warm-400">
                         <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
@@ -490,6 +483,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.2"></script>
+    <script type="module" src="./app.js?v=7.3"></script>
 </body>
 </html>
