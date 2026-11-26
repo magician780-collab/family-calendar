@@ -25,7 +25,7 @@ const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
 const noteRef = doc(db, 'familyNotes', 'mainNote'); 
 
-const ADMIN_PASSWORD = "2026"; 
+const ADMIN_PASSWORD = "8399"; 
 
 let currentDate = new Date();
 let events = [];
