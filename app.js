@@ -31,6 +31,9 @@ let currentDate = new Date();
 let events = [];
 let familyMembers = [];
 let weatherData = {}; 
+// 行程詳情天氣快取：同一地點 30 分鐘內重複點開不重查
+const weatherCache = {};
+const WEATHER_CACHE_TTL = 30 * 60 * 1000;
 let currentEditingId = null;
 let currentViewingId = null;
 let selectedDateForModal = null;
@@ -333,6 +336,26 @@ function setTheme(name) {
 }
 initThemeSelectOptions();
 setTheme(localStorage.getItem('family_app_theme') || 'warm');
+
+// 大字體切換：根字級 16px → 18px，整站等比放大，偏好存 localStorage
+function applyFontSize() {
+    const large = localStorage.getItem('family_app_font_large') === '1';
+    document.documentElement.style.fontSize = large ? '18px' : '';
+    document.querySelectorAll('#btn-font-size, #btn-mob-font-size').forEach(b => {
+        b.classList.toggle('bg-warm-500', large);
+        b.classList.toggle('text-white', large);
+        b.classList.toggle('bg-warm-100', !large);
+        b.classList.toggle('text-warm-700', !large);
+    });
+}
+function toggleFontSize() {
+    const large = localStorage.getItem('family_app_font_large') !== '1';
+    localStorage.setItem('family_app_font_large', large ? '1' : '0');
+    applyFontSize();
+}
+document.getElementById('btn-font-size').addEventListener('click', toggleFontSize);
+document.getElementById('btn-mob-font-size').addEventListener('click', toggleFontSize);
+applyFontSize();
 
 const themeSelectEl = document.getElementById('theme-select');
 if (themeSelectEl) {
@@ -1119,6 +1142,8 @@ document.getElementById('btn-mob-today').addEventListener('click', goToToday);
 
 document.getElementById('btn-open-add').addEventListener('click', () => openModal());
 document.getElementById('btn-mobile-add').addEventListener('click', () => openModal());
+document.getElementById('event-start-date').addEventListener('change', checkDateConflict);
+document.getElementById('event-end-date').addEventListener('change', checkDateConflict);
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
 document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
@@ -1151,6 +1176,23 @@ if(photoUrlInput) {
     });
 }
 
+// 同天行程提醒：建／編輯行程時，若選的日期區間已有其他行程，顯示提醒
+function checkDateConflict() {
+    const box = document.getElementById('event-date-conflict');
+    if (!box) return;
+    const s = document.getElementById('event-start-date').value;
+    const e = document.getElementById('event-end-date').value || s;
+    if (!s) { box.classList.add('hidden'); return; }
+    const clash = events.filter(ev => {
+        if (currentEditingId && ev.id === currentEditingId) return false;
+        const es = ev.originalStart || ev.startDate;
+        const ee = ev.endDate || es;
+        return es <= e && ee >= s;
+    });
+    if (!clash.length) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    box.innerHTML = '<div class="font-bold mb-1">⚠️ 這段時間已有 ' + clash.length + ' 個行程：</div>' + clash.map(ev => '<div class="truncate">• ' + ev.startDate + ((ev.endDate && ev.endDate !== ev.startDate) ? '～' + ev.endDate : '') + ' ' + (ev.icon || '') + ev.title + '</div>').join('');
+}
 function openModal(id = null) {
     document.getElementById('event-form').reset();
     document.getElementById('event-photo-url').value = '';
@@ -1215,6 +1257,7 @@ function openModal(id = null) {
         document.getElementById('event-start-date').value = getLocalYMD(currentDate);
         authorSelect.innerHTML = getMemberOptions('', '請選擇建立者...');
     }
+    checkDateConflict();
     document.getElementById('event-modal').classList.remove('hidden');
 }
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
@@ -1260,6 +1303,24 @@ const twLocationKeys = Object.keys(twLocations).sort((a, b) => b.length - a.leng
 // 台灣範圍（後備 geocoding 只取落在台灣內的結果，避免私人地名被配到台灣以外）
 const isInTaiwan = (lat, lng) => lat >= 22.0 && lat <= 25.3 && lng >= 119.9 && lng <= 122.0;
 
+// 逐小時預報條：取行程當天 06:00–23:00 的每小時溫度、降雨機率與天氣圖示
+function buildHourlyStrip(wData, dateStr) {
+    if (!wData.hourly || !wData.hourly.time) return '';
+    const blocks = [];
+    for (let i = 0; i < wData.hourly.time.length; i++) {
+        const t = wData.hourly.time[i];
+        if (!t.startsWith(dateStr)) continue;
+        const hh = parseInt(t.slice(11, 13), 10);
+        if (hh < 6 || hh > 23) continue;
+        const code = wData.hourly.weathercode[i];
+        const icon = (weatherDescMap[code] || '☁️ 陰天').split(' ')[0];
+        const temp = wData.hourly.temperature_2m[i] != null ? Math.round(wData.hourly.temperature_2m[i]) + '°' : '—';
+        const rain = wData.hourly.precipitation_probability[i] != null ? wData.hourly.precipitation_probability[i] + '%' : '—';
+        blocks.push('<div class="flex flex-col items-center bg-white/70 rounded-lg px-2 py-1.5 min-w-[52px] shrink-0"><span class="text-[11px] font-bold text-gray-700">' + hh + '時</span><span class="text-base leading-tight">' + icon + '</span><span class="text-xs font-bold text-gray-800">' + temp + '</span><span class="text-[10px] text-sky-600 font-bold">💧' + rain + '</span></div>');
+    }
+    if (!blocks.length) return '';
+    return '<div class="w-full mt-2"><div class="text-[11px] font-bold text-gray-500 mb-1 text-left px-1">⏰ 逐小時預報（' + dateStr + '）</div><div class="flex gap-1.5 overflow-x-auto pb-1 px-1">' + blocks.join('') + '</div></div>';
+}
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
     if (!evt) return;
@@ -1336,6 +1397,14 @@ function openViewModal(id) {
     }
     weatherBox.classList.add('hidden');
     weatherBox.className = 'w-full py-2.5 bg-sky-50 text-sky-800 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center transition-all';
+    let hourlyBox = document.getElementById('view-hourly-box');
+    if (!hourlyBox) {
+        hourlyBox = document.createElement('div');
+        hourlyBox.id = 'view-hourly-box';
+        mMapBox.appendChild(hourlyBox);
+    }
+    hourlyBox.classList.add('hidden');
+    hourlyBox.innerHTML = '';
 
     if (evt.mapUrl || evt.location) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
@@ -1349,21 +1418,26 @@ function openViewModal(id) {
             // 氣象查詢優先順序：氣象地點欄位 → 內建台灣地名字典比對 → Open-Meteo geocoding API
             const weatherQuery = (evt.weatherLoc && evt.weatherLoc.trim()) || evt.location;
             const dictKey = twLocationKeys.find(k => weatherQuery.includes(k));
-            const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
+            const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max&hourly=temperature_2m,precipitation_probability,weathercode&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
                 .then(r => r.json())
                 .then(wData => ({ wData, locName: name }));
-            const geoPromise = dictKey
-                ? fetchForecast(twLocations[dictKey].lat, twLocations[dictKey].lng, dictKey)
-                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(weatherQuery)}&count=5&language=zh`)
-                    .then(r => r.json())
-                    .then(geo => {
-                        const hit = (geo.results || []).find(r => isInTaiwan(r.latitude, r.longitude));
-                        if(hit) {
-                            const { latitude, longitude, name } = hit;
-                            return fetchForecast(latitude, longitude, name);
-                        }
-                        throw new Error('找不到地點');
-                    });
+            const cacheKey = weatherQuery;
+            const cachedWx = weatherCache[cacheKey];
+            const geoPromise = (cachedWx && Date.now() - cachedWx.at < WEATHER_CACHE_TTL)
+                ? Promise.resolve({ wData: cachedWx.wData, locName: cachedWx.locName })
+                : (dictKey
+                    ? fetchForecast(twLocations[dictKey].lat, twLocations[dictKey].lng, dictKey)
+                    : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(weatherQuery)}&count=5&language=zh`)
+                        .then(r => r.json())
+                        .then(geo => {
+                            const hit = (geo.results || []).find(r => isInTaiwan(r.latitude, r.longitude));
+                            if(hit) {
+                                const { latitude, longitude, name } = hit;
+                                return fetchForecast(latitude, longitude, name);
+                            }
+                            throw new Error('找不到地點');
+                        }))
+                  .then(res => { weatherCache[cacheKey] = { wData: res.wData, locName: res.locName, at: Date.now() }; return res; });
             geoPromise
                 .then(({ wData, locName }) => {
                     const idx = wData.daily.time.indexOf(evt.startDate);
@@ -1418,6 +1492,12 @@ function openViewModal(id) {
                                     <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
                                 </div>
                             `;
+                        }
+                        // 逐小時預報：行程當天 06:00–23:00
+                        const hourlyHtml = buildHourlyStrip(wData, evt.startDate);
+                        if (hourlyHtml) {
+                            hourlyBox.innerHTML = hourlyHtml;
+                            hourlyBox.classList.remove('hidden');
                         }
                     } else {
                         const tDate = new Date(evt.startDate);

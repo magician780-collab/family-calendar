@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-calendar-v7.12';
+const CACHE_NAME = 'family-calendar-v7.13';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
