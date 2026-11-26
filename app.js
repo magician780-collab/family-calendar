@@ -1123,6 +1123,28 @@ function renderUpcoming() {
             </div>`;
         container.appendChild(el);
     });
+
+    // 手機版即將到來橫條：不用開側邊欄，月曆上方直接看得到
+    const mobList = document.getElementById('mobile-upcoming-list');
+    const mobWrap = document.getElementById('mobile-upcoming');
+    if (mobList && mobWrap) {
+        mobList.innerHTML = '';
+        if (!upcoming.length) { mobWrap.classList.add('hidden'); }
+        else {
+            mobWrap.classList.remove('hidden');
+            upcoming.forEach(evt => {
+                const [yy, mm, dd] = evt.startDate.split('-');
+                const sObj = new Date(yy, mm - 1, dd);
+                const diff = Math.round((sObj - todayObj) / (1000 * 60 * 60 * 24));
+                const cd = diff <= 0 ? '今天' : diff === 1 ? '明天' : diff + '天後';
+                const chip = document.createElement('button');
+                chip.className = 'flex items-center gap-1.5 px-3 py-1.5 bg-warm-50 border border-warm-200 rounded-full text-xs font-bold text-warm-800 whitespace-nowrap shrink-0 active:scale-95 transition-all';
+                chip.innerHTML = '<span>' + mm + '/' + dd + '</span><span>' + (evt.icon || '') + evt.title + '</span><span class="text-warm-500">' + cd + '</span>';
+                chip.addEventListener('click', () => openViewModal(evt.id));
+                mobList.appendChild(chip);
+            });
+        }
+    }
 }
 
 const goToToday = () => {
