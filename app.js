@@ -168,13 +168,13 @@ document.getElementById('btn-open-members').addEventListener('click', () => {
     }
 });
 
-const galleryBtn = document.getElementById('btn-open-gallery');
-if (galleryBtn && !document.getElementById('btn-open-manual')) {
+const membersBtn = document.getElementById('btn-open-members');
+if (membersBtn && !document.getElementById('btn-open-manual')) {
     const manualBtn = document.createElement('button');
     manualBtn.id = 'btn-open-manual';
     manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
     manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
-    galleryBtn.parentNode.insertBefore(manualBtn, galleryBtn.nextSibling);
+    membersBtn.parentNode.insertBefore(manualBtn, membersBtn.nextSibling);
 
     manualBtn.addEventListener('click', () => {
         triggerHaptic();
@@ -194,15 +194,19 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.2 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.21 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> v7.2 最新升級亮點</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.21）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
-                    <li><b>📍 家族足跡地圖：</b>全新地圖模式！自動將過往有填寫地點的行程釘在地圖上，點擊即可回味全台走透透的成就感。</li>
-                    <li><b>🐻 專屬成員頭像：</b>現在在「管理員後台」新增成員時，可以設定專屬 Emoji！不管是代墊結算還是保密投票，畫面都會自動帶入每個人的可愛大頭貼。</li>
-                    <li><b>極端天氣警報：</b>串接氣象署即時資料，行程地點若發布特報（如大雨/強風），日曆將亮起紅燈警告。</li>
+                    <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
+                    <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
+                    <li><b>🌦️ 天氣更詳細：</b>月曆格與行程詳情都顯示降雨機率與體感溫度；點開行程還能看當天 06:00–23:00 的逐小時天氣。</li>
+                    <li><b>⚠️ 同天行程提醒：</b>新增或編輯行程選日期時，若同一天已有其他行程，會跳出提醒，避免撞期。</li>
+                    <li><b>📱 手機即將到來：</b>手機版月曆上方有一排「即將到來」橫條，不用開側邊欄就看得到最近的行程。</li>
+                    <li><b>🔠 大字體切換：</b>右上角 A+ 按鈕可以把整站字體放大，長輩看更輕鬆。</li>
+                    <li><b>📻 廣播五台：</b>右下角播放器有 A-Lin 串燒、露營家族背景音樂、A-Line 青春電台、城市廣播網、微微笑廣播網，還有音量滑桿。</li>
                 </ul>
             </section>
             
