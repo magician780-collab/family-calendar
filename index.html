@@ -103,7 +103,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.14</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.15</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -460,19 +460,6 @@
             </div>
             
             <div class="p-4 overflow-y-auto flex-1 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 mb-1">家族成員管理</label>
-                    <div class="flex gap-2 mb-2">
-                        <!-- 新增：Emoji 選擇器 -->
-                        <input type="text" id="new-member-emoji" placeholder="🐻" class="w-12 px-2 py-2 bg-gray-50 border rounded-xl text-center text-base outline-none focus:ring-2 focus:ring-warm-400" value="👤" maxlength="2" title="設定頭像 Emoji">
-                        <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-warm-400">
-                        <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
-                    </div>
-                    <div id="member-list-container" class="space-y-2 max-h-36 overflow-y-auto bg-gray-50 p-2 rounded-xl border"></div>
-                </div>
-
-                <hr class="border-gray-200">
-
                 <div class="space-y-2">
                     <label class="block text-xs font-bold text-gray-700">政府行事曆與節日</label>
                     <button id="btn-import-gov-holidays" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm">
@@ -498,11 +485,35 @@
         </div>
     </div>
 
+
+    <!-- Member Manage Modal (家族成員管理，獨立視窗) -->
+    <div id="member-manage-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="member-manage-modal">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] modal-content" onclick="event.stopPropagation()">
+            <div class="px-6 py-4 bg-warm-50 border-b flex justify-between items-center">
+                <h3 class="text-lg font-bold">家族成員管理</h3>
+                <button id="btn-close-member-manage-modal" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">新增成員</label>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="new-member-emoji" placeholder="🐻" class="w-12 px-2 py-2 bg-gray-50 border rounded-xl text-center text-base outline-none focus:ring-2 focus:ring-warm-400" value="👤" maxlength="2" title="設定頭像 Emoji">
+                        <input type="text" id="new-member-name" placeholder="新成員名字..." class="flex-1 px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-warm-400">
+                        <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="member-add-error" class="hidden text-xs font-bold text-rose-600 px-1"></div>
+                </div>
+                <div id="member-list-container" class="space-y-2 max-h-72 overflow-y-auto bg-gray-50 p-2 rounded-xl border"></div>
+                <p class="text-[11px] text-gray-400 leading-relaxed">點鉛筆可以改名字和頭像，改名字會自動同步到他所有的行程、待辦、分攤和投票。新增、編輯和刪除成員需要管理員密碼。</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.14"></script>
+    <script type="module" src="./app.js?v=7.15"></script>
 </body>
 </html>

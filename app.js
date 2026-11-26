@@ -137,7 +137,7 @@ document.getElementById('btn-open-admin').addEventListener('click', () => {
 
 document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
-    document.getElementById('member-modal').classList.remove('hidden');
+    document.getElementById('member-manage-modal').classList.remove('hidden');
 });
 
 const galleryBtn = document.getElementById('btn-open-gallery');
@@ -406,32 +406,123 @@ onSnapshot(membersRef, (snapshot) => {
     renderMemberManageList();
 });
 
+let editingMemberId = null;
+const escAttr = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function renderMemberManageList() {
     const container = document.getElementById('member-list-container');
     if (!container) return;
     container.innerHTML = familyMembers.length === 0 ? '<p class="text-center text-gray-400 text-sm py-4">尚無成員</p>' : '';
     familyMembers.forEach(m => {
         const item = document.createElement('div');
-        item.className = 'flex justify-between items-center bg-white p-2.5 rounded-xl border shadow-sm text-sm';
-        item.innerHTML = `<span><span class="text-lg mr-1">${m.emoji}</span> ${m.name}</span><button class="text-rose-400 px-2 py-1"><i class="fas fa-trash-alt"></i></button>`;
-        item.querySelector('button').addEventListener('click', async () => { if (confirm(`刪除 ${m.name}？`)) await deleteDoc(doc(db, 'familyMembers', m.id)); });
+        item.className = 'bg-white p-2.5 rounded-xl border shadow-sm text-sm';
+        if (editingMemberId === m.id) {
+            item.innerHTML = `<div class="flex gap-2 items-center">
+                <input type="text" class="edit-emoji w-10 px-1 py-1 bg-gray-50 border rounded-lg text-center text-base outline-none" value="${escAttr(m.emoji)}" maxlength="2">
+                <input type="text" class="edit-name flex-1 px-2 py-1 bg-gray-50 border rounded-lg text-sm outline-none" value="${escAttr(m.name)}">
+                <button class="btn-save-edit px-2.5 py-1 bg-emerald-500 text-white rounded-lg font-bold text-xs shrink-0">儲存</button>
+                <button class="btn-cancel-edit px-2 py-1 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs shrink-0">取消</button>
+            </div><div class="edit-err hidden text-xs font-bold text-rose-600 mt-1 px-1"></div>`;
+            item.querySelector('.btn-cancel-edit').addEventListener('click', () => { editingMemberId = null; renderMemberManageList(); });
+            item.querySelector('.btn-save-edit').addEventListener('click', () => {
+                const newEmoji = item.querySelector('.edit-emoji').value.trim() || '👤';
+                const newName = item.querySelector('.edit-name').value.trim();
+                const errBox = item.querySelector('.edit-err');
+                if (!newName) { errBox.textContent = '名字不能空白'; errBox.classList.remove('hidden'); return; }
+                if (newName !== m.name && familyMembers.some(x => x.name === newName)) { errBox.textContent = '已有同名成員'; errBox.classList.remove('hidden'); return; }
+                requestAdminAccess(async () => {
+                    if (newName !== m.name) await syncMemberRename(m.name, newName);
+                    await updateDoc(doc(db, 'familyMembers', m.id), { name: newName, emoji: newEmoji });
+                    editingMemberId = null;
+                    renderMemberManageList();
+                });
+            });
+        } else {
+            item.innerHTML = `<div class="flex justify-between items-center"><span><span class="text-lg mr-1">${m.emoji}</span> ${m.name}</span><span class="flex gap-1">
+                <button class="btn-edit text-warm-500 px-2 py-1" title="編輯"><i class="fas fa-pen"></i></button>
+                <button class="btn-del text-rose-400 px-2 py-1" title="刪除"><i class="fas fa-trash-alt"></i></button>
+            </span></div>`;
+            item.querySelector('.btn-edit').addEventListener('click', () => { editingMemberId = m.id; renderMemberManageList(); });
+            item.querySelector('.btn-del').addEventListener('click', () => deleteMember(m));
+        }
         container.appendChild(item);
+    });
+}
+
+// 改名字：同步更新所有行程裡的建立者、待辦負責人、分攤人、投票人
+async function syncMemberRename(oldName, newName) {
+    const updates = [];
+    events.forEach(evt => {
+        const patch = {};
+        let changed = false;
+        if (evt.author === oldName) { patch.author = newName; changed = true; }
+        if (evt.checklist && evt.checklist.some(it => it.assignee === oldName)) {
+            patch.checklist = evt.checklist.map(it => it.assignee === oldName ? { ...it, assignee: newName } : it);
+            changed = true;
+        }
+        if (evt.payers && evt.payers.some(pp => pp.name === oldName)) {
+            patch.payers = evt.payers.map(pp => pp.name === oldName ? { ...pp, name: newName } : pp);
+            changed = true;
+        }
+        if (evt.sharers && evt.sharers.some(ss => ss.name === oldName)) {
+            patch.sharers = evt.sharers.map(ss => ss.name === oldName ? { ...ss, name: newName } : ss);
+            changed = true;
+        }
+        if (evt.pollOptions && evt.pollOptions.some(o => (o.voters || []).includes(oldName))) {
+            patch.pollOptions = evt.pollOptions.map(o => ({ title: o.title, voters: (o.voters || []).map(v => v === oldName ? newName : v) }));
+            changed = true;
+        }
+        if (changed) updates.push(updateDoc(doc(eventsRef, evt.id), patch));
+    });
+    await Promise.all(updates);
+}
+
+// 算一個成員參與了多少行程（建立者／待辦／分攤／投票）
+function countMemberUsage(name) {
+    let author = 0, checklist = 0, expense = 0, poll = 0;
+    events.forEach(evt => {
+        if (evt.author === name) author++;
+        (evt.checklist || []).forEach(it => { if (it.assignee === name) checklist++; });
+        (evt.payers || []).forEach(pp => { if (pp.name === name) expense++; });
+        (evt.sharers || []).forEach(ss => { if (ss.name === name) expense++; });
+        (evt.pollOptions || []).forEach(o => { (o.voters || []).forEach(v => { if (v === name) poll++; }); });
+    });
+    return { author, checklist, expense, poll };
+}
+
+// 刪除成員：先顯示參與狀況提醒，再要管理員密碼
+function deleteMember(m) {
+    const u = countMemberUsage(m.name);
+    const parts = [];
+    if (u.author) parts.push(`建立者 ${u.author} 個行程`);
+    if (u.checklist) parts.push(`待辦負責人 ${u.checklist} 項`);
+    if (u.expense) parts.push(`費用分攤 ${u.expense} 筆`);
+    if (u.poll) parts.push(`投票 ${u.poll} 票`);
+    const msg = parts.length
+        ? `⚠️ ${m.name} 目前參與了：\n${parts.join('、')}\n\n刪除後這些地方的名字會保留，但無法再對應到成員。確定要刪除 ${m.name} 嗎？`
+        : `確定要刪除 ${m.name} 嗎？`;
+    if (!confirm(msg)) return;
+    requestAdminAccess(async () => {
+        await deleteDoc(doc(db, 'familyMembers', m.id));
     });
 }
 
 document.getElementById('btn-add-member').addEventListener('click', async () => {
     const nameInput = document.getElementById('new-member-name');
     const emojiInput = document.getElementById('new-member-emoji');
+    const errBox = document.getElementById('member-add-error');
     const nameStr = nameInput.value.trim();
     const emojiStr = emojiInput.value.trim() || '👤';
-    
-    if (nameStr && !familyMembers.some(m => m.name === nameStr)) {
+    if (errBox) errBox.classList.add('hidden');
+    if (!nameStr) { if (errBox) { errBox.textContent = '請輸入成員名字'; errBox.classList.remove('hidden'); } return; }
+    if (familyMembers.some(m => m.name === nameStr)) { if (errBox) { errBox.textContent = '已有同名成員，請換個名字'; errBox.classList.remove('hidden'); } return; }
+    requestAdminAccess(async () => {
         await addDoc(membersRef, { name: nameStr, emoji: emojiStr });
         nameInput.value = '';
         emojiInput.value = '👤';
-    }
+    });
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
+document.getElementById('btn-close-member-manage-modal').addEventListener('click', () => document.getElementById('member-manage-modal').classList.add('hidden'));
 
 function requestAdminAccess(callback) {
     const pwd = prompt('🔒 此功能僅限管理員操作。\n請輸入管理員密碼：');
