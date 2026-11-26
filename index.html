@@ -106,7 +106,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.17</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.18</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -505,6 +505,10 @@
                         <button id="btn-add-member" class="px-4 py-2 bg-warm-500 text-white rounded-xl font-bold text-sm"><i class="fas fa-plus"></i></button>
                     </div>
                     <div id="member-add-error" class="hidden text-xs font-bold text-rose-600 px-1"></div>
+                    <div class="mt-2">
+                        <div class="text-[11px] font-bold text-gray-500 mb-1">點一下選頭像（也可以直接在上方輸入）</div>
+                        <div id="new-member-emoji-picks" class="flex flex-wrap gap-1"></div>
+                    </div>
                 </div>
                 <div id="member-list-container" class="space-y-2 max-h-72 overflow-y-auto bg-gray-50 p-2 rounded-xl border"></div>
                 <p class="text-[11px] text-gray-400 leading-relaxed">點鉛筆可以改名字和頭像，改名字會自動同步到他所有的行程、待辦、分攤和投票。新增、編輯和刪除成員需要管理員密碼。</p>
@@ -517,6 +521,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.17"></script>
+    <script type="module" src="./app.js?v=7.18"></script>
 </body>
 </html>
