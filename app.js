@@ -139,6 +139,13 @@ document.getElementById('btn-manage-members').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-manage-modal').classList.remove('hidden');
 });
+document.getElementById('btn-open-members').addEventListener('click', () => {
+    triggerHaptic();
+    document.getElementById('member-manage-modal').classList.remove('hidden');
+    if (window.innerWidth < 768 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) {
+        toggleSidebar(); // 手機版開啟成員管理時收起側邊欄
+    }
+});
 
 const galleryBtn = document.getElementById('btn-open-gallery');
 if (galleryBtn && !document.getElementById('btn-open-manual')) {

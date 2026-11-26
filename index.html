@@ -87,6 +87,9 @@
             <button id="btn-open-map" class="w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-map-marked-alt text-emerald-600"></i> 🗺️ 家族足跡地圖
             </button>
+            <button id="btn-open-members" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-users text-warm-600"></i> 👥 家族成員
+            </button>
         </div>
 
         <div class="p-5 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
@@ -103,7 +106,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.16</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.17</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -514,6 +517,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.16"></script>
+    <script type="module" src="./app.js?v=7.17"></script>
 </body>
 </html>
