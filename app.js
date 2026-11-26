@@ -1349,7 +1349,7 @@ function openViewModal(id) {
             // 氣象查詢優先順序：氣象地點欄位 → 內建台灣地名字典比對 → Open-Meteo geocoding API
             const weatherQuery = (evt.weatherLoc && evt.weatherLoc.trim()) || evt.location;
             const dictKey = twLocationKeys.find(k => weatherQuery.includes(k));
-            const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
+            const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
                 .then(r => r.json())
                 .then(wData => ({ wData, locName: name }));
             const geoPromise = dictKey
@@ -1373,6 +1373,9 @@ function openViewModal(id) {
                         const isRainy = [51,53,55,61,63,65,80,81,82,95].includes(wCode);
                         const max = Math.round(wData.daily.temperature_2m_max[idx]);
                         const min = Math.round(wData.daily.temperature_2m_min[idx]);
+                        const feels = wData.daily.apparent_temperature_max[idx] != null ? Math.round(wData.daily.apparent_temperature_max[idx]) : null;
+                        const rain = wData.daily.precipitation_probability_max[idx] != null ? wData.daily.precipitation_probability_max[idx] : null;
+                        const weatherLine = `${desc} | ${min}~${max}°C${feels !== null ? ' 體感' + feels + '°' : ''}${rain !== null ? ' 💧' + rain + '%' : ''}`;
                         let weatherTips = isRainy ? "預計有雨，記得帶傘或雨棚！" : "天氣不錯喔！";
 
                         let localAlert = null;
@@ -1393,7 +1396,7 @@ function openViewModal(id) {
                             weatherBox.innerHTML = `
                                 <div class="flex flex-col items-center">
                                     <div class="flex items-center gap-1.5 text-rose-700 font-black"><i class="fas fa-exclamation-triangle text-base"></i> 氣象署特報生效中</div>
-                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="text-base mt-0.5">${weatherLine}</div>
                                     <div class="bg-rose-600 text-white text-[11px] px-2.5 py-0.5 rounded-full mt-1 animate-bounce shadow-sm">${localAlert}</div>
                                 </div>
                             `;
@@ -1402,7 +1405,7 @@ function openViewModal(id) {
                             weatherBox.innerHTML = `
                                 <div class="flex flex-col items-center">
                                     <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
-                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="text-base mt-0.5">${weatherLine}</div>
                                     <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
                                 </div>
                             `;
@@ -1411,7 +1414,7 @@ function openViewModal(id) {
                             weatherBox.innerHTML = `
                                 <div class="flex flex-col items-center">
                                     <div class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> 成功定位 [${locName}]</div>
-                                    <div class="text-base mt-0.5">${desc} | ${min}~${max}°C</div>
+                                    <div class="text-base mt-0.5">${weatherLine}</div>
                                     <div class="text-[11px] opacity-80 mt-0.5">${weatherTips}</div>
                                 </div>
                             `;
