@@ -428,10 +428,7 @@ function renderMemberManageList() {
                 <input type="text" class="edit-name flex-1 px-2 py-1 bg-gray-50 border rounded-lg text-sm outline-none" value="${escAttr(m.name)}">
                 <button class="btn-save-edit px-2.5 py-1 bg-emerald-500 text-white rounded-lg font-bold text-xs shrink-0">儲存</button>
                 <button class="btn-cancel-edit px-2 py-1 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs shrink-0">取消</button>
-            </div>
-            <div class="edit-emoji-picks flex flex-wrap gap-1 mt-2"></div>
-            <div class="edit-err hidden text-xs font-bold text-rose-600 mt-1 px-1"></div>`;
-        renderAvatarChips(item.querySelector('.edit-emoji-picks'), item.querySelector('.edit-emoji'));
+            </div><div class="edit-err hidden text-xs font-bold text-rose-600 mt-1 px-1"></div>`;
             item.querySelector('.btn-cancel-edit').addEventListener('click', () => { editingMemberId = null; renderMemberManageList(); });
             item.querySelector('.btn-save-edit').addEventListener('click', () => {
                 const newEmoji = item.querySelector('.edit-emoji').value.trim() || '👤';
@@ -516,7 +513,6 @@ function deleteMember(m) {
     });
 }
 
-renderAvatarChips(document.getElementById('new-member-emoji-picks'), document.getElementById('new-member-emoji'));
 document.getElementById('btn-add-member').addEventListener('click', async () => {
     const nameInput = document.getElementById('new-member-name');
     const emojiInput = document.getElementById('new-member-emoji');
@@ -530,7 +526,6 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
         await addDoc(membersRef, { name: nameStr, emoji: emojiStr });
         nameInput.value = '';
         emojiInput.value = '👤';
-        renderAvatarChips(document.getElementById('new-member-emoji-picks'), emojiInput);
     });
 });
 document.getElementById('btn-close-member-modal').addEventListener('click', () => document.getElementById('member-modal').classList.add('hidden'));
@@ -868,26 +863,6 @@ function renderGalleryGrid() {
         });
         
         container.appendChild(item);
-    });
-}
-
-// 頭像 Emoji 預設選項（點一下就選用）
-const AVATAR_EMOJIS = ['👤','👨','👩','👦','👧','👴','👵','🧑','🐻','🐶','🐱','🐰','🦊','🐼','🐨','🦁','🐷','🐸','🐵','🦄','🌸','🌞','⭐','🔥','⚽','🎸','🍕','⛺'];
-// 把頭像 chips 畫進 container，點一下就填進 inputEl（並更新選取 highlight）
-function renderAvatarChips(container, inputEl) {
-    if (!container || !inputEl) return;
-    container.innerHTML = '';
-    AVATAR_EMOJIS.forEach(e => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.textContent = e;
-        const selected = inputEl.value === e;
-        chip.className = 'w-9 h-9 text-xl rounded-lg flex items-center justify-center transition-all active:scale-90 ' + (selected ? 'bg-warm-200 ring-2 ring-warm-400' : 'bg-white hover:bg-warm-100');
-        chip.addEventListener('click', () => {
-            inputEl.value = e;
-            renderAvatarChips(container, inputEl);
-        });
-        container.appendChild(chip);
     });
 }
 
