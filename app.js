@@ -1801,7 +1801,7 @@ function initRadioPlayer() {
         { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=BkSSOGNeWTM", type: "live" },
         { name: "🏠 露營家族背景音樂 (Suno)", url: "https://github.com/magician780-collab/family-calendar/raw/refs/heads/main/%E9%9C%B2%E7%87%9F%E5%AE%B6%E6%97%8F%E8%83%8C%E6%99%AF%E9%9F%B3%E6%A8%82.mp3", type: "bgm" },
         { name: "📻 A-Line 青春電台 (FM 98.7)", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", type: "live" },
-        { name: "📻 城市廣播網 (FM 97.1)", url: "https://onair.family977.com.tw:8977/live.mp3", type: "live" }
+        { name: "📻 城市廣播網 (FM 97.1)", url: "https://stream.ginnet.cloud/live0130lo-yfyo/_definst_/fm/playlist.m3u8", type: "live" }
     ];
 
     try {
@@ -1811,8 +1811,34 @@ function initRadioPlayer() {
 
     let currentStationIdx = 0;
     let hlsInstance = null; 
+    let ytPlayer = null;
     let isPlaying = false;
     let isExpanded = true;
+
+    // 等 YouTube IFrame API 載入完成（最多等 5 秒），再建立播放器
+    function whenYTReady(cb) {
+        if (typeof YT !== 'undefined' && YT.Player) { cb(); return; }
+        let waited = 0;
+        const timer = setInterval(() => {
+            waited += 200;
+            if (typeof YT !== 'undefined' && YT.Player) {
+                clearInterval(timer);
+                cb();
+            } else if (waited >= 5000) {
+                clearInterval(timer);
+                cb(); // 超時也試著建立，若 YT 仍未定義會由呼叫端處理
+            }
+        }, 200);
+    }
+
+    function stopYTPlayer() {
+        if (ytPlayer) {
+            try { ytPlayer.stopVideo(); } catch (e) {}
+            try { ytPlayer.destroy(); } catch (e) {}
+            ytPlayer = null;
+        }
+        ytContainer.innerHTML = '';
+    }
 
     const radioContainer = document.createElement('div');
     radioContainer.id = 'radio-widget';
@@ -1910,7 +1936,7 @@ function initRadioPlayer() {
                         
                         if (currentStationIdx === idx) {
                             audio.pause();
-                            ytContainer.innerHTML = '';
+                            stopYTPlayer();
                             if(hlsInstance) hlsInstance.destroy();
                             isPlaying = false;
                             currentStationIdx = 0;
@@ -1981,7 +2007,7 @@ function initRadioPlayer() {
 
         audio.pause();
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-        ytContainer.innerHTML = '';
+        stopYTPlayer();
 
         const onPlaySuccess = () => {
             icon.className = 'fas fa-music text-warm-600 text-xs md:text-sm animate-bounce';
@@ -2008,8 +2034,34 @@ function initRadioPlayer() {
         }
 
         if (isYouTube && ytId) {
-            ytContainer.innerHTML = `<iframe width="100" height="100" src="https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1" allow="autoplay"></iframe>`;
-            setTimeout(onPlaySuccess, 1500); 
+            // 用 YouTube IFrame API 建立播放器，點按後以 playVideo() 播放（iOS 需由使用者手勢觸發）
+            const holderId = 'yt-radio-player';
+            ytContainer.innerHTML = `<div id="${holderId}"></div>`;
+            whenYTReady(() => {
+                if (typeof YT === 'undefined' || !YT.Player) {
+                    onPlayError('YT API 未載入');
+                    return;
+                }
+                try {
+                    ytPlayer = new YT.Player(holderId, {
+                        videoId: ytId,
+                        playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
+                        events: {
+                            onReady: (ev) => { ev.target.playVideo(); },
+                            onStateChange: (ev) => {
+                                if (ev.data === YT.PlayerState.PLAYING) onPlaySuccess();
+                            },
+                            onError: (ev) => { onPlayError(ev.data); }
+                        }
+                    });
+                    // 若 3 秒後仍未回報播放中，視為已播放（避免狀態卡住）
+                    setTimeout(() => {
+                        if (isPlaying && statusText.innerText === '連線中...') onPlaySuccess();
+                    }, 3000);
+                } catch (e) {
+                    onPlayError(e);
+                }
+            });
         } else if (station.url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
             hlsInstance = new Hls();
             hlsInstance.loadSource(station.url);
@@ -2033,7 +2085,7 @@ function initRadioPlayer() {
         
         if (isPlaying) {
             audio.pause();
-            ytContainer.innerHTML = ''; 
+            if (ytPlayer) { try { ytPlayer.pauseVideo(); } catch (e) {} }
             icon.className = 'fas fa-play text-warm-600 text-xs md:text-sm pl-0.5';
             statusText.innerText = '已暫停';
             radioContainer.classList.remove('ring-2', 'ring-warm-400');
