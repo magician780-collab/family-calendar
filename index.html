@@ -204,6 +204,7 @@
                     <div class="space-y-2">
                         <input type="text" id="event-location" placeholder="例如：台南市美術館二館" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
                         <input type="url" id="event-map-url" placeholder="貼上 Google Maps 導航網址..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
+                        <input type="text" id="event-weather-loc" placeholder="氣象地點（縣市區），如：南投、嘉義縣大埔鄉，留空則用上方地點" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
                     </div>
                 </div>
 
@@ -490,6 +491,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.2"></script>
+    <script type="module" src="./app.js?v=7.3"></script>
 </body>
 </html>

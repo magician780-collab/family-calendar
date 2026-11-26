@@ -1157,6 +1157,7 @@ function openModal(id = null) {
     document.getElementById('event-file-url').value = '';
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
+    document.getElementById('event-weather-loc').value = '';
     
     document.getElementById('event-is-wide').checked = false;
 
@@ -1191,6 +1192,7 @@ function openModal(id = null) {
             if (evt.fileUrl) document.getElementById('event-file-url').value = evt.fileUrl;
             if (evt.location) document.getElementById('event-location').value = evt.location;
             if (evt.mapUrl) document.getElementById('event-map-url').value = evt.mapUrl;
+            if (evt.weatherLoc) document.getElementById('event-weather-loc').value = evt.weatherLoc;
             
             if (evt.isChecklist && evt.checklist) {
                 checklistCheckbox.checked = true; checklistFields.classList.remove('hidden');
@@ -1311,17 +1313,24 @@ function openViewModal(id) {
             weatherBox.classList.remove('hidden');
             weatherBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在為您查詢當地氣象...';
             
-            fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+            // 氣象查詢優先順序：氣象地點欄位 → 內建台灣地名字典比對 → Open-Meteo geocoding API
+            const weatherQuery = (evt.weatherLoc && evt.weatherLoc.trim()) || evt.location;
+            const dictKey = Object.keys(twLocations).find(k => weatherQuery.includes(k));
+            const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
                 .then(r => r.json())
-                .then(geo => {
-                    if(geo.results && geo.results.length > 0) {
-                        const { latitude, longitude, name } = geo.results[0];
-                        return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
-                            .then(r => r.json())
-                            .then(wData => ({ wData, locName: name }));
-                    }
-                    throw new Error('找不到地點');
-                })
+                .then(wData => ({ wData, locName: name }));
+            const geoPromise = dictKey
+                ? fetchForecast(twLocations[dictKey].lat, twLocations[dictKey].lng, dictKey)
+                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(weatherQuery)}&count=1&language=zh`)
+                    .then(r => r.json())
+                    .then(geo => {
+                        if(geo.results && geo.results.length > 0) {
+                            const { latitude, longitude, name } = geo.results[0];
+                            return fetchForecast(latitude, longitude, name);
+                        }
+                        throw new Error('找不到地點');
+                    });
+            geoPromise
                 .then(({ wData, locName }) => {
                     const idx = wData.daily.time.indexOf(evt.startDate);
                     if (idx !== -1 && wData.daily.temperature_2m_max[idx] !== null) {
@@ -1387,7 +1396,7 @@ function openViewModal(id) {
                     }
                 })
                 .catch(() => {
-                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-600"></i> 氣象站查無此私人地點，請改填「縣市區」(如:南投)`;
+                    weatherBox.innerHTML = `<i class="fas fa-search-location text-amber-600"></i> 氣象站查無此地點，請在「氣象地點」欄位填縣市區（如：南投）`;
                     weatherBox.className = 'w-full py-2.5 bg-amber-50 text-amber-800 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 px-2 text-center';
                 });
         }
@@ -1734,6 +1743,7 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
         photoUrl: document.getElementById('event-photo-url').value.trim(),
         videoUrl: document.getElementById('event-video-url').value.trim(), fileUrl: document.getElementById('event-file-url').value.trim(),
         location: document.getElementById('event-location').value.trim(), mapUrl: document.getElementById('event-map-url').value.trim(),
+        weatherLoc: document.getElementById('event-weather-loc').value.trim(),
         isChecklist: checklistCheckbox.checked && checklistArr.length > 0, checklist: checklistArr,
         isPoll: pollCheckbox.checked && pollOpts.length > 0, pollOptions: pollOpts,
         isExpense: expenseCheckbox.checked && payersArr.length > 0, payers: payersArr, sharers: sharersArr,
