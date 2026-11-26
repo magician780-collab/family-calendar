@@ -1218,6 +1218,22 @@ function openModal(id = null) {
 function closeModal() { document.getElementById('event-modal').classList.add('hidden'); }
 
 const twLocations = {
+    // 常去地點（精確座標）
+    "崑山國小":{lat:23.0068035,lng:120.2582346},"圖書館總館":{lat:23.0244,lng:120.238},"總圖":{lat:23.0244,lng:120.238},
+    "鈺鼎":{lat:23.0909537,lng:120.5116946},"天艷宮":{lat:23.0831868,lng:120.5097292},"小歇冰舖":{lat:23.07929,lng:120.48892},
+    "仙祖廟":{lat:23.33405,lng:120.50488},"大凍山登山口":{lat:23.33478,lng:120.50051},"關子嶺大凍山":{lat:23.33478,lng:120.50051},
+    // 台南行政區
+    "永康區":{lat:23.0263249,lng:120.2570297},"永康":{lat:23.0263249,lng:120.2570297},
+    "仁德區":{lat:22.972212,lng:120.25152},"仁德":{lat:22.972212,lng:120.25152},
+    "關廟區":{lat:22.9623531,lng:120.3344937},"關廟":{lat:22.9623531,lng:120.3344937},
+    "歸仁區":{lat:22.9671694,lng:120.293839},"歸仁":{lat:22.9671694,lng:120.293839},
+    "龍崎區":{lat:22.9633399,lng:120.3647293},"龍崎":{lat:22.9633399,lng:120.3647293},
+    // 鄉鎮
+    "大埔鄉":{lat:23.2967692,lng:120.5937306},"大埔":{lat:23.2967692,lng:120.5937306},
+    "南化區":{lat:23.0412513,lng:120.4776808},"南化":{lat:23.0412513,lng:120.4776808},
+    "玉井區":{lat:23.1222269,lng:120.4574347},"玉井":{lat:23.1222269,lng:120.4574347},
+    "白河區":{lat:23.351473,lng:120.4137451},"白河":{lat:23.351473,lng:120.4137451},
+    // 縣市與景點
     "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
     "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
     "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
@@ -1226,6 +1242,11 @@ const twLocations = {
     "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
     "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
 };
+
+// 地名比對：長地名優先（最具體的先配到），避免永遠配到最大範圍的縣市；同長度時字典順序在前者優先
+const twLocationKeys = Object.keys(twLocations).sort((a, b) => b.length - a.length);
+// 台灣範圍（後備 geocoding 只取落在台灣內的結果，避免私人地名被配到台灣以外）
+const isInTaiwan = (lat, lng) => lat >= 22.0 && lat <= 25.3 && lng >= 119.9 && lng <= 122.0;
 
 function openViewModal(id) {
     const evt = events.find(e => e.id === id);
@@ -1315,17 +1336,18 @@ function openViewModal(id) {
             
             // 氣象查詢優先順序：氣象地點欄位 → 內建台灣地名字典比對 → Open-Meteo geocoding API
             const weatherQuery = (evt.weatherLoc && evt.weatherLoc.trim()) || evt.location;
-            const dictKey = Object.keys(twLocations).find(k => weatherQuery.includes(k));
+            const dictKey = twLocationKeys.find(k => weatherQuery.includes(k));
             const fetchForecast = (latitude, longitude, name) => fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7`)
                 .then(r => r.json())
                 .then(wData => ({ wData, locName: name }));
             const geoPromise = dictKey
                 ? fetchForecast(twLocations[dictKey].lat, twLocations[dictKey].lng, dictKey)
-                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(weatherQuery)}&count=1&language=zh`)
+                : fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(weatherQuery)}&count=5&language=zh`)
                     .then(r => r.json())
                     .then(geo => {
-                        if(geo.results && geo.results.length > 0) {
-                            const { latitude, longitude, name } = geo.results[0];
+                        const hit = (geo.results || []).find(r => isInTaiwan(r.latitude, r.longitude));
+                        if(hit) {
+                            const { latitude, longitude, name } = hit;
                             return fetchForecast(latitude, longitude, name);
                         }
                         throw new Error('找不到地點');
@@ -1630,7 +1652,7 @@ function renderFootprintMap() {
 
         let locCoords = null;
         // 1. 先從內建字典尋找
-        const matchKey = Object.keys(twLocations).find(k => evt.location.includes(k));
+        const matchKey = twLocationKeys.find(k => evt.location.includes(k));
         if (matchKey) {
             locCoords = twLocations[matchKey];
         }
@@ -1643,14 +1665,16 @@ function renderFootprintMap() {
                 addMarkerToMap(window.geocache[evt.location], evt);
             } else {
                 // 3. 真的沒有才呼叫 API (背景默默執行)
-                fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=1&language=zh`)
+                fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(evt.location)}&count=5&language=zh`)
                 .then(r => r.json())
                 .then(data => {
-                    if (data.results && data.results.length > 0) {
-                        const l = { lat: data.results[0].latitude, lng: data.results[0].longitude };
+                    const hit = (data.results || []).find(r => isInTaiwan(r.latitude, r.longitude));
+                    if (hit) {
+                        const l = { lat: hit.latitude, lng: hit.longitude };
                         window.geocache[evt.location] = l;
                         addMarkerToMap(l, evt);
                     }
+                    // 台灣範圍內找不到就不放圖釘，避免標到錯誤的地方
                 }).catch(() => {}); // 找不到或斷線就算了
             }
         }
