@@ -460,12 +460,18 @@ function renderMemberManageList() {
                 const errBox = item.querySelector('.edit-err');
                 if (!newName) { errBox.textContent = '名字不能空白'; errBox.classList.remove('hidden'); return; }
                 if (newName !== m.name && familyMembers.some(x => x.name === newName)) { errBox.textContent = '已有同名成員'; errBox.classList.remove('hidden'); return; }
-                requestAdminAccess(async () => {
+                const doSave = async () => {
                     if (newName !== m.name) await syncMemberRename(m.name, newName);
                     await updateDoc(doc(db, 'familyMembers', m.id), { name: newName, emoji: newEmoji });
                     editingMemberId = null;
                     renderMemberManageList();
-                });
+                };
+                // 只改頭像不用密碼；改名字才要密碼（改名字會同步改所有行程）
+                if (newName === m.name) {
+                    doSave();
+                } else {
+                    requestAdminAccess(doSave);
+                }
             });
         } else {
             item.innerHTML = `<div class="flex justify-between items-center"><span><span class="text-lg mr-1">${m.emoji}</span> ${m.name}</span><span class="flex gap-1">
