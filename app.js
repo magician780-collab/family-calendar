@@ -1798,7 +1798,7 @@ function initRadioPlayer() {
     if (document.getElementById('radio-widget')) return;
 
     let stations = [
-        { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=BkSSOGNeWTM", type: "live" },
+        { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=AzlzGLDMhJY", type: "live" },
         { name: "🏠 露營家族背景音樂 (Suno)", url: "https://github.com/magician780-collab/family-calendar/raw/refs/heads/main/%E9%9C%B2%E7%87%9F%E5%AE%B6%E6%97%8F%E8%83%8C%E6%99%AF%E9%9F%B3%E6%A8%82.mp3", type: "bgm" },
         { name: "📻 A-Line 青春電台 (FM 98.7)", url: "https://radoxo.com/stream/tok/52959.m3u8", type: "live" },
         { name: "📻 城市廣播網 (FM 97.1)", url: "https://stream.ginnet.cloud/live0130lo-yfyo/_definst_/fm/playlist.m3u8", type: "live" }
