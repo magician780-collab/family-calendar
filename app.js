@@ -370,6 +370,93 @@ function setTheme(name) {
 initThemeSelectOptions();
 setTheme(localStorage.getItem('family_app_theme') || 'warm');
 
+// 應景節日背景與動畫：依當天日期（農曆節日＋國曆節日）自動換上對應的漂浮裝飾
+const SEASONS = [
+    { key: 'cny', lunar: [1, 1], window: 4, name: '農曆新年', emojis: ['🧧', '🏮', '🧨', '🪙', '🎆'], anim: 'fall', tint: 'rgba(220,38,38,0.05)' },
+    { key: 'lantern', lunar: [1, 15], window: 2, name: '元宵節', emojis: ['🏮', '🍡', '🏮', '🎇'], anim: 'float', tint: 'rgba(245,158,11,0.05)' },
+    { key: 'dragonboat', lunar: [5, 5], window: 3, name: '端午節', emojis: ['🐉', '🍙', '🐉', '🎋'], anim: 'float', tint: 'rgba(16,185,129,0.05)' },
+    { key: 'qixi', lunar: [7, 7], window: 2, name: '七夕', emojis: ['💕', '🌌', '💕', '⭐'], anim: 'float', tint: 'rgba(236,72,153,0.05)' },
+    { key: 'midautumn', lunar: [8, 15], window: 3, name: '中秋節', emojis: ['🌕', '🏮', '🐰', '🥮', '🌕'], anim: 'float', tint: 'rgba(245,158,11,0.06)' },
+    { key: 'double9', lunar: [9, 9], window: 2, name: '重陽節', emojis: ['🌼', '🍁', '🌼', '🍂'], anim: 'fall', tint: 'rgba(217,119,6,0.05)' },
+    { key: 'newyear', range: [[12, 28], [1, 3]], name: '跨年', emojis: ['🎆', '🎉', '🎆', '✨'], anim: 'fall', tint: 'rgba(99,102,241,0.05)' },
+    { key: 'valentine', range: [[2, 10], [2, 14]], name: '情人節', emojis: ['💕', '🌹', '💕', '💘'], anim: 'float', tint: 'rgba(236,72,153,0.05)' },
+    { key: 'halloween', range: [[10, 25], [10, 31]], name: '萬聖節', emojis: ['🎃', '👻', '🦇', '🎃', '🍬'], anim: 'float', tint: 'rgba(249,115,22,0.06)' },
+    { key: 'christmas', range: [[12, 1], [12, 26]], name: '聖誕節', emojis: ['❄️', '🎄', '🎅', '🎁', '❄️', '⛄'], anim: 'fall', tint: 'rgba(59,130,246,0.05)' },
+];
+function isInMDRange(month, day, start, end) {
+    const v = month * 100 + day;
+    const s = start[0] * 100 + start[1];
+    const e = end[0] * 100 + end[1];
+    if (s <= e) return v >= s && v <= e;
+    return v >= s || v <= e;
+}
+function getActiveSeason(date) {
+    const now = date || new Date();
+    const y = now.getFullYear();
+    for (const s of SEASONS) {
+        if (!s.lunar) continue;
+        for (const yy of [y - 1, y, y + 1]) {
+            try {
+                const solar = Lunar.fromYmd(yy, s.lunar[0], s.lunar[1]).getSolar();
+                const fest = new Date(solar.getYear(), solar.getMonth() - 1, solar.getDay());
+                const diff = Math.round((now - fest) / 86400000);
+                if (Math.abs(diff) <= s.window) return s;
+            } catch (e) {}
+        }
+    }
+    const m = now.getMonth() + 1, d = now.getDate();
+    for (const s of SEASONS) {
+        if (s.range && isInMDRange(m, d, s.range[0], s.range[1])) return s;
+    }
+    return null;
+}
+function applySeasonalEffects() {
+    if (!document.getElementById('season-style')) {
+        const st = document.createElement('style');
+        st.id = 'season-style';
+        st.textContent = `
+@keyframes season-fall { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; } 10% { opacity: .9; } 90% { opacity: .9; } 100% { transform: translateY(110vh) rotate(360deg); opacity: 0; } }
+@keyframes season-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-18px) rotate(6deg); } }
+.season-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.season-item { position: absolute; top: -8vh; will-change: transform; }
+.season-item.anim-fall { animation: season-fall linear infinite; }
+.season-item.anim-float { animation: season-float ease-in-out infinite; }
+`;
+        document.head.appendChild(st);
+    }
+    const old = document.getElementById('season-layer');
+    if (old) old.remove();
+    const season = getActiveSeason();
+    if (!season) return;
+    const layer = document.createElement('div');
+    layer.id = 'season-layer';
+    layer.className = 'season-layer';
+    layer.style.background = season.tint;
+    const count = 18;
+    for (let i = 0; i < count; i++) {
+        const el = document.createElement('span');
+        el.className = 'season-item anim-' + season.anim;
+        el.textContent = season.emojis[i % season.emojis.length];
+        const size = 18 + Math.floor(Math.random() * 18);
+        el.style.fontSize = size + 'px';
+        el.style.left = (Math.random() * 96) + 'vw';
+        if (season.anim === 'fall') {
+            const dur = 9 + Math.random() * 9;
+            el.style.animationDuration = dur + 's';
+            el.style.animationDelay = (-Math.random() * dur) + 's';
+        } else {
+            const dur = 3 + Math.random() * 3;
+            el.style.animationDuration = dur + 's';
+            el.style.animationDelay = (-Math.random() * dur) + 's';
+            el.style.top = (Math.random() * 85) + 'vh';
+            el.style.opacity = '0.85';
+        }
+        layer.appendChild(el);
+    }
+    document.body.appendChild(layer);
+}
+applySeasonalEffects();
+
 // 大字體切換：根字級 16px → 18px，整站等比放大，偏好存 localStorage
 function applyFontSize() {
     const large = localStorage.getItem('family_app_font_large') === '1';
