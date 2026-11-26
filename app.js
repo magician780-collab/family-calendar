@@ -343,13 +343,15 @@ if (themeSelectEl) {
 
 async function fetchWeather() {
     try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=22.9908&longitude=120.2133&daily=weathercode,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max&timezone=Asia%2FTaipei&forecast_days=16&past_days=7');
         const data = await res.json();
         if (data && data.daily) {
             data.daily.time.forEach((d, i) => { 
                 const code = data.daily.weathercode[i];
                 const desc = weatherDescMap[code] || '☁️ 陰天';
-                weatherData[d] = `${desc} ${Math.round(data.daily.temperature_2m_max[i])}°`; 
+                const feels = Math.round(data.daily.apparent_temperature_max[i]);
+                const rain = data.daily.precipitation_probability_max[i];
+                weatherData[d] = `${desc} ${Math.round(data.daily.temperature_2m_max[i])}° 體感${feels}° 💧${rain}%`; 
             });
         }
     } catch (e) {}
@@ -1645,7 +1647,7 @@ function renderFootprintMap() {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 18
         }).addTo(footprintMap);
-        mapMarkersLayer = L.layerGroup().addTo(footprintMap);
+        mapMarkersLayer = L.markerClusterGroup().addTo(footprintMap);
     }
     
     // 清除舊標記
@@ -1801,7 +1803,8 @@ function initRadioPlayer() {
         { name: "🎤 A-Lin 抒情金曲串燒 (YouTube)", url: "https://www.youtube.com/watch?v=AzlzGLDMhJY", type: "live" },
         { name: "🏠 露營家族背景音樂 (Suno)", url: "https://github.com/magician780-collab/family-calendar/raw/refs/heads/main/%E9%9C%B2%E7%87%9F%E5%AE%B6%E6%97%8F%E8%83%8C%E6%99%AF%E9%9F%B3%E6%A8%82.mp3", type: "bgm" },
         { name: "📻 A-Line 青春電台 (FM 98.7)", url: "https://radoxo.com/stream/tok/52959.m3u8", type: "live" },
-        { name: "📻 城市廣播網 (FM 97.1)", url: "https://stream.ginnet.cloud/live0130lo-yfyo/_definst_/fm/playlist.m3u8", type: "live" }
+        { name: "📻 城市廣播網 (FM 97.1)", url: "https://stream.ginnet.cloud/live0130lo-yfyo/_definst_/fm/playlist.m3u8", type: "live" },
+        { name: "😊 微微笑廣播網 (台南凱旋 FM 97.9)", url: "https://a.tunzilla.com/http://59.125.209.209:8081/", type: "live" }
     ];
 
     try {
@@ -1814,6 +1817,7 @@ function initRadioPlayer() {
     let ytPlayer = null;
     let isPlaying = false;
     let isExpanded = true;
+    let currentVolume = 0.4;
 
     // 等 YouTube IFrame API 載入完成（最多等 5 秒），再建立播放器
     function whenYTReady(cb) {
@@ -1862,6 +1866,10 @@ function initRadioPlayer() {
             <button id="btn-radio-menu" class="w-8 h-8 rounded-full text-warm-400 hover:text-warm-600 hover:bg-warm-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer" title="開啟電台選單">
                 <i class="fas fa-list-ul text-xs pointer-events-none"></i>
             </button>
+            <div class="flex items-center gap-1 shrink-0" title="音量">
+                <i class="fas fa-volume-up text-warm-400 text-[10px]"></i>
+                <input id="radio-volume" type="range" min="0" max="100" value="40" class="w-14 md:w-16 cursor-pointer accent-amber-600">
+            </div>
         </div>
         <audio id="radio-audio" preload="none"></audio>
         <div id="yt-radio-container" class="absolute w-[1px] h-[1px] opacity-0 pointer-events-none overflow-hidden"></div>
@@ -1884,6 +1892,14 @@ function initRadioPlayer() {
     const icon = document.getElementById('radio-icon');
     const text = document.getElementById('radio-text');
     const statusText = document.getElementById('radio-status');
+    const volumeSlider = document.getElementById('radio-volume');
+
+    // 音量滑桿：同步控制 <audio> 與 YouTube 播放器
+    volumeSlider.addEventListener('input', () => {
+        currentVolume = volumeSlider.value / 100;
+        audio.volume = currentVolume;
+        if (ytPlayer) { try { ytPlayer.setVolume(Number(volumeSlider.value)); } catch (e) {} }
+    });
 
     toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2000,7 +2016,7 @@ function initRadioPlayer() {
     function loadAndPlayStation(index) {
         const station = stations[index];
         text.innerText = station.name;
-        audio.volume = 0.4;
+        audio.volume = currentVolume;
         statusText.innerText = '連線中...';
         icon.className = 'fas fa-spinner fa-spin text-warm-600 text-xs md:text-sm';
         isPlaying = true;
@@ -2047,7 +2063,7 @@ function initRadioPlayer() {
                         videoId: ytId,
                         playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
                         events: {
-                            onReady: (ev) => { ev.target.playVideo(); },
+                            onReady: (ev) => { ev.target.setVolume(currentVolume * 100); ev.target.playVideo(); },
                             onStateChange: (ev) => {
                                 if (ev.data === YT.PlayerState.PLAYING) onPlaySuccess();
                             },
