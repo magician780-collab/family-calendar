@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-calendar-v4.5';
+const CACHE_NAME = 'family-calendar-v7.6';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -37,12 +37,40 @@ self.addEventListener('activate', (event) => {
     self.clientsClaim();
 });
 
-// 攔截網路請求，離線時自動讀取快取
+// 攔截網路請求
 self.addEventListener('fetch', (event) => {
     // 針對 Firestore 資料庫連線維持網路優先，靜態資源採用快取優先
     if (event.request.url.includes('firestore.googleapis.com')) {
-        return; 
+        return;
     }
+    const url = new URL(event.request.url);
+    const isAppFile = url.origin === self.location.origin && (
+        url.pathname === '/' ||
+        url.pathname.endsWith('/index.html') ||
+        url.pathname.endsWith('/app.js') ||
+        url.pathname.endsWith('/style.css') ||
+        url.pathname.endsWith('/manifest.json')
+    );
+    if (isAppFile) {
+        // 自己的檔案用網路優先，確保每次更新都立刻生效；離線才讀快取
+        event.respondWith(
+            fetch(event.request).then((response) => {
+                return caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, response.clone());
+                    return response;
+                });
+            }).catch(() => {
+                return caches.match(event.request).then((cachedResponse) => {
+                    if (cachedResponse) return cachedResponse;
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('./index.html');
+                    }
+                });
+            })
+        );
+        return;
+    }
+    // 第三方 CDN 維持快取優先
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             return cachedResponse || fetch(event.request).then((response) => {
