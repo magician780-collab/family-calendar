@@ -154,6 +154,7 @@ sidebarBackdrop.addEventListener('click', toggleSidebar);
 document.getElementById('btn-open-admin').addEventListener('click', () => {
     triggerHaptic();
     document.getElementById('member-modal').classList.remove('hidden');
+    updateAutoBackupLabel();
 });
 
 document.getElementById('btn-manage-members').addEventListener('click', () => {
@@ -902,6 +903,66 @@ function renderGalleryGrid() {
     });
 }
 
+// 自動備份：每天最多備份一次（開啟 App 時檢查，上次備份超過 24 小時就自動備一份到雲端，最多留 7 份）
+let autoBackupScheduled = false;
+async function updateAutoBackupLabel() {
+    const el = document.getElementById('auto-backup-status');
+    if (!el) return;
+    try {
+        const snap = await getDocs(collection(db, 'familyBackups'));
+        let latest = null;
+        snap.forEach(d => {
+            const t = new Date(d.data().exportDate).getTime();
+            if (!latest || t > latest) latest = t;
+        });
+        if (latest) {
+            const dt = new Date(latest);
+            el.textContent = `✅ 自動備份已開啟（每天一次，最多留 7 份）｜上次備份：${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+        } else {
+            el.textContent = '✅ 自動備份已開啟（每天一次，最多留 7 份）｜尚無備份';
+        }
+    } catch (e) {
+        el.textContent = '✅ 自動備份已開啟（每天一次，最多留 7 份）';
+    }
+}
+async function autoBackupIfNeeded() {
+    try {
+        const snap = await getDocs(collection(db, 'familyBackups'));
+        let latest = null;
+        snap.forEach(d => {
+            const t = new Date(d.data().exportDate).getTime();
+            if (!latest || t > latest) latest = t;
+        });
+        const now = Date.now();
+        if (!latest || (now - latest) > 24 * 60 * 60 * 1000) {
+            const backupData = {
+                exportDate: new Date().toISOString(),
+                events: events,
+                familyMembers: familyMembers,
+                note: document.getElementById('family-sticky-note') ? document.getElementById('family-sticky-note').value : '',
+                auto: true
+            };
+            await setDoc(doc(db, 'familyBackups', now.toString()), backupData);
+            // 只留最近 7 份，刪掉更舊的
+            const all = [];
+            snap.forEach(d => all.push({ id: d.id, t: new Date(d.data().exportDate).getTime() }));
+            all.push({ id: now.toString(), t: now });
+            all.sort((a, b) => b.t - a.t);
+            for (const old of all.slice(7)) {
+                await deleteDoc(doc(db, 'familyBackups', old.id));
+            }
+        }
+        updateAutoBackupLabel();
+    } catch (e) {
+        console.warn('auto backup failed', e);
+    }
+}
+function scheduleAutoBackup() {
+    if (autoBackupScheduled) return;
+    autoBackupScheduled = true;
+    setTimeout(autoBackupIfNeeded, 5000);
+}
+
 // === 新增：取得成員專屬 Emoji ===
 function getMemberEmoji(name) {
     const member = familyMembers.find(m => m.name === name);
@@ -1049,6 +1110,7 @@ onSnapshot(eventsRef, (snapshot) => {
         });
     });
     renderApp();
+    scheduleAutoBackup();
     
     // 更新地圖標記 (如果地圖有被打開過)
     if (document.getElementById('map-modal') && !document.getElementById('map-modal').classList.contains('hidden')) {
