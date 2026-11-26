@@ -811,7 +811,7 @@ if (exportBtn && importInput) {
 }
 
 const galleryModal = document.getElementById('gallery-modal');
-document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); renderGalleryGrid(); galleryModal.classList.remove('hidden'); });
+document.getElementById('btn-open-gallery').addEventListener('click', () => { triggerHaptic(); setGalleryView(galleryView); galleryModal.classList.remove('hidden'); });
 document.getElementById('btn-close-gallery').addEventListener('click', () => { triggerHaptic(); galleryModal.classList.add('hidden'); });
 
 function renderGalleryGrid() {
@@ -902,6 +902,84 @@ function renderGalleryGrid() {
         container.appendChild(item);
     });
 }
+
+// 回憶時間軸：有照片／影片的行程依月份分組，直式排列（新的在上面）
+let galleryView = 'grid';
+function renderTimelineView() {
+    const container = document.getElementById('gallery-grid-container');
+    container.innerHTML = '';
+    container.style.cssText = '';
+    const mediaEvents = events
+        .filter(e => (e.photoUrl && e.photoUrl.trim() !== '') || (e.videoUrl && e.videoUrl.trim() !== ''))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (mediaEvents.length === 0) {
+        container.className = 'flex flex-col items-center justify-center h-full w-full';
+        container.innerHTML = `
+            <div class="text-center animate-fade-in flex flex-col items-center">
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-4 shadow-md border-2 border-dashed border-warm-300">
+                    <i class="fas fa-camera-retro text-4xl text-warm-300"></i>
+                </div>
+                <h4 class="text-xl font-bold text-gray-700 mb-1">還沒有回憶</h4>
+                <p class="text-sm text-gray-400">快去行程裡貼上相片或影片網址吧！</p>
+            </div>`;
+        return;
+    }
+    container.className = 'overflow-y-auto flex-1 relative px-4 md:px-8 py-6';
+    const groups = {};
+    mediaEvents.forEach(evt => {
+        const ym = evt.startDate.slice(0, 7);
+        if (!groups[ym]) groups[ym] = [];
+        groups[ym].push(evt);
+    });
+    const sortedMonths = Object.keys(groups).sort().reverse();
+    let html = '<div class="relative max-w-2xl mx-auto">';
+    html += '<div class="absolute left-[15px] top-0 bottom-0 w-0.5 bg-warm-200"></div>';
+    sortedMonths.forEach(ym => {
+        const parts = ym.split('-');
+        html += `<div class="relative z-10 flex my-6"><span class="bg-warm-500 text-white text-sm font-bold px-4 py-1.5 rounded-full shadow">📅 ${parts[0]}年 ${parseInt(parts[1])}月</span></div>`;
+        groups[ym].forEach(evt => {
+            let imgUrl = getDirectImageUrl(evt.photoUrl);
+            if (!imgUrl && evt.videoUrl) imgUrl = 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop';
+            const dateStr = evt.startDate.replace(/-/g, '/');
+            html += `
+            <div class="relative pl-10 pb-6">
+                <div class="absolute left-[8px] top-2 w-4 h-4 bg-white border-4 border-warm-400 rounded-full z-10"></div>
+                <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow timeline-item" data-evt-id="${evt.id}">
+                    ${imgUrl ? `<img src="${imgUrl}" class="w-full h-44 object-cover" loading="lazy">` : ''}
+                    <div class="p-3">
+                        <div class="text-xs text-warm-600 font-bold">${dateStr}</div>
+                        <div class="font-bold text-gray-800 text-sm mt-0.5">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</div>
+                        ${evt.location ? `<div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt"></i> ${evt.location}</div>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        });
+    });
+    html += '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('.timeline-item').forEach(el => {
+        el.addEventListener('click', () => {
+            if (typeof triggerHaptic === 'function') triggerHaptic();
+            document.getElementById('gallery-modal').classList.add('hidden');
+            openViewModal(el.dataset.evtId);
+        });
+    });
+}
+function setGalleryView(view) {
+    galleryView = view;
+    const gridBtn = document.getElementById('btn-gallery-grid');
+    const tlBtn = document.getElementById('btn-gallery-timeline');
+    if (gridBtn && tlBtn) {
+        const active = 'flex-1 py-2 rounded-xl font-bold text-sm bg-warm-500 text-white transition-all active:scale-95';
+        const inactive = 'flex-1 py-2 rounded-xl font-bold text-sm bg-gray-100 text-gray-600 transition-all active:scale-95';
+        gridBtn.className = view === 'grid' ? active : inactive;
+        tlBtn.className = view === 'timeline' ? active : inactive;
+    }
+    if (view === 'timeline') renderTimelineView();
+    else renderGalleryGrid();
+}
+document.getElementById('btn-gallery-grid').addEventListener('click', () => { triggerHaptic(); setGalleryView('grid'); });
+document.getElementById('btn-gallery-timeline').addEventListener('click', () => { triggerHaptic(); setGalleryView('timeline'); });
 
 // 自動備份：每天最多備份一次（開啟 App 時檢查，上次備份超過 24 小時就自動備一份到雲端，最多留 7 份）
 let autoBackupScheduled = false;
