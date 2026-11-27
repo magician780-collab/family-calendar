@@ -23,6 +23,7 @@ if (eventForm) eventForm.classList.add('pb-8');
 
 const eventsRef = collection(db, 'familyEvents');
 const membersRef = collection(db, 'familyMembers');
+const announcementsRef = collection(db, 'familyAnnouncements');
 const noteRef = doc(db, 'familyNotes', 'mainNote');
 
 // 頭像 Emoji 預設選項（點一下就選用）
@@ -51,9 +52,12 @@ const ADMIN_PASSWORD = "8399";
 let currentDate = new Date();
 let events = [];
 let familyMembers = [];
+let announcements = [];
+let editingAnnouncementId = null;
 let weatherData = {}; 
 // 行程詳情天氣快取：同一地點 30 分鐘內重複點開不重查
 const weatherCache = {};
+const weatherAlerts = {};
 const WEATHER_CACHE_TTL = 30 * 60 * 1000;
 let currentEditingId = null;
 let currentViewingId = null;
@@ -195,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.21 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.27 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.21）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.27）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -208,6 +212,13 @@ function openManualModal() {
                     <li><b>📱 手機即將到來：</b>手機版月曆上方有一排「即將到來」橫條，不用開側邊欄就看得到最近的行程。</li>
                     <li><b>🔠 大字體切換：</b>右上角 A+ 按鈕可以把整站字體放大，長輩看更輕鬆。</li>
                     <li><b>📻 廣播五台：</b>右下角播放器有 A-Lin 串燒、露營家族背景音樂、A-Line 青春電台、城市廣播網、微微笑廣播網，還有音量滑桿。</li>
+                    <li><b>💰 行程費用統計：</b>側邊欄一點就看每月、每年家庭活動花了多少，露營、聚餐、出遊分開算，誰代墊最多也一目了然（只統計有勾「費用分攤」的行程）。</li>
+                    <li><b>🔄 自動備份：</b>打開行事曆超過 24 小時沒備份就自動備一份到雲端，最多留最近 7 份。</li>
+                    <li><b>📜 回憶時間軸：</b>相簿牆多了時間軸切換，有照片的行程按月份直式排列，新的在上面。</li>
+                    <li><b>🎄 節日動畫：</b>遇到節日自動換背景和漂浮動畫，聖誕節 12/1 起雪花和聖誕樹會飄下來。</li>
+                    <li><b>⏰ 行程時間衝突提醒：</b>行程填了開始／結束時間後，若和同一天其他行程時間重疊，列表和詳情會顯示紅色提醒，存檔時也會再請你確認；沒寫時間的全天行程不納入判斷。</li>
+                    <li><b>🌧️ 行程天氣異動提醒：</b>未來 7 天內有地點的行程，降雨機率比上次看的時候高出 30% 以上、或突破 50%，行程上會顯示「降雨機率由 X% 升至 Y%」。</li>
+                    <li><b>📢 家族公告欄：</b>側邊欄多了「家族公告」，重要事情置頂公告給全家人看；新增、編輯、刪除公告要輸管理員密碼，最新公告會有紅點提醒。</li>
                 </ul>
             </section>
             
@@ -524,6 +535,18 @@ onSnapshot(membersRef, (snapshot) => {
     });
     familyMembers.sort((a, b) => a.name.localeCompare(b.name));
     renderMemberManageList();
+});
+
+// ===== v7.27：家族公告欄（familyAnnouncements）即時同步 =====
+onSnapshot(announcementsRef, (snapshot) => {
+    announcements = [];
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        announcements.push({ id: docSnap.id, title: data.title || '公告', content: data.content || '', author: data.author || '', createdAt: data.createdAt || '' });
+    });
+    announcements.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    renderAnnouncements();
+    updateAnnouncementBadge();
 });
 
 let editingMemberId = null;
@@ -1068,6 +1091,281 @@ function setGalleryView(view) {
 document.getElementById('btn-gallery-grid').addEventListener('click', () => { triggerHaptic(); setGalleryView('grid'); });
 document.getElementById('btn-gallery-timeline').addEventListener('click', () => { triggerHaptic(); setGalleryView('timeline'); });
 
+// ===== v7.27：行程時間衝突提醒 ＋ 天氣異動提醒 ＋ 家族公告欄 =====
+
+// --- 時間衝突：把 "HH:MM" 轉分鐘；只有雙方都寫開始／結束時間才比對（全天行程不納入） ---
+function timeToMinutes(t) {
+    if (!t || typeof t !== 'string') return null;
+    const parts = t.split(':');
+    if (parts.length < 2) return null;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+}
+function eventsOverlapTime(a, b) {
+    const aS = a.startDate;
+    const aE = a.endDate || aS;
+    const bS = b.startDate;
+    const bE = b.endDate || bS;
+    if (!aS || !bS || aS > bE || bS > aE) return false;
+    const aSt = timeToMinutes(a.startTime);
+    const aEn = timeToMinutes(a.endTime);
+    const bSt = timeToMinutes(b.startTime);
+    const bEn = timeToMinutes(b.endTime);
+    if (aSt === null || aEn === null || bSt === null || bEn === null) return false;
+    return aSt < bEn && bSt < aEn;
+}
+function findTimeConflicts(evt, excludeId) {
+    if (!evt) return [];
+    return events.filter(ev => {
+        if (excludeId && ev.id === excludeId) return false;
+        return eventsOverlapTime(evt, ev);
+    });
+}
+function upcomingConflictHtml(evt) {
+    const conf = findTimeConflicts(evt, evt.id);
+    if (!conf.length) return '';
+    const names = conf.map(c => (c.icon || '') + c.title).join('、');
+    return `<span class="text-[11px] md:text-xs text-rose-600 font-bold mt-0.5 block">⚠️ 與 ${names} 時間重疊</span>`;
+}
+
+// --- 天氣異動：用 localStorage 存上次降雨機率，比對新抓到的預報（沿用 30 分鐘天氣快取） ---
+const WX_PREV_KEY = 'fc_weather_prev';
+function loadWxPrev() {
+    try { return JSON.parse(localStorage.getItem(WX_PREV_KEY) || '{}'); } catch (e) { return {}; }
+}
+function saveWxPrev(map) {
+    try { localStorage.setItem(WX_PREV_KEY, JSON.stringify(map)); } catch (e) {}
+}
+function checkWeatherChange(evt, newProb) {
+    if (newProb === null || newProb === undefined) return;
+    const todayS = getLocalYMD(new Date());
+    const t7 = new Date(); t7.setDate(t7.getDate() + 7);
+    if (!evt.startDate || evt.startDate < todayS || evt.startDate > getLocalYMD(t7)) return;
+    const key = evt.id + '@' + evt.startDate;
+    const prevMap = loadWxPrev();
+    const prevRaw = prevMap[key];
+    prevMap[key] = newProb;
+    saveWxPrev(prevMap);
+    if (prevRaw === undefined || prevRaw === null) return;
+    const prevNum = Number(prevRaw);
+    if (isNaN(prevNum)) return;
+    const up = newProb - prevNum;
+    const brokeFifty = prevNum <= 50 && newProb > 50;
+    if (up >= 30 || brokeFifty) {
+        weatherAlerts[evt.id] = { prev: prevNum, curr: newProb };
+        return;
+    }
+    if (weatherAlerts[evt.id] && newProb <= weatherAlerts[evt.id].prev) delete weatherAlerts[evt.id];
+}
+function upcomingWeatherHtml(evt) {
+    const a = weatherAlerts[evt.id];
+    if (!a) return '';
+    return `<span class="text-[11px] md:text-xs text-sky-600 font-bold mt-0.5 block">🌧️ 降雨機率由 ${a.prev}% 升至 ${a.curr}%</span>`;
+}
+
+// --- 家族公告欄 ---
+function renderAnnouncements() {
+    const list = document.getElementById('announcement-list');
+    if (!list) return;
+    if (!announcements.length) {
+        list.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">目前還沒有公告</p>';
+        return;
+    }
+    list.innerHTML = announcements.map(a => `
+        <div class="p-4 bg-rose-50/60 border border-rose-100 rounded-2xl">
+            <div class="flex justify-between items-start gap-2">
+                <h4 class="font-bold text-gray-800 text-sm">${escAttr(a.title)}</h4>
+                <span class="text-[11px] text-gray-400 shrink-0">${escAttr((a.createdAt || '').slice(0, 10))}</span>
+            </div>
+            <p class="text-sm text-gray-600 mt-1 whitespace-pre-wrap">${escAttr(a.content)}</p>
+            <div class="flex justify-between items-center mt-2">
+                <span class="text-xs text-gray-400">發布人：${escAttr(a.author || '家族成員')}</span>
+                <span class="flex gap-3 shrink-0">
+                    <button type="button" data-ann-edit="${a.id}" class="text-xs font-bold text-rose-500 hover:text-rose-700">編輯</button>
+                    <button type="button" data-ann-del="${a.id}" class="text-xs font-bold text-gray-400 hover:text-gray-600">刪除</button>
+                </span>
+            </div>
+        </div>`).join('');
+}
+function updateAnnouncementBadge() {
+    const dot = document.getElementById('announcement-dot');
+    const latestEl = document.getElementById('announcement-latest');
+    if (!dot || !latestEl) return;
+    if (!announcements.length) { dot.classList.add('hidden'); latestEl.classList.add('hidden'); return; }
+    const latest = announcements[0];
+    latestEl.textContent = '最新：' + latest.title;
+    latestEl.classList.remove('hidden');
+    let seen = '';
+    try { seen = localStorage.getItem('fc_ann_seen') || ''; } catch (e) {}
+    if (!seen || (latest.createdAt || '') > seen) dot.classList.remove('hidden');
+    else dot.classList.add('hidden');
+}
+function markAnnouncementsSeen() {
+    try { localStorage.setItem('fc_ann_seen', new Date().toISOString()); } catch (e) {}
+    const dot = document.getElementById('announcement-dot');
+    if (dot) dot.classList.add('hidden');
+}
+function openAnnouncementModal() {
+    triggerHaptic();
+    renderAnnouncements();
+    markAnnouncementsSeen();
+    document.getElementById('announcement-modal').classList.remove('hidden');
+}
+function openAnnouncementForm(id = null) {
+    editingAnnouncementId = id;
+    const ann = id ? announcements.find(a => a.id === id) : null;
+    document.getElementById('ann-title').value = ann ? ann.title : '';
+    document.getElementById('ann-content').value = ann ? ann.content : '';
+    document.getElementById('ann-author').innerHTML = getMemberOptions(ann ? ann.author : '', '請選擇...');
+    document.getElementById('announcement-form').classList.remove('hidden');
+    document.getElementById('btn-new-announcement').classList.add('hidden');
+}
+function closeAnnouncementForm() {
+    editingAnnouncementId = null;
+    document.getElementById('announcement-form').classList.add('hidden');
+    document.getElementById('btn-new-announcement').classList.remove('hidden');
+}
+function saveAnnouncement() {
+    const title = document.getElementById('ann-title').value.trim();
+    const content = document.getElementById('ann-content').value.trim();
+    const author = document.getElementById('ann-author').value.trim() || '家族成員';
+    if (!title) return alert('請輸入公告標題！');
+    requestAdminAccess(async () => {
+        const data = { title, content, author, createdAt: new Date().toISOString() };
+        if (editingAnnouncementId) await updateDoc(doc(announcementsRef, editingAnnouncementId), data);
+        else await addDoc(announcementsRef, data);
+        closeAnnouncementForm();
+    });
+}
+function deleteAnnouncement(id) {
+    requestAdminAccess(async () => {
+        if (!confirm('確定要刪除這則公告嗎？')) return;
+        await deleteDoc(doc(announcementsRef, id));
+    });
+}
+document.getElementById('btn-open-announcements').addEventListener('click', openAnnouncementModal);
+document.getElementById('btn-close-announcements').addEventListener('click', () => { triggerHaptic(); document.getElementById('announcement-modal').classList.add('hidden'); });
+document.getElementById('btn-new-announcement').addEventListener('click', () => { triggerHaptic(); openAnnouncementForm(); });
+document.getElementById('btn-save-announcement').addEventListener('click', () => { triggerHaptic(); saveAnnouncement(); });
+document.getElementById('btn-cancel-announcement-form').addEventListener('click', () => { triggerHaptic(); closeAnnouncementForm(); });
+document.getElementById('announcement-list').addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-ann-edit]');
+    const delBtn = e.target.closest('[data-ann-del]');
+    if (editBtn) { triggerHaptic(); openAnnouncementForm(editBtn.getAttribute('data-ann-edit')); }
+    if (delBtn) { triggerHaptic(); deleteAnnouncement(delBtn.getAttribute('data-ann-del')); }
+});
+
+// ===== 行程費用統計 v7.26：用行程的代墊分帳資料算每月／每年／分類／代墊人統計 =====
+let expenseStatsYear = new Date().getFullYear();
+function expenseEventTotal(evt) {
+    if (!evt || !evt.isExpense || !Array.isArray(evt.payers)) return 0;
+    return evt.payers.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+}
+function expenseCategoryOf(title) {
+    const t = (title || '');
+    if (/露營|營區|夜衝/.test(t)) return '⛺ 露營';
+    if (/聚餐|餐廳|吃飯|火鍋|燒烤|自助餐/.test(t)) return '🍽️ 聚餐';
+    if (/旅遊|旅行|出遊|爬山|步道|登山|出國/.test(t)) return '🧳 出遊';
+    if (/考試|開學|校慶|畢業|學校|才藝|補習/.test(t)) return '🎒 學校';
+    if (/生日|派對/.test(t)) return '🎂 生日';
+    return '📌 其他';
+}
+function fmtExpenseTWD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function renderExpenseStats() {
+    const yearSel = document.getElementById('expense-year-select');
+    const summaryEl = document.getElementById('expense-summary');
+    const monthlyEl = document.getElementById('expense-monthly');
+    const categoryEl = document.getElementById('expense-category');
+    const payerEl = document.getElementById('expense-payer');
+    const listEl = document.getElementById('expense-list');
+    if (!yearSel || !summaryEl || !monthlyEl || !categoryEl || !payerEl || !listEl) return;
+    const expenseEvents = events.filter(e => expenseEventTotal(e) > 0);
+    const years = [...new Set(expenseEvents.map(e => parseInt((e.startDate || '').slice(0, 4)) || new Date().getFullYear()))].sort((a, b) => b - a);
+    if (!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear());
+    if (!years.includes(expenseStatsYear)) expenseStatsYear = years[0];
+    yearSel.innerHTML = years.map(y => `<option value="${y}" ${y === expenseStatsYear ? 'selected' : ''}>${y} 年</option>`).join('');
+    if (expenseEvents.length === 0) {
+        summaryEl.innerHTML = `
+            <div class="col-span-2 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+                <div class="text-3xl mb-2">💰</div>
+                <div class="font-bold text-amber-900">還沒有記帳的行程</div>
+                <div class="text-xs text-amber-800/70 mt-1 leading-relaxed">新增或編輯行程時，勾選「費用分攤」並填代墊金額，<br>這裡就會自動統計每月、每年花了多少。</div>
+            </div>`;
+        monthlyEl.innerHTML = ''; categoryEl.innerHTML = ''; payerEl.innerHTML = ''; listEl.innerHTML = '';
+        return;
+    }
+    const yearEvents = expenseEvents.filter(e => (e.startDate || '').startsWith(String(expenseStatsYear))).sort((a, b) => b.startDate.localeCompare(a.startDate));
+    const yearTotal = yearEvents.reduce((s, e) => s + expenseEventTotal(e), 0);
+    const now = new Date();
+    const thisMonthTotal = (expenseStatsYear === now.getFullYear())
+        ? yearEvents.filter(e => (e.startDate || '').slice(5, 7) === String(now.getMonth() + 1).padStart(2, '0')).reduce((s, e) => s + expenseEventTotal(e), 0) : 0;
+    const avg = yearEvents.length ? Math.round(yearTotal / yearEvents.length) : 0;
+    const card = (label, value, sub) => `
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <div class="text-[11px] font-bold text-amber-700">${label}</div>
+            <div class="text-xl font-extrabold text-amber-900 mt-0.5">${value}</div>
+            <div class="text-[11px] text-amber-700/70">${sub}</div>
+        </div>`;
+    summaryEl.innerHTML =
+        card(`${expenseStatsYear} 年總花費`, fmtExpenseTWD(yearTotal), `${yearEvents.length} 場有記帳的行程`) +
+        card('本月花費', fmtExpenseTWD(thisMonthTotal), expenseStatsYear === now.getFullYear() ? `${now.getMonth() + 1} 月` : '非今年') +
+        card('平均每場', fmtExpenseTWD(avg), '有記帳的行程平均') +
+        card('歷年總花費', fmtExpenseTWD(expenseEvents.reduce((s, e) => s + expenseEventTotal(e), 0)), `共 ${expenseEvents.length} 場`);
+    const months = Array.from({ length: 12 }, (_, i) => {
+        const mm = String(i + 1).padStart(2, '0');
+        const total = yearEvents.filter(e => (e.startDate || '').slice(5, 7) === mm).reduce((s, e) => s + expenseEventTotal(e), 0);
+        return { m: i + 1, total };
+    });
+    const maxM = Math.max(...months.map(x => x.total), 1);
+    monthlyEl.innerHTML = months.map(x => `
+        <div class="flex items-center gap-2 text-xs">
+            <span class="w-8 font-bold text-gray-600 text-right">${x.m} 月</span>
+            <div class="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden"><div class="bg-amber-400 h-4 rounded-full" style="width:${Math.round(x.total / maxM * 100)}%"></div></div>
+            <span class="w-20 text-right font-bold text-gray-800">${x.total ? fmtExpenseTWD(x.total) : '—'}</span>
+        </div>`).join('');
+    const catMap = {};
+    yearEvents.forEach(e => { const c = expenseCategoryOf(e.title); catMap[c] = (catMap[c] || 0) + expenseEventTotal(e); });
+    const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+    categoryEl.innerHTML = catRows.length ? catRows.map(([c, total]) => `
+        <div class="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-3 py-2 text-sm shadow-sm">
+            <span class="font-bold text-gray-700">${c}</span>
+            <span class="font-extrabold text-amber-800">${fmtExpenseTWD(total)}</span>
+        </div>`).join('') : '<div class="text-xs text-gray-400">這一年還沒有記帳行程</div>';
+    const payerMap = {};
+    yearEvents.forEach(e => (e.payers || []).forEach(p => { payerMap[p.name] = (payerMap[p.name] || 0) + (parseFloat(p.amount) || 0); }));
+    const payerRows = Object.entries(payerMap).sort((a, b) => b[1] - a[1]);
+    payerEl.innerHTML = payerRows.length ? payerRows.map(([name, total]) => `
+        <div class="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-3 py-2 text-sm shadow-sm">
+            <span class="font-bold text-gray-700">${getMemberEmoji ? getMemberEmoji(name) : ''} ${name}</span>
+            <span class="font-extrabold text-amber-800">${fmtExpenseTWD(total)}</span>
+        </div>`).join('') : '<div class="text-xs text-gray-400">這一年還沒有代墊紀錄</div>';
+    listEl.innerHTML = yearEvents.length ? yearEvents.map(e => {
+        const total = expenseEventTotal(e);
+        const payerText = (e.payers || []).map(p => `${p.name} ${fmtExpenseTWD(p.amount)}`).join('、');
+        return `
+        <div class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 shadow-sm cursor-pointer hover:shadow-md transition-shadow expense-item" data-evt-id="${e.id}">
+            <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-gray-800 text-sm truncate">${e.icon ? e.icon + ' ' : ''}${e.title}</span>
+                <span class="font-extrabold text-amber-800 text-sm shrink-0">${fmtExpenseTWD(total)}</span>
+            </div>
+            <div class="text-[11px] text-gray-400 mt-0.5">${(e.startDate || '').replace(/-/g, '/')}${e.location ? ' · ' + e.location : ''}</div>
+            ${payerText ? `<div class="text-[11px] text-amber-700 mt-0.5">代墊：${payerText}</div>` : ''}
+        </div>`;
+    }).join('') : '<div class="text-xs text-gray-400">這一年還沒有記帳行程</div>';
+    listEl.querySelectorAll('.expense-item').forEach(el => {
+        el.addEventListener('click', () => {
+            if (typeof triggerHaptic === 'function') triggerHaptic();
+            document.getElementById('expense-modal').classList.add('hidden');
+            openViewModal(el.dataset.evtId);
+        });
+    });
+}
+document.getElementById('btn-open-expense-stats').addEventListener('click', () => { triggerHaptic(); renderExpenseStats(); document.getElementById('expense-modal').classList.remove('hidden'); });
+document.getElementById('btn-close-expense').addEventListener('click', () => { triggerHaptic(); document.getElementById('expense-modal').classList.add('hidden'); });
+document.getElementById('expense-year-select').addEventListener('change', (e) => { expenseStatsYear = parseInt(e.target.value); renderExpenseStats(); });
+
 // 自動備份：每天最多備份一次（開啟 App 時檢查，上次備份超過 24 小時就自動備一份到雲端，最多留 7 份）
 let autoBackupScheduled = false;
 async function updateAutoBackupLabel() {
@@ -1268,6 +1566,7 @@ onSnapshot(eventsRef, (snapshot) => {
             author: data.author || '家族成員', color: data.color || 'bg-rose-400',
             photoUrl: data.photoUrl || null, videoUrl: data.videoUrl || null, fileUrl: data.fileUrl || null,
             location: data.location || '', mapUrl: data.mapUrl || '',
+            startTime: data.startTime || '', endTime: data.endTime || '',
             isChecklist: data.isChecklist || false, checklist: data.checklist || [],
             isPoll: data.isPoll || false, pollOptions: (data.pollOptions || []).map(o => ({ title: o.title, voters: o.voters || [] })),
             isExpense: data.isExpense || false, payers: data.payers || [], sharers: data.sharers || [],
@@ -1430,7 +1729,10 @@ function openDayModal(dateStr, setGlobal = true) {
             const item = document.createElement('div');
             item.className = 'p-3 rounded-xl border bg-warm-50/50 cursor-pointer flex justify-between items-center';
             const pollIcon = evt.isPoll ? ` <i class="fas fa-poll text-indigo-500"></i>` : '';
-            item.innerHTML = `<div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full ${evt.color}"></div><span class="font-bold text-sm">${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollIcon}</span></div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
+            const dayConf = findTimeConflicts(evt, evt.id);
+            const dayWx = weatherAlerts[evt.id];
+            const dayBadges = (dayConf.length ? `<span class="text-rose-500 text-xs font-bold shrink-0">⚠️時間重疊</span>` : '') + (dayWx ? `<span class="text-sky-600 text-xs font-bold shrink-0">🌧️降雨↑</span>` : '');
+            item.innerHTML = `<div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full ${evt.color}"></div><span class="font-bold text-sm">${evt.icon ? evt.icon + ' ' : ''}${evt.title}${pollIcon}</span>${dayBadges}</div><i class="fas fa-chevron-right text-xs text-gray-300"></i>`;
             item.addEventListener('click', () => { closeDayModal(); openViewModal(evt.id); });
             list.appendChild(item);
         });
@@ -1480,7 +1782,9 @@ function renderUpcoming() {
                     <h4 class="font-bold text-gray-800 text-sm md:text-base truncate">${evt.icon ? evt.icon + ' ' : ''}${evt.title}</h4>
                     ${countdownHtml}
                 </div>
-                <span class="text-xs md:text-sm text-gray-500 mt-1 block">${evt.startDate}</span>
+                <span class="text-xs md:text-sm text-gray-500 mt-1 block">${evt.startDate}${evt.startTime ? ' ' + evt.startTime + (evt.endTime ? '～' + evt.endTime : '') : ''}</span>
+                ${upcomingConflictHtml(evt)}
+                ${upcomingWeatherHtml(evt)}
             </div>`;
         container.appendChild(el);
     });
@@ -1527,6 +1831,8 @@ document.getElementById('btn-open-add').addEventListener('click', () => openModa
 document.getElementById('btn-mobile-add').addEventListener('click', () => openModal());
 document.getElementById('event-start-date').addEventListener('change', checkDateConflict);
 document.getElementById('event-end-date').addEventListener('change', checkDateConflict);
+document.getElementById('event-start-time').addEventListener('change', checkDateConflict);
+document.getElementById('event-end-time').addEventListener('change', checkDateConflict);
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
 document.getElementById('btn-close-day-modal').addEventListener('click', closeDayModal);
@@ -1573,8 +1879,18 @@ function checkDateConflict() {
         return es <= e && ee >= s;
     });
     if (!clash.length) { box.classList.add('hidden'); return; }
+    // v7.27：時間衝突——兩個行程都有寫開始／結束時間、且時段重疊才算衝突
+    const stVal = document.getElementById('event-start-time').value;
+    const enVal = document.getElementById('event-end-time').value;
+    let timeWarn = '';
+    if (stVal && enVal) {
+        const tClash = clash.filter(ev => eventsOverlapTime({ startDate: s, endDate: e, startTime: stVal, endTime: enVal }, ev));
+        if (tClash.length) {
+            timeWarn = '<div class="font-bold mb-1 text-rose-700">⏰ 時間衝突：與 ' + tClash.map(ev => '「' + (ev.icon || '') + ev.title + '」').join('、') + ' 時間重疊，存檔時會再請你確認。</div>';
+        }
+    }
     box.classList.remove('hidden');
-    box.innerHTML = '<div class="font-bold mb-1">⚠️ 這段時間已有 ' + clash.length + ' 個行程：</div>' + clash.map(ev => '<div class="truncate">• ' + ev.startDate + ((ev.endDate && ev.endDate !== ev.startDate) ? '～' + ev.endDate : '') + ' ' + (ev.icon || '') + ev.title + '</div>').join('');
+    box.innerHTML = timeWarn + '<div class="font-bold mb-1">⚠️ 這段時間已有 ' + clash.length + ' 個行程：</div>' + clash.map(ev => '<div class="truncate">• ' + ev.startDate + ((ev.endDate && ev.endDate !== ev.startDate) ? '～' + ev.endDate : '') + ' ' + (ev.icon || '') + ev.title + '</div>').join('');
 }
 function openModal(id = null) {
     document.getElementById('event-form').reset();
@@ -1585,6 +1901,8 @@ function openModal(id = null) {
     document.getElementById('event-location').value = '';
     document.getElementById('event-map-url').value = '';
     document.getElementById('event-weather-loc').value = '';
+    document.getElementById('event-start-time').value = '';
+    document.getElementById('event-end-time').value = '';
     
     document.getElementById('event-is-wide').checked = false;
 
@@ -1605,6 +1923,8 @@ function openModal(id = null) {
             document.getElementById('event-icon').value = evt.icon || '';
             document.getElementById('event-start-date').value = evt.originalStart || evt.startDate;
             document.getElementById('event-end-date').value = evt.endDate || evt.startDate;
+            if (evt.startTime) document.getElementById('event-start-time').value = evt.startTime;
+            if (evt.endTime) document.getElementById('event-end-time').value = evt.endTime;
             document.getElementById('event-is-lunar-recurring').checked = evt.isLunarRecurring || false;
             document.querySelector(`input[name="event-color"][value="${evt.color}"]`).checked = true;
             
@@ -1710,7 +2030,22 @@ function openViewModal(id) {
     currentViewingId = id;
     document.getElementById('view-modal-header').className = `h-20 w-full ${evt.color}`;
     document.getElementById('view-title').innerText = (evt.icon ? evt.icon + ' ' : '') + evt.title;
-    document.getElementById('view-date').innerText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
+    let viewDateText = evt.startDate === evt.endDate ? evt.startDate : `${evt.startDate} ~ ${evt.endDate}`;
+    if (evt.startTime) viewDateText += ' ' + evt.startTime + (evt.endTime ? '～' + evt.endTime : '');
+    document.getElementById('view-date').innerText = viewDateText;
+
+    // v7.27：時間衝突提醒
+    const viewConfBox = document.getElementById('view-conflict-box');
+    const viewConflicts = findTimeConflicts(evt, evt.id);
+    if (viewConfBox) {
+        if (viewConflicts.length) {
+            viewConfBox.classList.remove('hidden');
+            viewConfBox.innerHTML = `<div class="p-3 bg-rose-50 border border-rose-300 rounded-xl text-sm text-rose-800"><div class="font-bold">⚠️ 時間衝突：與以下行程重疊</div>` + viewConflicts.map(c => `<div class="truncate">• ${c.startDate}${c.startTime ? ' ' + c.startTime + (c.endTime ? '～' + c.endTime : '') : ''} ${(c.icon || '')}${c.title}</div>`).join('') + `</div>`;
+        } else {
+            viewConfBox.classList.add('hidden');
+            viewConfBox.innerHTML = '';
+        }
+    }
     
     // === 加入發起人的 Emoji ===
     document.getElementById('view-author').innerHTML = `建立者：${getMemberEmoji(evt.author)} ${evt.author}`;
@@ -1788,6 +2123,16 @@ function openViewModal(id) {
     }
     hourlyBox.classList.add('hidden');
     hourlyBox.innerHTML = '';
+
+    // v7.27：天氣異動提醒標示區
+    let wxAlertBox = document.getElementById('view-weather-alert-box');
+    if (!wxAlertBox) {
+        wxAlertBox = document.createElement('div');
+        wxAlertBox.id = 'view-weather-alert-box';
+        mMapBox.appendChild(wxAlertBox);
+    }
+    wxAlertBox.classList.add('hidden');
+    wxAlertBox.innerHTML = '';
 
     if (evt.mapUrl || evt.location) {
         mLocText.innerText = evt.location || '點擊開啟地圖導航';
@@ -1876,6 +2221,17 @@ function openViewModal(id) {
                                 </div>
                             `;
                         }
+                        // v7.27：天氣異動提醒——降雨機率比上次高出 30 個百分點以上、或突破 50% 就標示
+                        if (rain !== null) {
+                            checkWeatherChange(evt, rain);
+                            const wxA = weatherAlerts[evt.id];
+                            if (wxA) {
+                                wxAlertBox.className = 'w-full py-2 bg-rose-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 mt-2 shadow-sm px-2 text-center';
+                                wxAlertBox.innerHTML = `⚠️ 天氣異動：降雨機率由 ${wxA.prev}% 升至 ${wxA.curr}%`;
+                                wxAlertBox.classList.remove('hidden');
+                            }
+                        }
+
                         // 逐小時預報：行程當天 06:00–23:00
                         const hourlyHtml = buildHourlyStrip(wData, evt.startDate);
                         if (hourlyHtml) {
@@ -2236,9 +2592,19 @@ document.getElementById('event-form').addEventListener('submit', async (e) => {
 
     const isWideChecked = document.getElementById('event-is-wide').checked;
 
+    // v7.27：時間衝突提醒——存檔前再確認一次
+    const startTimeVal = document.getElementById('event-start-time').value;
+    const endTimeVal = document.getElementById('event-end-time').value;
+    const timeConflicts = findTimeConflicts({ startDate: startVal, endDate: document.getElementById('event-end-date').value || startVal, startTime: startTimeVal, endTime: endTimeVal }, currentEditingId);
+    if (timeConflicts.length) {
+        const names = timeConflicts.map(ev => '「' + (ev.icon || '') + ev.title + '」' + (ev.startTime ? ' ' + ev.startTime + (ev.endTime ? '～' + ev.endTime : '') : '')).join('、');
+        if (!confirm('⏰ 時間衝突提醒：\n這個行程與 ' + names + ' 時間重疊。\n\n確定仍要儲存嗎？')) return;
+    }
+
     const eventData = {
         title: titleVal, icon: document.getElementById('event-icon').value,
         startDate: startVal, endDate: document.getElementById('event-end-date').value || startVal,
+        startTime: startTimeVal, endTime: endTimeVal,
         isLunarRecurring: isRecurring, lunarMonth: lMonth, lunarDay: lDay,
         author: document.getElementById('event-author').value.trim() || '家族成員',
         color: document.querySelector('input[name="event-color"]:checked').value,

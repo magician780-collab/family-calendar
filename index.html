@@ -90,6 +90,14 @@
             <button id="btn-open-members" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
                 <i class="fas fa-users text-warm-600"></i> 👥 家族成員
             </button>
+            <button id="btn-open-expense-stats" class="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-coins text-amber-600"></i> 💰 行程費用統計
+            </button>
+            <button id="btn-open-announcements" class="w-full py-3 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm relative">
+                <i class="fas fa-bullhorn text-rose-600"></i> 📢 家族公告
+                <span id="announcement-dot" class="hidden absolute top-2 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+            </button>
+            <p id="announcement-latest" class="hidden text-xs text-gray-500 truncate px-1"></p>
         </div>
 
         <div class="p-5 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
@@ -106,7 +114,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.25</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.27</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -243,18 +251,22 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">時間</label>
-                        <input type="time" id="event-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">開始時間</label>
+                        <input type="time" id="event-start-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
                     </div>
                     <div>
-                        <div class="flex justify-between items-end mb-1">
-                            <label class="block text-sm font-bold text-gray-700">建立者 <span class="text-rose-500">*</span></label>
-                            <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold"><i class="fas fa-users-cog"></i> 管理成員</button>
-                        </div>
-                        <select id="event-author" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
-                            <option value="">請選擇建立者...</option>
-                        </select>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">結束時間</label>
+                        <input type="time" id="event-end-time" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm">
                     </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="block text-sm font-bold text-gray-700">建立者 <span class="text-rose-500">*</span></label>
+                        <button type="button" id="btn-manage-members" class="text-xs text-warm-500 hover:text-warm-700 font-bold"><i class="fas fa-users-cog"></i> 管理成員</button>
+                    </div>
+                    <select id="event-author" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none">
+                        <option value="">請選擇建立者...</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">詳細備註</label>
@@ -387,6 +399,98 @@
         </div>
     </div>
 
+    <!-- Expense Stats Modal (行程費用統計 v7.26) -->
+    <div id="expense-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="expense-modal">
+        <div class="bg-white w-full max-w-2xl h-[85vh] md:h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50" onclick="event.stopPropagation()">
+            <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center z-10 shadow-sm relative">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md">
+                        <i class="fas fa-coins text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-extrabold text-gray-800 tracking-wide">行程費用統計</h3>
+                        <p class="text-xs text-gray-400 font-medium mt-0.5">用行程的代墊分帳資料自動統計</p>
+                    </div>
+                </div>
+                <button id="btn-close-expense" class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-200 text-gray-500 transition-colors flex items-center justify-center active:scale-95">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="px-6 py-3 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2 shrink-0">
+                <label class="text-sm font-bold text-amber-800">年份</label>
+                <select id="expense-year-select" class="bg-white border border-amber-200 text-sm font-bold text-amber-900 rounded-lg px-3 py-1.5 outline-none cursor-pointer"></select>
+                <span class="text-xs text-gray-400 ml-1">只統計有勾「費用分攤」的行程</span>
+            </div>
+            <div class="overflow-y-auto flex-1 p-5 space-y-5">
+                <div id="expense-summary" class="grid grid-cols-2 gap-3"></div>
+                <div>
+                    <h4 class="font-bold text-gray-800 text-sm mb-2"><i class="fas fa-chart-bar text-amber-500"></i> 每月花費</h4>
+                    <div id="expense-monthly" class="space-y-1.5"></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-gray-800 text-sm mb-2"><i class="fas fa-tags text-amber-500"></i> 分類花費 <span class="text-[11px] text-gray-400 font-normal">（依行程名稱自動歸類）</span></h4>
+                    <div id="expense-category" class="space-y-1.5"></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-gray-800 text-sm mb-2"><i class="fas fa-wallet text-amber-500"></i> 誰代墊最多</h4>
+                    <div id="expense-payer" class="space-y-1.5"></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-gray-800 text-sm mb-2"><i class="fas fa-receipt text-amber-500"></i> 明細</h4>
+                    <div id="expense-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcement Modal (家族公告 v7.27) -->
+    <div id="announcement-modal" class="fixed inset-0 bg-warm-900/60 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 md:p-6 modal-backdrop" data-close-target="announcement-modal">
+        <div class="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden flex flex-col modal-content ring-1 ring-white/50 max-h-[85vh]" onclick="event.stopPropagation()">
+            <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-white shadow-md">
+                        <i class="fas fa-bullhorn text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-extrabold text-gray-800 tracking-wide">家族公告</h3>
+                        <p class="text-xs text-gray-400 font-medium mt-0.5">重要事情置頂公告給全家人看</p>
+                    </div>
+                </div>
+                <button id="btn-close-announcements" class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-200 text-gray-500 transition-colors flex items-center justify-center active:scale-95">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-5 space-y-3">
+                <div id="announcement-list" class="space-y-3"></div>
+                <div id="announcement-form" class="hidden p-4 bg-rose-50/60 border border-rose-100 rounded-2xl space-y-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">公告標題 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="ann-title" placeholder="例如：12/4 座談會集合時間改 08:00" class="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">公告內容</label>
+                        <textarea id="ann-content" rows="3" placeholder="寫給全家人的話..." class="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">發布人</label>
+                        <select id="ann-author" class="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none">
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" id="btn-save-announcement" class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-sm active:scale-95 transition-all">儲存公告</button>
+                        <button type="button" id="btn-cancel-announcement-form" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-sm active:scale-95 transition-all">取消</button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-100 shrink-0">
+                <button type="button" id="btn-new-announcement" class="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-extrabold text-base shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <i class="fas fa-plus"></i> 新增公告
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Day Modal -->
     <div id="day-modal" class="fixed inset-0 bg-warm-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 modal-backdrop" data-close-target="day-modal">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] modal-content" onclick="event.stopPropagation()">
@@ -421,6 +525,7 @@
 
                 <p id="view-date" class="text-sm font-bold text-gray-600"></p>
                 <p id="view-author" class="text-xs text-gray-400"></p>
+                <div id="view-conflict-box" class="hidden"></div>
 
                 <div id="view-checklist-container" class="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 space-y-2.5 hidden">
                     <div class="font-bold flex items-center justify-between text-xs text-emerald-800 border-b border-emerald-100 pb-2">
@@ -526,6 +631,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.25"></script>
+    <script type="module" src="./app.js?v=7.27"></script>
 </body>
 </html>
