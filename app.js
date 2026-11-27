@@ -199,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.27 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.28 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.27）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.28）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -212,13 +212,15 @@ function openManualModal() {
                     <li><b>📱 手機即將到來：</b>手機版月曆上方有一排「即將到來」橫條，不用開側邊欄就看得到最近的行程。</li>
                     <li><b>🔠 大字體切換：</b>右上角 A+ 按鈕可以把整站字體放大，長輩看更輕鬆。</li>
                     <li><b>📻 廣播五台：</b>右下角播放器有 A-Lin 串燒、露營家族背景音樂、A-Line 青春電台、城市廣播網、微微笑廣播網，還有音量滑桿。</li>
-                    <li><b>💰 行程費用統計：</b>側邊欄一點就看每月、每年家庭活動花了多少，露營、聚餐、出遊分開算，誰代墊最多也一目了然（只統計有勾「費用分攤」的行程）。</li>
+                    <li><b>💰 行程費用統計：</b>側邊欄一點就看每月、每年家庭活動花了多少，露營、聚餐、出遊分開算，誰代墊最多也一目了然（只統計有勾「費用分攤」的行程；標題以「範例」開頭的範例行程不列入統計）。</li>
                     <li><b>🔄 自動備份：</b>打開行事曆超過 24 小時沒備份就自動備一份到雲端，最多留最近 7 份。</li>
                     <li><b>📜 回憶時間軸：</b>相簿牆多了時間軸切換，有照片的行程按月份直式排列，新的在上面。</li>
                     <li><b>🎄 節日動畫：</b>遇到節日自動換背景和漂浮動畫，聖誕節 12/1 起雪花和聖誕樹會飄下來。</li>
                     <li><b>⏰ 行程時間衝突提醒：</b>行程填了開始／結束時間後，若和同一天其他行程時間重疊，列表和詳情會顯示紅色提醒，存檔時也會再請你確認；沒寫時間的全天行程不納入判斷。</li>
                     <li><b>🌧️ 行程天氣異動提醒：</b>未來 7 天內有地點的行程，降雨機率比上次看的時候高出 30% 以上、或突破 50%，行程上會顯示「降雨機率由 X% 升至 Y%」。</li>
                     <li><b>📢 家族公告欄：</b>側邊欄多了「家族公告」，重要事情置頂公告給全家人看；新增、編輯、刪除公告要輸管理員密碼，最新公告會有紅點提醒。</li>
+                    <li><b>📢 公告跑馬燈：</b>月曆最上方會橫向捲動最新家族公告（標題＋內容開頭），多則公告用 ✦ 串起來輪流捲動，滑鼠移上去會暫停；點一下就開公告欄看全文，沒有公告時整條自動隱藏。</li>
+                    <li><b>💰 費用統計排除範例：</b>標題以「範例」開頭的範例行程不再算進費用統計，年度、本月、歷年總花費、分類與代墊統計都不含它；範例行程本身還留在行事曆上。</li>
                 </ul>
             </section>
             
@@ -547,6 +549,7 @@ onSnapshot(announcementsRef, (snapshot) => {
     announcements.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     renderAnnouncements();
     updateAnnouncementBadge();
+    renderAnnouncementTicker();
 });
 
 let editingMemberId = null;
@@ -1202,6 +1205,22 @@ function updateAnnouncementBadge() {
     if (!seen || (latest.createdAt || '') > seen) dot.classList.remove('hidden');
     else dot.classList.add('hidden');
 }
+// v7.28：家族公告跑馬燈——月曆上方橫向捲動最新公告，點開公告彈窗；無公告時整條隱藏
+function renderAnnouncementTicker() {
+    const bar = document.getElementById('announcement-ticker');
+    const track = document.getElementById('announcement-ticker-track');
+    if (!bar || !track) return;
+    if (!announcements.length) { bar.classList.add('hidden'); track.innerHTML = ''; return; }
+    const items = announcements.map(a => {
+        const preview = (a.content || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+        return '📢 ' + a.title + (preview ? '：' + preview : '');
+    });
+    const line = items.join('　　✦　　');
+    const sep = '<span class="mx-6 text-rose-300">✦</span>';
+    track.innerHTML = escAttr(line) + sep + escAttr(line) + sep;
+    track.style.animationDuration = Math.max(18, Math.round(line.length * 0.45)) + 's';
+    bar.classList.remove('hidden');
+}
 function markAnnouncementsSeen() {
     try { localStorage.setItem('fc_ann_seen', new Date().toISOString()); } catch (e) {}
     const dot = document.getElementById('announcement-dot');
@@ -1246,6 +1265,7 @@ function deleteAnnouncement(id) {
     });
 }
 document.getElementById('btn-open-announcements').addEventListener('click', openAnnouncementModal);
+document.getElementById('announcement-ticker').addEventListener('click', () => { triggerHaptic(); openAnnouncementModal(); });
 document.getElementById('btn-close-announcements').addEventListener('click', () => { triggerHaptic(); document.getElementById('announcement-modal').classList.add('hidden'); });
 document.getElementById('btn-new-announcement').addEventListener('click', () => { triggerHaptic(); openAnnouncementForm(); });
 document.getElementById('btn-save-announcement').addEventListener('click', () => { triggerHaptic(); saveAnnouncement(); });
@@ -1273,6 +1293,10 @@ function expenseCategoryOf(title) {
     return '📌 其他';
 }
 function fmtExpenseTWD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+// v7.28：標題以「範例」開頭的行程不列入費用統計（範例行程本身保留在行事曆上，不刪除、不改資料）
+function isSampleEvent(evt) {
+    return typeof (evt && evt.title) === 'string' && evt.title.trim().startsWith('範例');
+}
 function renderExpenseStats() {
     const yearSel = document.getElementById('expense-year-select');
     const summaryEl = document.getElementById('expense-summary');
@@ -1281,7 +1305,7 @@ function renderExpenseStats() {
     const payerEl = document.getElementById('expense-payer');
     const listEl = document.getElementById('expense-list');
     if (!yearSel || !summaryEl || !monthlyEl || !categoryEl || !payerEl || !listEl) return;
-    const expenseEvents = events.filter(e => expenseEventTotal(e) > 0);
+    const expenseEvents = events.filter(e => expenseEventTotal(e) > 0 && !isSampleEvent(e));
     const years = [...new Set(expenseEvents.map(e => parseInt((e.startDate || '').slice(0, 4)) || new Date().getFullYear()))].sort((a, b) => b - a);
     if (!years.includes(new Date().getFullYear())) years.unshift(new Date().getFullYear());
     if (!years.includes(expenseStatsYear)) expenseStatsYear = years[0];
