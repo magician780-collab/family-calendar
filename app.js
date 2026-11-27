@@ -199,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.31 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.32 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.31）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.32）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -223,7 +223,7 @@ function openManualModal() {
                     <li><b>💰 費用統計排除範例：</b>標題以「範例」開頭的範例行程不再算進費用統計，年度、本月、歷年總花費、分類與代墊統計都不含它；範例行程本身還留在行事曆上。</li>
                     <li><b>🧭 側邊欄精簡：</b>六個大按鈕改成兩欄小格，手機開側邊欄時「即將到來」第一張卡片看得完整。</li>
                     <li><b>📝 詳細備註修復：</b>編輯活動的「詳細備註」現在會正確存檔、回填與顯示，行程詳情會顯示備註內容；氣象地點編輯時也會正確回填。</li>
-                    <li><b>🏙️ 行程地點街景預覽：</b>行程詳情的地點區多了「街景預覽」按鈕，點了就開 Google 街景先看現場長怎樣；只有地點能對到座標的行程才顯示。</li>
+                    <li><b>🚫 取消街景預覽：</b>v7.31 的街景預覽按鈕已拿掉，行程詳情不再顯示街景；海拔高度顯示保留。</li>
                     <li><b>⛰️ 行程地點海拔高度：</b>行程詳情會顯示「海拔約 XXX 公尺」，登山、露營時很實用；抓不到或逾時就自動不顯示，不會跳錯誤。</li>
                 </ul>
             </section>
@@ -2034,7 +2034,7 @@ const twLocations = {
 // 地名比對：長地名優先（最具體的先配到），避免永遠配到最大範圍的縣市；同長度時字典順序在前者優先
 const twLocationKeys = Object.keys(twLocations).sort((a, b) => b.length - a.length);
 
-// v7.31：行程地點轉座標（街景預覽＋海拔高度共用；只用內建字典，不解析短連結）
+// v7.31：行程地點轉座標（海拔高度用；只用內建字典，不解析短連結）
 function getEventCoords(evt) {
     const query = (evt.location && evt.location.trim()) || (evt.weatherLoc && evt.weatherLoc.trim()) || '';
     if (!query) return null;
@@ -2185,15 +2185,7 @@ function openViewModal(id) {
     wxAlertBox.classList.add('hidden');
     wxAlertBox.innerHTML = '';
 
-    // v7.31：街景預覽按鈕＋海拔高度欄位（共用 getEventCoords；對不到座標就不顯示）
-    let svBox = document.getElementById('view-streetview-box');
-    if (!svBox) {
-        svBox = document.createElement('a');
-        svBox.id = 'view-streetview-box';
-        svBox.target = '_blank';
-        svBox.className = 'w-full py-2.5 bg-teal-50 text-teal-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm mt-2 cursor-pointer';
-        mMapBox.appendChild(svBox);
-    }
+    // v7.31：海拔高度欄位（共用 getEventCoords；對不到座標就不顯示）
     let elevBox = document.getElementById('view-elev-box');
     if (!elevBox) {
         elevBox = document.createElement('div');
@@ -2201,7 +2193,6 @@ function openViewModal(id) {
         elevBox.className = 'w-full py-2 bg-stone-50 text-stone-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mt-2';
         mMapBox.appendChild(elevBox);
     }
-    svBox.classList.add('hidden');
     elevBox.classList.add('hidden');
 
     if (evt.mapUrl || evt.location) {
@@ -2209,12 +2200,9 @@ function openViewModal(id) {
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
 
-        // v7.31：街景＋海拔（只用內建字典座標；mapUrl 短連結不解析）
+        // v7.31：海拔（只用內建字典座標；mapUrl 短連結不解析）
         const evtCoords = getEventCoords(evt);
         if (evtCoords) {
-            svBox.href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${evtCoords.lat},${evtCoords.lng}`;
-            svBox.innerHTML = `<i class="fas fa-street-view"></i> 街景預覽：先看現場長怎樣`;
-            svBox.classList.remove('hidden');
             const elevKey = `${evtCoords.lat.toFixed(4)},${evtCoords.lng.toFixed(4)}`;
             const elevCache = getElevCache();
             if (elevCache[elevKey] != null) {
