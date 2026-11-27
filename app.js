@@ -199,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.33 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.34 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.33）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.34）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -226,6 +226,7 @@ function openManualModal() {
                     <li><b>🚫 取消街景預覽：</b>v7.31 的街景預覽按鈕已拿掉，行程詳情不再顯示街景；海拔高度顯示保留。</li>
                     <li><b>⛰️ 行程地點海拔高度：</b>行程詳情會顯示「海拔約 XXX 公尺」，登山、露營時很實用；抓不到或逾時就自動不顯示，不會跳錯誤。</li>
                     <li><b>⛰️ 海拔標示移到天氣區：</b>行程詳情的海拔高度改顯示在天氣區正下方，緊貼天氣，一眼就看到。</li>
+                    <li><b>⛰️ 海拔改為內建數值：</b>行程地點的海拔直接寫在程式裡（共 85 個地點），開詳情立刻顯示，不用等網路；字典查不到的地點才會再上網查詢。</li>
                 </ul>
             </section>
             
@@ -1998,44 +1999,45 @@ function closeModal() { document.getElementById('event-modal').classList.add('hi
 
 const twLocations = {
     // 常去地點（精確座標）
-    "崑山國小":{lat:23.0068035,lng:120.2582346},"圖書館總館":{lat:23.0244,lng:120.238},"總圖":{lat:23.0244,lng:120.238},
-    "鈺鼎":{lat:23.0909537,lng:120.5116946},"天艷宮":{lat:23.0831868,lng:120.5097292},"小歇冰舖":{lat:23.07929,lng:120.48892},
-    "仙祖廟":{lat:23.33405,lng:120.50488},"大凍山登山口":{lat:23.33478,lng:120.50051},"關子嶺大凍山":{lat:23.33478,lng:120.50051},
-    "雲水山露營區":{lat:23.253989,lng:120.574372},"雲水山社區露營區":{lat:23.253989,lng:120.574372},"雲水山":{lat:23.253989,lng:120.574372},
-    "伊部落落露營區":{lat:22.8142827,lng:120.6358303},"伊部落落":{lat:22.8142827,lng:120.6358303},"伊部落露營區":{lat:22.8142827,lng:120.6358303},"伊部落":{lat:22.8142827,lng:120.6358303},
-    "空島露營區":{lat:23.36925,lng:120.49586},"空島":{lat:23.36925,lng:120.49586},
-    "田園小鎮":{lat:23.03097,lng:120.25134},
-    "現代原廠":{lat:23.03083,lng:120.22581},"現代汽車原廠":{lat:23.03083,lng:120.22581},
+    "崑山國小":{lat:23.0068035,lng:120.2582346,elev:12},"圖書館總館":{lat:23.0244,lng:120.238,elev:23},"總圖":{lat:23.0244,lng:120.238,elev:23},
+    "鈺鼎":{lat:23.0909537,lng:120.5116946,elev:306},"天艷宮":{lat:23.0831868,lng:120.5097292,elev:171},"小歇冰舖":{lat:23.07929,lng:120.48892,elev:81},
+    "仙祖廟":{lat:23.33405,lng:120.50488,elev:357},"大凍山登山口":{lat:23.33478,lng:120.50051,elev:330},"關子嶺大凍山":{lat:23.33478,lng:120.50051,elev:330},
+    "雲水山露營區":{lat:23.253989,lng:120.574372,elev:379},"雲水山社區露營區":{lat:23.253989,lng:120.574372,elev:379},"雲水山":{lat:23.253989,lng:120.574372,elev:379},
+    "伊部落落露營區":{lat:22.8142827,lng:120.6358303,elev:150},"伊部落落":{lat:22.8142827,lng:120.6358303,elev:150},"伊部落露營區":{lat:22.8142827,lng:120.6358303,elev:150},"伊部落":{lat:22.8142827,lng:120.6358303,elev:150},
+    "空島露營區":{lat:23.36925,lng:120.49586,elev:143},"空島":{lat:23.36925,lng:120.49586,elev:143},
+    "田園小鎮":{lat:23.03097,lng:120.25134,elev:22},
+    "現代原廠":{lat:23.03083,lng:120.22581,elev:10},"現代汽車原廠":{lat:23.03083,lng:120.22581,elev:10},
     // 地址寫法（行程地點若填完整地址，用路名／村里名對到精確座標）
-    "西興村草嶺":{lat:23.253989,lng:120.574372},"西興村":{lat:23.253989,lng:120.574372},"草嶺9號":{lat:23.253989,lng:120.574372},
-    "三層村崎頭仔":{lat:23.36925,lng:120.49586},"三層村":{lat:23.36925,lng:120.49586},"崎頭仔":{lat:23.36925,lng:120.49586},"崎頭仔7號":{lat:23.36925,lng:120.49586},
-    "青山村民族巷":{lat:22.8142827,lng:120.6358303},"青山村":{lat:22.8142827,lng:120.6358303},"民族巷":{lat:22.8142827,lng:120.6358303},"民族巷111號":{lat:22.8142827,lng:120.6358303},
-    "中正路232號":{lat:23.03097,lng:120.25134},"中正南路383號":{lat:23.03083,lng:120.22581},
+    "西興村草嶺":{lat:23.253989,lng:120.574372,elev:379},"西興村":{lat:23.253989,lng:120.574372,elev:379},"草嶺9號":{lat:23.253989,lng:120.574372,elev:379},
+    "三層村崎頭仔":{lat:23.36925,lng:120.49586,elev:143},"三層村":{lat:23.36925,lng:120.49586,elev:143},"崎頭仔":{lat:23.36925,lng:120.49586,elev:143},"崎頭仔7號":{lat:23.36925,lng:120.49586,elev:143},
+    "青山村民族巷":{lat:22.8142827,lng:120.6358303,elev:150},"青山村":{lat:22.8142827,lng:120.6358303,elev:150},"民族巷":{lat:22.8142827,lng:120.6358303,elev:150},"民族巷111號":{lat:22.8142827,lng:120.6358303,elev:150},
+    "中正路232號":{lat:23.03097,lng:120.25134,elev:22},"中正南路383號":{lat:23.03083,lng:120.22581,elev:10},
     // 台南行政區
-    "永康區":{lat:23.0263249,lng:120.2570297},"永康":{lat:23.0263249,lng:120.2570297},
-    "仁德區":{lat:22.972212,lng:120.25152},"仁德":{lat:22.972212,lng:120.25152},
-    "關廟區":{lat:22.9623531,lng:120.3344937},"關廟":{lat:22.9623531,lng:120.3344937},
-    "歸仁區":{lat:22.9671694,lng:120.293839},"歸仁":{lat:22.9671694,lng:120.293839},
-    "龍崎區":{lat:22.9633399,lng:120.3647293},"龍崎":{lat:22.9633399,lng:120.3647293},
+    "永康區":{lat:23.0263249,lng:120.2570297,elev:17},"永康":{lat:23.0263249,lng:120.2570297,elev:17},
+    "仁德區":{lat:22.972212,lng:120.25152,elev:13},"仁德":{lat:22.972212,lng:120.25152,elev:13},
+    "關廟區":{lat:22.9623531,lng:120.3344937,elev:49},"關廟":{lat:22.9623531,lng:120.3344937,elev:49},
+    "歸仁區":{lat:22.9671694,lng:120.293839,elev:29},"歸仁":{lat:22.9671694,lng:120.293839,elev:29},
+    "龍崎區":{lat:22.9633399,lng:120.3647293,elev:98},"龍崎":{lat:22.9633399,lng:120.3647293,elev:98},
     // 鄉鎮
-    "大埔鄉":{lat:23.2967692,lng:120.5937306},"大埔":{lat:23.2967692,lng:120.5937306},
-    "南化區":{lat:23.0412513,lng:120.4776808},"南化":{lat:23.0412513,lng:120.4776808},
-    "玉井區":{lat:23.1222269,lng:120.4574347},"玉井":{lat:23.1222269,lng:120.4574347},
-    "白河區":{lat:23.351473,lng:120.4137451},"白河":{lat:23.351473,lng:120.4137451},
+    "大埔鄉":{lat:23.2967692,lng:120.5937306,elev:250},"大埔":{lat:23.2967692,lng:120.5937306,elev:250},
+    "南化區":{lat:23.0412513,lng:120.4776808,elev:102},"南化":{lat:23.0412513,lng:120.4776808,elev:102},
+    "玉井區":{lat:23.1222269,lng:120.4574347,elev:56},"玉井":{lat:23.1222269,lng:120.4574347,elev:56},
+    "白河區":{lat:23.351473,lng:120.4137451,elev:39},"白河":{lat:23.351473,lng:120.4137451,elev:39},
     // 縣市與景點
-    "台北":{lat:25.033,lng:121.565},"新北":{lat:25.011,lng:121.461},"桃園":{lat:24.993,lng:121.301},"台中":{lat:24.147,lng:120.673},"台南":{lat:22.999,lng:120.227},
-    "高雄":{lat:22.627,lng:120.301},"基隆":{lat:25.127,lng:121.739},"新竹":{lat:24.813,lng:120.967},"苗栗":{lat:24.56,lng:120.821},"彰化":{lat:24.075,lng:120.544},
-    "南投":{lat:23.903,lng:120.693},"埔里":{lat:23.966,lng:120.966},"雲林":{lat:23.709,lng:120.431},"嘉義":{lat:23.48,lng:120.453},"屏東":{lat:22.668,lng:120.486},
-    "恆春":{lat:22.002,lng:120.741},"宜蘭":{lat:24.757,lng:121.753},"花蓮":{lat:23.987,lng:121.601},"台東":{lat:22.758,lng:121.144},"澎湖":{lat:23.571,lng:119.579},
-    "金門":{lat:24.449,lng:118.377},"馬祖":{lat:26.16,lng:119.94},"阿里山":{lat:23.508,lng:120.801},"合歡山":{lat:24.143,lng:121.271},"墾丁":{lat:21.944,lng:120.796},
-    "日月潭":{lat:23.852,lng:120.925},"清境":{lat:24.058,lng:121.156},"武陵":{lat:24.364,lng:121.314},"太平山":{lat:24.492,lng:121.536},"拉拉山":{lat:24.721,lng:121.422},
-    "小琉球":{lat:22.343,lng:120.368},"綠島":{lat:22.661,lng:121.488},"蘭嶼":{lat:22.057,lng:121.532}
+    "台北":{lat:25.033,lng:121.565,elev:8},"新北":{lat:25.011,lng:121.461,elev:15},"桃園":{lat:24.993,lng:121.301,elev:115},"台中":{lat:24.147,lng:120.673,elev:89},"台南":{lat:22.999,lng:120.227,elev:28},
+    "高雄":{lat:22.627,lng:120.301,elev:14},"基隆":{lat:25.127,lng:121.739,elev:10},"新竹":{lat:24.813,lng:120.967,elev:25},"苗栗":{lat:24.56,lng:120.821,elev:59},"彰化":{lat:24.075,lng:120.544,elev:20},
+    "南投":{lat:23.903,lng:120.693,elev:90},"埔里":{lat:23.966,lng:120.966,elev:450},"雲林":{lat:23.709,lng:120.431,elev:30},"嘉義":{lat:23.48,lng:120.453,elev:44},"屏東":{lat:22.668,lng:120.486,elev:27},
+    "恆春":{lat:22.002,lng:120.741,elev:24},"宜蘭":{lat:24.757,lng:121.753,elev:16},"花蓮":{lat:23.987,lng:121.601,elev:16},"台東":{lat:22.758,lng:121.144,elev:18},"澎湖":{lat:23.571,lng:119.579,elev:20},
+    "金門":{lat:24.449,lng:118.377,elev:30},"馬祖":{lat:26.16,lng:119.94,elev:0},"阿里山":{lat:23.508,lng:120.801,elev:2196},"合歡山":{lat:24.143,lng:121.271,elev:3379},"墾丁":{lat:21.944,lng:120.796,elev:6},
+    "日月潭":{lat:23.852,lng:120.925,elev:747},"清境":{lat:24.058,lng:121.156,elev:1601},"武陵":{lat:24.364,lng:121.314,elev:1921},"太平山":{lat:24.492,lng:121.536,elev:1859},"拉拉山":{lat:24.721,lng:121.422,elev:1750},
+    "小琉球":{lat:22.343,lng:120.368,elev:38},"綠島":{lat:22.661,lng:121.488,elev:207},"蘭嶼":{lat:22.057,lng:121.532,elev:290}
 };
 
 // 地名比對：長地名優先（最具體的先配到），避免永遠配到最大範圍的縣市；同長度時字典順序在前者優先
 const twLocationKeys = Object.keys(twLocations).sort((a, b) => b.length - a.length);
 
 // v7.31：行程地點轉座標（海拔高度用；只用內建字典，不解析短連結）
+// v7.34：字典每筆含內建 elev，回傳值一併帶回，海拔優先用內建值
 function getEventCoords(evt) {
     const query = (evt.location && evt.location.trim()) || (evt.weatherLoc && evt.weatherLoc.trim()) || '';
     if (!query) return null;
@@ -2202,32 +2204,37 @@ function openViewModal(id) {
         mMapLink.href = evt.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.location)}`;
         mMapBox.classList.remove('hidden');
 
-        // v7.31：海拔（只用內建字典座標；mapUrl 短連結不解析）
+        // v7.34：海拔優先用字典內建值，立刻顯示；查不到才走 API 備援（只用內建字典座標；mapUrl 短連結不解析）
         const evtCoords = getEventCoords(evt);
         if (evtCoords) {
-            const elevKey = `${evtCoords.lat.toFixed(4)},${evtCoords.lng.toFixed(4)}`;
-            const elevCache = getElevCache();
-            if (elevCache[elevKey] != null) {
-                elevBox.innerHTML = `<i class="fas fa-mountain"></i> 海拔約 ${elevCache[elevKey]} 公尺`;
+            if (evtCoords.elev != null) {
+                elevBox.innerHTML = `<i class="fas fa-mountain"></i> 海拔約 ${evtCoords.elev} 公尺`;
                 elevBox.classList.remove('hidden');
             } else {
-                const elevCtrl = new AbortController();
-                const elevTimer = setTimeout(() => elevCtrl.abort(), 5000);
-                fetch(`https://api.opentopodata.org/v1/srtm90m?locations=${evtCoords.lat},${evtCoords.lng}`, { signal: elevCtrl.signal })
-                    .then(r => r.json())
-                    .then(d => {
-                        clearTimeout(elevTimer);
-                        const elev = d && d.results && d.results[0] && d.results[0].elevation;
-                        if (typeof elev === 'number') {
-                            const elevM = Math.round(elev);
-                            const c = getElevCache(); c[elevKey] = elevM; setElevCache(c);
-                            if (currentViewingId === evt.id) {
-                                elevBox.innerHTML = `<i class="fas fa-mountain"></i> 海拔約 ${elevM} 公尺`;
-                                elevBox.classList.remove('hidden');
+                const elevKey = `${evtCoords.lat.toFixed(4)},${evtCoords.lng.toFixed(4)}`;
+                const elevCache = getElevCache();
+                if (elevCache[elevKey] != null) {
+                    elevBox.innerHTML = `<i class="fas fa-mountain"></i> 海拔約 ${elevCache[elevKey]} 公尺`;
+                    elevBox.classList.remove('hidden');
+                } else {
+                    const elevCtrl = new AbortController();
+                    const elevTimer = setTimeout(() => elevCtrl.abort(), 5000);
+                    fetch(`https://api.opentopodata.org/v1/srtm90m?locations=${evtCoords.lat},${evtCoords.lng}`, { signal: elevCtrl.signal })
+                        .then(r => r.json())
+                        .then(d => {
+                            clearTimeout(elevTimer);
+                            const elev = d && d.results && d.results[0] && d.results[0].elevation;
+                            if (typeof elev === 'number') {
+                                const elevM = Math.round(elev);
+                                const c = getElevCache(); c[elevKey] = elevM; setElevCache(c);
+                                if (currentViewingId === evt.id) {
+                                    elevBox.innerHTML = `<i class="fas fa-mountain"></i> 海拔約 ${elevM} 公尺`;
+                                    elevBox.classList.remove('hidden');
+                                }
                             }
-                        }
-                    })
-                    .catch(() => { clearTimeout(elevTimer); });
+                        })
+                        .catch(() => { clearTimeout(elevTimer); });
+                }
             }
         }
 
