@@ -199,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.32 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.33 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.32）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.33）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -225,6 +225,7 @@ function openManualModal() {
                     <li><b>📝 詳細備註修復：</b>編輯活動的「詳細備註」現在會正確存檔、回填與顯示，行程詳情會顯示備註內容；氣象地點編輯時也會正確回填。</li>
                     <li><b>🚫 取消街景預覽：</b>v7.31 的街景預覽按鈕已拿掉，行程詳情不再顯示街景；海拔高度顯示保留。</li>
                     <li><b>⛰️ 行程地點海拔高度：</b>行程詳情會顯示「海拔約 XXX 公尺」，登山、露營時很實用；抓不到或逾時就自動不顯示，不會跳錯誤。</li>
+                    <li><b>⛰️ 海拔標示移到天氣區：</b>行程詳情的海拔高度改顯示在天氣區正下方，緊貼天氣，一眼就看到。</li>
                 </ul>
             </section>
             
@@ -2186,12 +2187,13 @@ function openViewModal(id) {
     wxAlertBox.innerHTML = '';
 
     // v7.31：海拔高度欄位（共用 getEventCoords；對不到座標就不顯示）
+    // v7.33：移至天氣區正下方，緊貼天氣顯示
     let elevBox = document.getElementById('view-elev-box');
     if (!elevBox) {
         elevBox = document.createElement('div');
         elevBox.id = 'view-elev-box';
         elevBox.className = 'w-full py-2 bg-stone-50 text-stone-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mt-2';
-        mMapBox.appendChild(elevBox);
+        weatherBox.after(elevBox);
     }
     elevBox.classList.add('hidden');
 
