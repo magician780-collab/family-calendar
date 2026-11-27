@@ -72,7 +72,7 @@
             </div>
         </div>
         
-        <div class="px-5 pt-5 pb-3 bg-warm-50/50 border-b border-warm-100 space-y-3 shrink-0">
+        <div class="px-5 pt-4 pb-2 bg-warm-50/50 border-b border-warm-100 space-y-2.5 shrink-0">
             <div class="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-warm-200 shadow-sm">
                 <span class="text-sm md:text-base font-bold text-warm-800 flex items-center gap-1.5"><i class="fas fa-palette text-warm-500"></i> 主題風格</span>
                 <select id="theme-select" class="bg-warm-50 border border-warm-200 text-sm md:text-base font-bold text-warm-800 rounded-lg px-2 py-1 outline-none cursor-pointer">
@@ -86,24 +86,26 @@
                 <i class="fas fa-search absolute left-4 top-3.5 text-gray-400 text-base"></i>
                 <input type="text" id="search-input" placeholder="搜尋行程或成員..." class="w-full pl-11 pr-4 py-2.5 bg-white border border-warm-200 rounded-xl text-base outline-none shadow-sm">
             </div>
-            <button id="btn-open-gallery" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
-                <i class="fas fa-photo-film text-warm-600"></i> 📸 家庭回憶相簿牆
-            </button>
-            <!-- 新增：地圖按鈕 -->
-            <button id="btn-open-map" class="w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
-                <i class="fas fa-map-marked-alt text-emerald-600"></i> 🗺️ 家族足跡地圖
-            </button>
-            <button id="btn-open-members" class="w-full py-3 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
-                <i class="fas fa-users text-warm-600"></i> 👥 家族成員
-            </button>
-            <button id="btn-open-expense-stats" class="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm">
-                <i class="fas fa-coins text-amber-600"></i> 💰 行程費用統計
-            </button>
-            <button id="btn-open-announcements" class="w-full py-3 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm relative">
-                <i class="fas fa-bullhorn text-rose-600"></i> 📢 家族公告
-                <span id="announcement-dot" class="hidden absolute top-2 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
-            </button>
-            <p id="announcement-latest" class="hidden text-xs text-gray-500 truncate px-1"></p>
+            <!-- v7.29：六個入口改成兩欄小格（說明書按鈕由 app.js 動態插入 members 後方，順序不變） -->
+            <div id="sidebar-quick-links" class="grid grid-cols-2 gap-2">
+                <button id="btn-open-gallery" class="py-2 px-1 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fas fa-photo-film text-warm-600"></i> 📸 相簿牆
+                </button>
+                <button id="btn-open-map" class="py-2 px-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fas fa-map-marked-alt text-emerald-600"></i> 🗺️ 足跡地圖
+                </button>
+                <button id="btn-open-members" class="py-2 px-1 bg-warm-100 hover:bg-warm-200 text-warm-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fas fa-users text-warm-600"></i> 👥 家族成員
+                </button>
+                <button id="btn-open-expense-stats" class="py-2 px-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fas fa-coins text-amber-600"></i> 💰 費用統計
+                </button>
+                <button id="btn-open-announcements" class="py-2 px-1 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm relative">
+                    <i class="fas fa-bullhorn text-rose-600"></i> 📢 家族公告
+                    <span id="announcement-dot" class="hidden absolute top-1.5 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+                </button>
+            </div>
+            <p id="announcement-latest" class="hidden text-[11px] leading-tight text-gray-500 truncate px-1"></p>
         </div>
 
         <div class="p-5 flex-1 overflow-y-auto hide-scrollbar relative flex flex-col">
@@ -120,7 +122,7 @@
                 </div>
                 <textarea id="family-sticky-note" placeholder="隨手記下家庭瑣事..." class="w-full flex-1 bg-transparent border-none resize-none outline-none text-base text-amber-900 placeholder-amber-700/40 hide-scrollbar"></textarea>
             </div>
-            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.28</div>
+            <div class="absolute top-5 right-5 text-xs text-gray-300 font-bold select-none">v7.29</div>
         </div>
 
         <div class="p-5 border-t border-warm-100 bg-white space-y-2 shrink-0 hidden md:block">
@@ -646,6 +648,6 @@
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)); });
         }
     </script>
-    <script type="module" src="./app.js?v=7.28"></script>
+    <script type="module" src="./app.js?v=7.29"></script>
 </body>
 </html>

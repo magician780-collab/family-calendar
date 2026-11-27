@@ -177,8 +177,8 @@ const membersBtn = document.getElementById('btn-open-members');
 if (membersBtn && !document.getElementById('btn-open-manual')) {
     const manualBtn = document.createElement('button');
     manualBtn.id = 'btn-open-manual';
-    manualBtn.className = 'w-full py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-sm mt-3';
-    manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 系統使用說明書';
+    manualBtn.className = 'py-2 px-1 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 shadow-sm';
+    manualBtn.innerHTML = '<i class="fas fa-book-open text-blue-600"></i> 📖 說明書';
     membersBtn.parentNode.insertBefore(manualBtn, membersBtn.nextSibling);
 
     manualBtn.addEventListener('click', () => {
@@ -199,11 +199,11 @@ function openManualModal() {
     modal.className = 'fixed inset-0 bg-warm-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in modal-backdrop';
     
     const manualContent = `
-        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.28 說明書</h2>
+        <h2 class="text-2xl font-extrabold text-warm-800 mb-4 border-b pb-2"><i class="fas fa-book-reader text-warm-500"></i> 溫馨家族行事曆 - v7.29 說明書</h2>
         
         <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
             <section class="bg-gradient-to-r from-warm-50 to-rose-50 p-4 rounded-xl border border-warm-200 shadow-sm">
-                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.28）</h3>
+                <h3 class="font-bold text-lg text-rose-700 mb-2 flex items-center gap-2"><i class="fas fa-star text-amber-500"></i> 近期升級亮點（v7.13–v7.29）</h3>
                 <ul class="list-disc pl-5 space-y-1 text-rose-900">
                     <li><b>👥 家族成員管理：</b>側邊欄就有「家族成員」按鈕，點了直接開。成員可以改名字、換頭像、刪除前會先顯示他參與了哪些行程；只換頭像不用輸密碼，改名字才要。</li>
                     <li><b>😊 頭像點一點就換：</b>新增或編輯成員時，頭像欄位下方有一排 Emoji（人物、動物、應景圖案）點一下就選用，也可以直接打自己喜歡的 Emoji。</li>
@@ -221,6 +221,7 @@ function openManualModal() {
                     <li><b>📢 家族公告欄：</b>側邊欄多了「家族公告」，重要事情置頂公告給全家人看；新增、編輯、刪除公告要輸管理員密碼，最新公告會有紅點提醒。</li>
                     <li><b>📢 公告跑馬燈：</b>月曆最上方會橫向捲動最新家族公告（標題＋內容開頭），多則公告用 ✦ 串起來輪流捲動，滑鼠移上去會暫停；點一下就開公告欄看全文，沒有公告時整條自動隱藏。</li>
                     <li><b>💰 費用統計排除範例：</b>標題以「範例」開頭的範例行程不再算進費用統計，年度、本月、歷年總花費、分類與代墊統計都不含它；範例行程本身還留在行事曆上。</li>
+                    <li><b>🧭 側邊欄精簡：</b>六個大按鈕改成兩欄小格，手機開側邊欄時「即將到來」第一張卡片看得完整。</li>
                 </ul>
             </section>
             
